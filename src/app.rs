@@ -1,4 +1,43 @@
-use eframe::{egui, epi};
+use eframe::{
+    egui::{self, paint::Mesh, Button, Color32, Rect, Sense, Shape, Stroke, TextureId},
+    epi,
+};
+
+#[derive(PartialEq)]
+#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
+enum Mode {
+    PixelPaint,
+    CharPaint,
+}
+
+// From /usr/lib/vice/VIC20/vice.vpl
+const PALETTE: [u32; 16] = [
+    // 0xRRGGBB
+    0x000000, // Black
+    0xffffff, // White
+    0xf00000, // Red
+    0x00f0f0, // Cyan
+    0x600060, // Purple
+    0x00a000, // Green
+    0x0000f0, // Blue
+    0xd0d000, // Yellow
+    0xc0a000, // Orange
+    0xffa000, // Light Orange
+    0xf08080, // Pink
+    0x00ffff, // Light Cyan
+    0xff00ff, // Light Purple
+    0x00ff00, // Light Green
+    0x00a0ff, // Light Blue
+    0xffff00, // Light Yellow
+];
+
+fn selected_color(selected: bool) -> Option<Color32> {
+    if selected {
+        Some(Color32::BLUE)
+    } else {
+        None
+    }
+}
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
@@ -7,6 +46,8 @@ pub struct TemplateApp {
     label: String,
     value: f32,
     painting: Painting,
+    mode: Mode,
+    paint_color: usize,
 }
 
 impl Default for TemplateApp {
@@ -16,6 +57,8 @@ impl Default for TemplateApp {
             label: "Hello World!".to_owned(),
             value: 2.7,
             painting: Default::default(),
+            mode: Mode::PixelPaint,
+            paint_color: 0,
         }
     }
 }
@@ -44,6 +87,8 @@ impl epi::App for TemplateApp {
             label,
             value,
             painting,
+            mode,
+            paint_color,
         } = self;
 
         // Examples of how to create different panels and windows.
@@ -79,6 +124,43 @@ impl epi::App for TemplateApp {
                         frame.quit();
                     }
                 });
+            });
+            ui.separator();
+            ui.horizontal_wrapped(|ui| {
+                if ui
+                    .add(Button::new("Pixel paint").fill(selected_color(*mode == Mode::PixelPaint)))
+                    .clicked()
+                {
+                    *mode = Mode::PixelPaint;
+                }
+                if ui
+                    .add(Button::new("Char paint").fill(selected_color(*mode == Mode::CharPaint)))
+                    .clicked()
+                {
+                    *mode = Mode::CharPaint;
+                }
+            });
+            ui.horizontal_wrapped(|ui| match *mode {
+                Mode::PixelPaint => {
+                    let size = ui.spacing().interact_size;
+                    for (color_index, rgb) in PALETTE.iter().enumerate() {
+                        let color = Color32::from_rgb(
+                            (rgb >> 16) as u8,
+                            ((rgb >> 8) & 0xff) as u8,
+                            (rgb & 0xff) as u8,
+                        );
+                        let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+                        ui.painter().rect_filled(rect, 0.0, color);
+                        if color_index == *paint_color {
+                            ui.painter()
+                                .rect_stroke(rect, 0.0, Stroke::new(2.0, Color32::BLUE));
+                        }
+                        if response.clicked() {
+                            *paint_color = color_index;
+                        }
+                    }
+                }
+                Mode::CharPaint => {}
             });
         });
 
@@ -146,8 +228,10 @@ impl Painting {
     }
 
     pub fn ui_content(&mut self, ui: &mut egui::Ui) -> egui::Response {
-        let (response, painter) =
-            ui.allocate_painter(ui.available_size_before_wrap_finite(), egui::Sense::drag());
+        let (response, painter) = ui.allocate_painter(
+            [100.0, 100.0].into(), /*ui.available_size_before_wrap_finite()*/
+            egui::Sense::drag(),
+        );
         let rect = response.rect;
 
         if self.lines.is_empty() {
@@ -169,6 +253,14 @@ impl Painting {
         for line in &self.lines {
             if line.len() >= 2 {
                 let points: Vec<egui::Pos2> = line.iter().map(|p| rect.min + *p).collect();
+                for p in &points {
+                    let mut m = Mesh::with_texture(TextureId::Egui);
+                    m.add_colored_rect(
+                        Rect::from_center_size(*p, [10.0, 10.0].into()),
+                        Color32::RED,
+                    );
+                    shapes.push(Shape::Mesh(m));
+                }
                 shapes.push(egui::Shape::line(points, self.stroke));
             }
         }
