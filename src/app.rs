@@ -1,5 +1,5 @@
 use eframe::{
-    egui::{self, paint::Mesh, Button, Color32, Rect, Sense, Shape, Stroke, TextureId},
+    egui::{self, paint::Mesh, Button, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
     epi,
 };
 
@@ -48,10 +48,22 @@ pub struct TemplateApp {
     painting: Painting,
     mode: Mode,
     paint_color: usize,
+
+    width: usize,
+    height: usize,
+    pixels: Vec<Color32>,
+    image_texture: Option<TextureId>,
 }
 
 impl Default for TemplateApp {
     fn default() -> Self {
+        let width = 320;
+        let height = 200;
+        let mut pixels = vec![Color32::RED; width * height];
+        for x in 0..width {
+            let y = ((x as f32 / width as f32) * height as f32) as usize;
+            pixels[x + y * width] = Color32::WHITE;
+        }
         Self {
             // Example stuff:
             label: "Hello World!".to_owned(),
@@ -59,6 +71,10 @@ impl Default for TemplateApp {
             painting: Default::default(),
             mode: Mode::PixelPaint,
             paint_color: 0,
+            width,
+            height,
+            pixels,
+            image_texture: None,
         }
     }
 }
@@ -86,9 +102,13 @@ impl epi::App for TemplateApp {
         let TemplateApp {
             label,
             value,
-            painting,
             mode,
             paint_color,
+            width,
+            height,
+            image_texture,
+            pixels,
+            ..
         } = self;
 
         // Examples of how to create different panels and windows.
@@ -175,14 +195,43 @@ impl epi::App for TemplateApp {
 
             ui.separator();
 
-            ui.heading("Central Panel");
-            ui.label("The central panel the region left after adding TopPanel's and SidePanel's");
-            ui.label("It is often a great place for big things, like drawings:");
+            // Main image. ScrollArea unfortunately only provides vertical scrolling.
+            egui::ScrollArea::auto_sized().show(ui, |ui| {
+                let zoom = 2.0;
+                let size = Vec2::new(*width as f32, *height as f32) * zoom;
 
-            ui.heading("Draw with your mouse to paint:");
-            painting.ui_control(ui);
-            egui::Frame::dark_canvas(ui.style()).show(ui, |ui| {
-                painting.ui_content(ui);
+                let (response, painter) = ui.allocate_painter(size, egui::Sense::drag());
+
+                let tex_allocator = frame.tex_allocator().as_mut().unwrap();
+
+                if let Some(pointer_pos) = response.interact_pointer_pos() {
+                    let p = pointer_pos - response.rect.left_top();
+                    let fx = p.x / response.rect.size().x;
+                    let fy = p.y / response.rect.size().y;
+                    let x = (fx * *width as f32).round() as i32;
+                    let y = (fy * *height as f32).round() as i32;
+                    if x >= 0 && (x as usize) < *width && y >= 0 && (y as usize) < *height {
+                        pixels[x as usize + y as usize * *width] = Color32::LIGHT_GRAY;
+                        tex_allocator.free(image_texture.take().unwrap()); // make sure we create a new texture
+                    }
+                }
+
+                let texture = if let Some(texture) = image_texture {
+                    *texture
+                } else {
+                    let texture =
+                        tex_allocator.alloc_srgba_premultiplied((*width, *height), &pixels);
+                    *image_texture = Some(texture);
+                    texture
+                };
+
+                let mut mesh = Mesh::with_texture(texture);
+                mesh.add_rect_with_uv(
+                    response.rect,
+                    Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
+                    Color32::WHITE,
+                );
+                painter.add(Shape::Mesh(mesh));
             });
         });
 
