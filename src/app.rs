@@ -48,6 +48,8 @@ pub struct TemplateApp {
     width: usize,
     height: usize,
     pixels: Vec<Color32>,
+
+    #[cfg_attr(feature = "persistence", serde(skip))]
     image_texture: Option<TextureId>,
 }
 
@@ -73,7 +75,7 @@ impl Default for TemplateApp {
 
 impl epi::App for TemplateApp {
     fn name(&self) -> &str {
-        "egui template"
+        "Paint Application"
     }
 
     /// Called by the framework to load old app state (if any).
