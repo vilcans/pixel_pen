@@ -41,7 +41,7 @@ fn selected_color(selected: bool) -> Option<Color32> {
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
-pub struct TemplateApp {
+pub struct Application {
     mode: Mode,
     paint_color: usize,
 
@@ -53,7 +53,7 @@ pub struct TemplateApp {
     image_texture: Option<TextureId>,
 }
 
-impl Default for TemplateApp {
+impl Default for Application {
     fn default() -> Self {
         let width = 320;
         let height = 200;
@@ -73,7 +73,7 @@ impl Default for TemplateApp {
     }
 }
 
-impl epi::App for TemplateApp {
+impl epi::App for Application {
     fn name(&self) -> &str {
         "Paint Application"
     }
@@ -93,7 +93,7 @@ impl epi::App for TemplateApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
-        let TemplateApp {
+        let Application {
             mode,
             paint_color,
             width,
