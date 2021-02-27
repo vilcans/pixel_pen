@@ -18,7 +18,6 @@ serde = { version = "1", features = ["derive"], optional = true }
 [features]
 default = []
 http = ["eframe/http"] # Enable if you want to do http requests
-persistence = ["eframe/persistence", "serde"] # Enable if you want to persist app state on shutdown
 
 [profile.release]
 opt-level = 2 # fast and small wasm

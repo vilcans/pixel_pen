@@ -25,7 +25,6 @@ const PALETTE: [u32; 16] = [
 /// Number of entries in the palette.
 pub const PALETTE_SIZE: usize = 16;
 
-#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 pub struct Char {
     pixels: ImgVec<u8>,
 }
@@ -52,7 +51,6 @@ impl Default for Char {
     }
 }
 
-#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 pub struct VicImage {
     columns: usize,
     rows: usize,

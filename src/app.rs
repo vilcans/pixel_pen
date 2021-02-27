@@ -6,7 +6,6 @@ use eframe::{
 use crate::vic::{self, VicImage};
 
 #[derive(PartialEq)]
-#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 enum Mode {
     PixelPaint,
     CharPaint,
@@ -20,15 +19,12 @@ fn selected_color(selected: bool) -> Option<Color32> {
     }
 }
 
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 pub struct Application {
     mode: Mode,
     paint_color: usize,
 
     image: VicImage,
 
-    #[cfg_attr(feature = "persistence", serde(skip))]
     image_texture: Option<TextureId>,
 }
 
@@ -46,18 +42,6 @@ impl Default for Application {
 impl epi::App for Application {
     fn name(&self) -> &str {
         "Paint Application"
-    }
-
-    /// Called by the framework to load old app state (if any).
-    #[cfg(feature = "persistence")]
-    fn load(&mut self, storage: &dyn epi::Storage) {
-        *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
-    }
-
-    /// Called by the frame work to save state before shutdown.
-    #[cfg(feature = "persistence")]
-    fn save(&mut self, storage: &mut dyn epi::Storage) {
-        epi::set_value(storage, epi::APP_KEY, self);
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
