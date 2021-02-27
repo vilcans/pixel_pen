@@ -107,7 +107,8 @@ impl VicImage {
         }
         let cx = x % Char::WIDTH as i32;
         let cy = y % Char::WIDTH as i32;
-        let char_num = self.video[(column as usize, row as usize)];
+        let index = (column as usize, row as usize);
+        let char_num = self.video[index];
         let mut char = self.chars[char_num as usize].clone();
         char.set_pixel(cx, cy, color);
         if let Some((new_char_num, _)) = self
@@ -115,11 +116,24 @@ impl VicImage {
             .iter()
             .find_position(|candidate| candidate.pixels == char.pixels)
         {
-            self.video[(column as usize, row as usize)] = new_char_num as u16;
+            // Found an existing char with the correct content
+            self.video[index] = new_char_num as u16;
         } else {
-            let new_char_num = self.chars.len();
-            self.chars.push(char);
-            self.video[(column as usize, row as usize)] = new_char_num as u16;
+            let mut histogram = vec![0; self.chars.len()];
+            for c in self.video.pixels() {
+                histogram[c as usize] += 1;
+            }
+            histogram[char_num as usize] -= 1;
+            if let Some((unused_char, _)) = histogram.iter().find_position(|&&c| c == 0) {
+                // Use an unused char
+                self.chars[unused_char] = char;
+                self.video[index] = unused_char as u16;
+            } else {
+                // Allocate a new char
+                let new_char_num = self.chars.len();
+                self.chars.push(char);
+                self.video[index] = new_char_num as u16;
+            }
         }
     }
 
