@@ -141,6 +141,8 @@ impl epi::App for Application {
                     Color32::WHITE,
                 );
                 painter.add(Shape::Mesh(mesh));
+
+                ui.label(image.info());
             });
         });
     }

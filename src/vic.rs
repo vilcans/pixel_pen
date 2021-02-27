@@ -1,5 +1,6 @@
 use eframe::egui::Color32;
 use imgref::{ImgRefMut, ImgVec};
+use itertools::Itertools;
 
 // From /usr/lib/vice/VIC20/vice.vpl
 const PALETTE: [u32; 16] = [
@@ -108,6 +109,13 @@ impl VicImage {
         let char_num = self.video[(column as usize, row as usize)];
         let char = &mut self.chars[char_num as usize];
         char.set_pixel(cx, cy, color);
+    }
+
+    pub fn info(&self) -> String {
+        let min = self.video.pixels().min().unwrap();
+        let max = self.video.pixels().min().unwrap();
+        let used = self.video.pixels().unique().count();
+        format!("{} to {}, {} characters used", min, max, used)
     }
 
     /// Get the image as true-color pixels for rendering to screen.
