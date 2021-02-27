@@ -26,7 +26,7 @@ const PALETTE: [u32; 16] = [
 /// Number of entries in the palette.
 pub const PALETTE_SIZE: usize = 16;
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct Char {
     pixels: ImgVec<u8>,
 }
@@ -110,9 +110,17 @@ impl VicImage {
         let char_num = self.video[(column as usize, row as usize)];
         let mut char = self.chars[char_num as usize].clone();
         char.set_pixel(cx, cy, color);
-        let new_char_num = self.chars.len();
-        self.chars.push(char);
-        self.video[(column as usize, row as usize)] = new_char_num as u16;
+        if let Some((new_char_num, _)) = self
+            .chars
+            .iter()
+            .find_position(|candidate| candidate.pixels == char.pixels)
+        {
+            self.video[(column as usize, row as usize)] = new_char_num as u16;
+        } else {
+            let new_char_num = self.chars.len();
+            self.chars.push(char);
+            self.video[(column as usize, row as usize)] = new_char_num as u16;
+        }
     }
 
     pub fn info(&self) -> String {
