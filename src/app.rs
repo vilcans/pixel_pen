@@ -32,7 +32,7 @@ impl Default for Application {
     fn default() -> Self {
         Self {
             mode: Mode::PixelPaint,
-            paint_color: 0,
+            paint_color: 1,
             image: VicImage::default(),
             image_texture: None,
         }
@@ -120,7 +120,7 @@ impl epi::App for Application {
                     let x = (fx * width as f32).round() as i32;
                     let y = (fy * height as f32).round() as i32;
                     if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
-                        //image.set_pixel(x, y, 1);
+                        image.set_pixel(x, y, *paint_color as u8);
                         tex_allocator.free(image_texture.take().unwrap()); // make sure we create a new texture
                     }
                 }

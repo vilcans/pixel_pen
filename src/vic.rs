@@ -40,6 +40,11 @@ impl Char {
             *color = palette_color(index);
         }
     }
+    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) {
+        assert!((0..Self::WIDTH).contains(&(x as usize)));
+        assert!((0..Self::HEIGHT).contains(&(y as usize)));
+        self.pixels[(x as usize, y as usize)] = color;
+    }
 }
 
 impl Default for Char {
@@ -90,6 +95,19 @@ impl VicImage {
     /// Get the width and height of the image in pixels.
     pub fn pixel_size(&self) -> (usize, usize) {
         (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
+    }
+
+    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) {
+        let column = x / Char::WIDTH as i32;
+        let row = y / Char::WIDTH as i32;
+        if !(0..self.columns as i32).contains(&column) || !(0..self.rows as i32).contains(&row) {
+            return;
+        }
+        let cx = x % Char::WIDTH as i32;
+        let cy = y % Char::WIDTH as i32;
+        let char_num = self.video[(column as usize, row as usize)];
+        let char = &mut self.chars[char_num as usize];
+        char.set_pixel(cx, cy, color);
     }
 
     /// Get the image as true-color pixels for rendering to screen.
