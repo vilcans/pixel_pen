@@ -26,6 +26,7 @@ const PALETTE: [u32; 16] = [
 /// Number of entries in the palette.
 pub const PALETTE_SIZE: usize = 16;
 
+#[derive(Clone)]
 pub struct Char {
     pixels: ImgVec<u8>,
 }
@@ -107,13 +108,16 @@ impl VicImage {
         let cx = x % Char::WIDTH as i32;
         let cy = y % Char::WIDTH as i32;
         let char_num = self.video[(column as usize, row as usize)];
-        let char = &mut self.chars[char_num as usize];
+        let mut char = self.chars[char_num as usize].clone();
         char.set_pixel(cx, cy, color);
+        let new_char_num = self.chars.len();
+        self.chars.push(char);
+        self.video[(column as usize, row as usize)] = new_char_num as u16;
     }
 
     pub fn info(&self) -> String {
         let min = self.video.pixels().min().unwrap();
-        let max = self.video.pixels().min().unwrap();
+        let max = self.video.pixels().max().unwrap();
         let used = self.video.pixels().unique().count();
         format!("{} to {}, {} characters used", min, max, used)
     }
