@@ -118,6 +118,11 @@ impl VicImage {
         format!("{} to {}, {} characters used", min, max, used)
     }
 
+    /// Width of one pixel compared to its height.
+    pub fn pixel_aspect_ratio(&self) -> f32 {
+        2.0
+    }
+
     /// Get the image as true-color pixels for rendering to screen.
     pub fn pixels<'a>(&'a mut self) -> &[Color32] {
         self.render();

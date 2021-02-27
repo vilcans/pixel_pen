@@ -107,7 +107,8 @@ impl epi::App for Application {
             // Main image. ScrollArea unfortunately only provides vertical scrolling.
             egui::ScrollArea::auto_sized().show(ui, |ui| {
                 let zoom = 2.0;
-                let size = Vec2::new(width as f32, height as f32) * zoom;
+                let par = image.pixel_aspect_ratio();
+                let size = Vec2::new(width as f32 * par, height as f32) * zoom;
 
                 let (response, painter) = ui.allocate_painter(size, egui::Sense::drag());
 
