@@ -427,6 +427,7 @@ name = "egui_template"
 version = "0.1.0"
 dependencies = [
  "eframe",
+ "imgref",
  "serde",
 ]
 
@@ -658,6 +659,12 @@ dependencies = [
  "unicode-bidi",
  "unicode-normalization",
 ]
+
+[[package]]
+name = "imgref"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07c89d38187142134cb61fc7a9040ba7f7cbe29fe22bb4b702a4d9a1752fada5"
 
 [[package]]
 name = "instant"

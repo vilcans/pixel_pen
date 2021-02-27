@@ -3,33 +3,14 @@ use eframe::{
     epi,
 };
 
+use crate::vic::{self, VicImage};
+
 #[derive(PartialEq)]
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 enum Mode {
     PixelPaint,
     CharPaint,
 }
-
-// From /usr/lib/vice/VIC20/vice.vpl
-const PALETTE: [u32; 16] = [
-    // 0xRRGGBB
-    0x000000, // Black
-    0xffffff, // White
-    0xf00000, // Red
-    0x00f0f0, // Cyan
-    0x600060, // Purple
-    0x00a000, // Green
-    0x0000f0, // Blue
-    0xd0d000, // Yellow
-    0xc0a000, // Orange
-    0xffa000, // Light Orange
-    0xf08080, // Pink
-    0x00ffff, // Light Cyan
-    0xff00ff, // Light Purple
-    0x00ff00, // Light Green
-    0x00a0ff, // Light Blue
-    0xffff00, // Light Yellow
-];
 
 fn selected_color(selected: bool) -> Option<Color32> {
     if selected {
@@ -45,9 +26,7 @@ pub struct Application {
     mode: Mode,
     paint_color: usize,
 
-    width: usize,
-    height: usize,
-    pixels: Vec<Color32>,
+    image: VicImage,
 
     #[cfg_attr(feature = "persistence", serde(skip))]
     image_texture: Option<TextureId>,
@@ -55,19 +34,10 @@ pub struct Application {
 
 impl Default for Application {
     fn default() -> Self {
-        let width = 320;
-        let height = 200;
-        let mut pixels = vec![Color32::RED; width * height];
-        for x in 0..width {
-            let y = ((x as f32 / width as f32) * height as f32) as usize;
-            pixels[x + y * width] = Color32::WHITE;
-        }
         Self {
             mode: Mode::PixelPaint,
             paint_color: 0,
-            width,
-            height,
-            pixels,
+            image: VicImage::default(),
             image_texture: None,
         }
     }
@@ -96,12 +66,11 @@ impl epi::App for Application {
         let Application {
             mode,
             paint_color,
-            width,
-            height,
+            image,
             image_texture,
-            pixels,
             ..
         } = self;
+        let (width, height) = image.pixel_size();
 
         egui::TopPanel::top("top_panel").show(ctx, |ui| {
             // Menu bar
@@ -133,12 +102,8 @@ impl epi::App for Application {
             ui.horizontal_wrapped(|ui| match *mode {
                 Mode::PixelPaint => {
                     let size = ui.spacing().interact_size;
-                    for (color_index, rgb) in PALETTE.iter().enumerate() {
-                        let color = Color32::from_rgb(
-                            (rgb >> 16) as u8,
-                            ((rgb >> 8) & 0xff) as u8,
-                            (rgb & 0xff) as u8,
-                        );
+                    for color_index in 0..vic::PALETTE_SIZE {
+                        let color = vic::palette_color(color_index);
                         let (rect, response) = ui.allocate_exact_size(size, Sense::click());
                         ui.painter().rect_filled(rect, 0.0, color);
                         if color_index == *paint_color {
@@ -158,7 +123,7 @@ impl epi::App for Application {
             // Main image. ScrollArea unfortunately only provides vertical scrolling.
             egui::ScrollArea::auto_sized().show(ui, |ui| {
                 let zoom = 2.0;
-                let size = Vec2::new(*width as f32, *height as f32) * zoom;
+                let size = Vec2::new(width as f32, height as f32) * zoom;
 
                 let (response, painter) = ui.allocate_painter(size, egui::Sense::drag());
 
@@ -168,19 +133,19 @@ impl epi::App for Application {
                     let p = pointer_pos - response.rect.left_top();
                     let fx = p.x / response.rect.size().x;
                     let fy = p.y / response.rect.size().y;
-                    let x = (fx * *width as f32).round() as i32;
-                    let y = (fy * *height as f32).round() as i32;
-                    if x >= 0 && (x as usize) < *width && y >= 0 && (y as usize) < *height {
-                        pixels[x as usize + y as usize * *width] = Color32::LIGHT_GRAY;
+                    let x = (fx * width as f32).round() as i32;
+                    let y = (fy * height as f32).round() as i32;
+                    if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
+                        //image.set_pixel(x, y, 1);
                         tex_allocator.free(image_texture.take().unwrap()); // make sure we create a new texture
                     }
                 }
 
+                let pixels = image.pixels();
                 let texture = if let Some(texture) = image_texture {
                     *texture
                 } else {
-                    let texture =
-                        tex_allocator.alloc_srgba_premultiplied((*width, *height), &pixels);
+                    let texture = tex_allocator.alloc_srgba_premultiplied((width, height), &pixels);
                     *image_texture = Some(texture);
                     texture
                 };

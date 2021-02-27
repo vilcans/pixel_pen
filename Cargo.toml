@@ -11,6 +11,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 eframe = "0.9.0" # Gives us egui, epi and web+native backends
+imgref = "1.7.1"
 
 serde = { version = "1", features = ["derive"], optional = true }
 
