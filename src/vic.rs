@@ -28,32 +28,59 @@ pub const PALETTE_SIZE: usize = 16;
 
 #[derive(Clone, Hash)]
 pub struct Char {
-    pixels: ImgVec<u8>,
+    bits: [u8; 8],
+    color: u8,
 }
 
 impl Char {
     const WIDTH: usize = 8;
     const HEIGHT: usize = 8;
 
-    pub fn render_to(&self, mut pixels: ImgRefMut<'_, Color32>) {
+    fn render_to(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
         debug_assert_eq!(Self::WIDTH, pixels.width());
         debug_assert_eq!(Self::HEIGHT, pixels.height());
-        for (index, color) in self.pixels.pixels().zip(pixels.pixels_mut()) {
-            *color = palette_color(index);
+        for (bits, pixel_row) in self.bits.iter().zip(pixels.rows_mut()) {
+            for (b, p) in pixel_row.iter_mut().enumerate() {
+                let index = if (bits & (0x80 >> b)) == 0 {
+                    colors.background
+                } else {
+                    self.color
+                };
+                *p = palette_color(index);
+            }
         }
     }
-    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) {
+    fn set_pixel(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
         debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
         debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
-        self.pixels[(x as usize, y as usize)] = color;
+        let bit = 0x80u8 >> x;
+        if color == colors.background {
+            self.bits[y as usize] &= !bit;
+        } else {
+            self.bits[y as usize] |= bit;
+            self.color = color;
+        }
     }
 }
 
 impl Default for Char {
     fn default() -> Self {
-        let pixels = vec![0u8; Self::WIDTH * Self::HEIGHT];
+        let bits = [0u8; 8];
+        Self { bits, color: 1 }
+    }
+}
+
+struct GlobalColors {
+    pub background: u8,
+    pub border: u8,
+    pub aux: u8,
+}
+impl Default for GlobalColors {
+    fn default() -> Self {
         Self {
-            pixels: ImgVec::new(pixels, Self::WIDTH, Self::HEIGHT),
+            background: 0,
+            border: 1,
+            aux: 2,
         }
     }
 }
@@ -61,6 +88,8 @@ impl Default for Char {
 pub struct VicImage {
     columns: usize,
     rows: usize,
+
+    colors: GlobalColors,
 
     /// Character bitmaps and settings
     chars: Vec<Char>,
@@ -82,6 +111,7 @@ impl Default for VicImage {
         Self {
             columns,
             rows,
+            colors: Default::default(),
             chars: vec![Char::default()],
             video: ImgVec::new(vec![0u16; columns * rows], columns, rows),
             pixels: ImgVec::new(
@@ -110,11 +140,11 @@ impl VicImage {
         let index = (column as usize, row as usize);
         let char_num = self.video[index];
         let mut char = self.chars[char_num as usize].clone();
-        char.set_pixel(cx, cy, color);
+        char.set_pixel(cx, cy, color, &self.colors);
         if let Some((new_char_num, _)) = self
             .chars
             .iter()
-            .find_position(|candidate| candidate.pixels == char.pixels)
+            .find_position(|candidate| candidate.bits == char.bits)
         {
             // Found an existing char with the correct content
             self.video[index] = new_char_num as u16;
@@ -163,7 +193,10 @@ impl VicImage {
                 let left = column * Char::WIDTH;
                 let top = row * Char::HEIGHT;
                 let char = &self.chars[*char_index as usize];
-                char.render_to(pixels.sub_image_mut(left, top, Char::WIDTH, Char::HEIGHT));
+                char.render_to(
+                    pixels.sub_image_mut(left, top, Char::WIDTH, Char::HEIGHT),
+                    &self.colors,
+                );
             }
         }
     }
