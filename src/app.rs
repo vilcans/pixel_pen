@@ -112,7 +112,7 @@ impl epi::App for Application {
 
                 let (response, painter) = ui.allocate_painter(size, egui::Sense::drag());
 
-                let tex_allocator = frame.tex_allocator().as_mut().unwrap();
+                let tex_allocator = frame.tex_allocator();
 
                 if let Some(pointer_pos) = response.interact_pointer_pos() {
                     let p = pointer_pos - response.rect.left_top();

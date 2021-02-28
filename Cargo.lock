@@ -370,9 +370,9 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
 name = "eframe"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ccde2edc3acc7b5d8840a87d61c8f4d9de3605d7e2b11c88d1685563ff99a3f4"
+checksum = "e8174446d28d519098dde026c9474a05a527cd43370f105913a534d3bb431c0d"
 dependencies = [
  "egui",
  "egui_glium",
@@ -382,18 +382,18 @@ dependencies = [
 
 [[package]]
 name = "egui"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e0733d89ca8ea4bc10b83563c5efe9397726efb3cce32892107ae802dbd18b4"
+checksum = "04fa506a0f70b14bc9d04b59b862e621521728df5beae4403ce69a033658f78f"
 dependencies = [
  "epaint",
 ]
 
 [[package]]
 name = "egui_glium"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "214a49c518a6ae9595bf3a39d853ea27b7935bf2b53217dfe3f5eacdb6fe4bbf"
+checksum = "d7dac409ab9b1d83620e54c1a4f7f0a247b28f192b2f9185a5410277bc907ae7"
 dependencies = [
  "clipboard",
  "egui",
@@ -416,9 +416,9 @@ dependencies = [
 
 [[package]]
 name = "egui_web"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a8573888f212be869cbbf6f21daf18643c73fac3efd537d83bd7220ffb17134"
+checksum = "989d1cf650fe946ba63eda029d8e50be4ac32df3b8eb3a81a598a46536720a5e"
 dependencies = [
  "egui",
  "epi",
@@ -436,15 +436,15 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "emath"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7861866ceff7d4fe55c0dc34dc45102d9d16ac567e4674e2cc36f71b79693cf"
+checksum = "632c6ab1d569238921dc1e590640862ffb09226b0483f3b60950a3ec34f84b48"
 
 [[package]]
 name = "epaint"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2c8ff3363987df86b1358bf1ed57a20fd80cf88164b2be05fd5dd309993c14e"
+checksum = "d29cd86d676d3f0d6d348e66bb4ee7ccdff021d981fa2a4a9649416658a272ba"
 dependencies = [
  "ahash",
  "atomic_refcell",
@@ -454,9 +454,9 @@ dependencies = [
 
 [[package]]
 name = "epi"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ae8c8583009a96c9e3f5c9efcf0e935b10a906dbe78b2c8e4146c57fde17908"
+checksum = "3092dca4ab12b5f1ce942440526ae797d996bedc503b70f1ec484f8da408059e"
 dependencies = [
  "egui",
 ]
