@@ -1,6 +1,5 @@
 use eframe::egui::Color32;
 use imgref::{ImgRefMut, ImgVec};
-use itertools::Itertools;
 
 // From /usr/lib/vice/VIC20/vice.vpl
 const PALETTE: [u32; 16] = [
@@ -26,7 +25,7 @@ const PALETTE: [u32; 16] = [
 /// Number of entries in the palette.
 pub const PALETTE_SIZE: usize = 16;
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Copy, Hash)]
 pub struct Char {
     bits: [u8; 8],
     color: u8,
@@ -91,12 +90,9 @@ pub struct VicImage {
 
     colors: GlobalColors,
 
-    /// Character bitmaps and settings
-    chars: Vec<Char>,
-
     /// The character at each position.
     /// Size: columns x rows.
-    video: ImgVec<u16>,
+    video: ImgVec<Char>,
 
     /// The true-color pixels from rendering `video` and `chars`.
     pixels: ImgVec<Color32>,
@@ -112,8 +108,7 @@ impl Default for VicImage {
             columns,
             rows,
             colors: Default::default(),
-            chars: vec![Char::default()],
-            video: ImgVec::new(vec![0u16; columns * rows], columns, rows),
+            video: ImgVec::new(vec![Char::default(); columns * rows], columns, rows),
             pixels: ImgVec::new(
                 vec![Color32::BLACK; pixel_width * pixel_height],
                 pixel_width,
@@ -138,40 +133,13 @@ impl VicImage {
         let cx = x % Char::WIDTH as i32;
         let cy = y % Char::WIDTH as i32;
         let index = (column as usize, row as usize);
-        let char_num = self.video[index];
-        let mut char = self.chars[char_num as usize].clone();
+        let mut char = self.video[index];
         char.set_pixel(cx, cy, color, &self.colors);
-        if let Some((new_char_num, _)) = self
-            .chars
-            .iter()
-            .find_position(|candidate| candidate.bits == char.bits)
-        {
-            // Found an existing char with the correct content
-            self.video[index] = new_char_num as u16;
-        } else {
-            let mut histogram = vec![0; self.chars.len()];
-            for c in self.video.pixels() {
-                histogram[c as usize] += 1;
-            }
-            histogram[char_num as usize] -= 1;
-            if let Some((unused_char, _)) = histogram.iter().find_position(|&&c| c == 0) {
-                // Use an unused char
-                self.chars[unused_char] = char;
-                self.video[index] = unused_char as u16;
-            } else {
-                // Allocate a new char
-                let new_char_num = self.chars.len();
-                self.chars.push(char);
-                self.video[index] = new_char_num as u16;
-            }
-        }
+        self.video[index] = char;
     }
 
     pub fn info(&self) -> String {
-        let min = self.video.pixels().min().unwrap();
-        let max = self.video.pixels().max().unwrap();
-        let used = self.video.pixels().unique().count();
-        format!("{} to {}, {} characters used", min, max, used)
+        "Vic image".to_string()
     }
 
     /// Width of one pixel compared to its height.
@@ -189,10 +157,9 @@ impl VicImage {
     fn render(&mut self) {
         let pixels = &mut self.pixels;
         for (row, chars) in self.video.rows().enumerate() {
-            for (column, char_index) in chars.iter().enumerate() {
+            for (column, char) in chars.iter().enumerate() {
                 let left = column * Char::WIDTH;
                 let top = row * Char::HEIGHT;
-                let char = &self.chars[*char_index as usize];
                 char.render_to(
                     pixels.sub_image_mut(left, top, Char::WIDTH, Char::HEIGHT),
                     &self.colors,
