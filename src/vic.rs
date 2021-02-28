@@ -36,15 +36,15 @@ impl Char {
     const HEIGHT: usize = 8;
 
     pub fn render_to(&self, mut pixels: ImgRefMut<'_, Color32>) {
-        assert_eq!(Self::WIDTH, pixels.width());
-        assert_eq!(Self::HEIGHT, pixels.height());
+        debug_assert_eq!(Self::WIDTH, pixels.width());
+        debug_assert_eq!(Self::HEIGHT, pixels.height());
         for (index, color) in self.pixels.pixels().zip(pixels.pixels_mut()) {
             *color = palette_color(index);
         }
     }
     pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) {
-        assert!((0..Self::WIDTH).contains(&(x as usize)));
-        assert!((0..Self::HEIGHT).contains(&(y as usize)));
+        debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
+        debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
         self.pixels[(x as usize, y as usize)] = color;
     }
 }
