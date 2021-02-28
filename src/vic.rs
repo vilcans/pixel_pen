@@ -148,7 +148,7 @@ impl VicImage {
     }
 
     /// Get the image as true-color pixels for rendering to screen.
-    pub fn pixels<'a>(&'a mut self) -> &[Color32] {
+    pub fn pixels(&mut self) -> &[Color32] {
         self.render();
         assert_eq!(self.pixels.stride(), self.pixel_size().0);
         self.pixels.buf()
