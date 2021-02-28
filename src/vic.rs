@@ -1,3 +1,4 @@
+use bimap::BiMap;
 use eframe::egui::Color32;
 use imgref::{ImgRefMut, ImgVec};
 
@@ -94,6 +95,9 @@ pub struct VicImage {
     /// Size: columns x rows.
     video: ImgVec<Char>,
 
+    /// Bitmap for each character
+    bitmaps: BiMap<usize, [u8; 8]>,
+
     /// The true-color pixels from rendering `video` and `chars`.
     pixels: ImgVec<Color32>,
 }
@@ -109,6 +113,7 @@ impl Default for VicImage {
             rows,
             colors: Default::default(),
             video: ImgVec::new(vec![Char::default(); columns * rows], columns, rows),
+            bitmaps: BiMap::new(),
             pixels: ImgVec::new(
                 vec![Color32::BLACK; pixel_width * pixel_height],
                 pixel_width,
@@ -139,7 +144,7 @@ impl VicImage {
     }
 
     pub fn info(&self) -> String {
-        "Vic image".to_string()
+        format!("{} characters used", self.bitmaps.len())
     }
 
     /// Width of one pixel compared to its height.
@@ -152,6 +157,23 @@ impl VicImage {
         self.render();
         assert_eq!(self.pixels.stride(), self.pixel_size().0);
         self.pixels.buf()
+    }
+
+    pub fn update(&mut self) {
+        self.allocate_chars();
+    }
+
+    fn allocate_chars(&mut self) {
+        let mut map = BiMap::new();
+        for char in self.video.pixels() {
+            if let Some(_) = map.get_by_right(&char.bits) {
+                // Existing bitmap
+            } else {
+                let num = map.len();
+                map.insert(num, char.bits);
+            }
+        }
+        self.bitmaps = map;
     }
 
     fn render(&mut self) {

@@ -126,6 +126,8 @@ impl epi::App for Application {
                     }
                 }
 
+                image.update();
+
                 let pixels = image.pixels();
                 let texture = if let Some(texture) = image_texture {
                     *texture
