@@ -3,6 +3,7 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod app;
+mod mutation_monitor;
 mod vic;
 mod widgets;
 pub use app::Application;

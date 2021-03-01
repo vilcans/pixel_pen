@@ -115,8 +115,6 @@ pub struct VicImage {
     /// Bitmap for each character
     bitmaps: BiMap<usize, [u8; 8]>,
 
-    dirty: bool,
-
     /// The true-color pixels from rendering `video` and `chars`.
     pixels: ImgVec<Color32>,
 }
@@ -133,7 +131,6 @@ impl Default for VicImage {
             colors: Default::default(),
             video: ImgVec::new(vec![Char::default(); columns * rows], columns, rows),
             bitmaps: BiMap::new(),
-            dirty: true,
             pixels: ImgVec::new(
                 vec![Color32::BLACK; pixel_width * pixel_height],
                 pixel_width,
@@ -161,7 +158,6 @@ impl VicImage {
         let mut char = self.video[index];
         char.set_pixel(cx, cy, color, &self.colors);
         self.video[index] = char;
-        self.set_dirty();
     }
 
     pub fn info(&self) -> String {
@@ -173,14 +169,9 @@ impl VicImage {
         2.0
     }
 
-    /// Check if [`render`] needs to be called to make sure the pixel data is up to date.
-    pub fn needs_rendering(&self) -> bool {
-        self.dirty
-    }
-
     /// Get the image as true-color pixels for rendering to screen.
     /// If [`needs_rendering`] returns true, call [`render`] first to make sure the pixels are up to date.
-    pub fn pixels(&mut self) -> &[Color32] {
+    pub fn pixels(&self) -> &[Color32] {
         assert_eq!(self.pixels.stride(), self.pixel_size().0);
         self.pixels.buf()
     }
@@ -214,7 +205,6 @@ impl VicImage {
                 );
             }
         }
-        self.dirty = false;
     }
 
     pub fn global_color(&self, index: u32) -> u8 {
@@ -223,11 +213,6 @@ impl VicImage {
 
     pub fn set_global_color(&mut self, index: u32, color: u8) {
         self.colors[index] = color;
-        self.set_dirty();
-    }
-
-    fn set_dirty(&mut self) {
-        self.dirty = true;
     }
 }
 

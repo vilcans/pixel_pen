@@ -4,6 +4,7 @@ use eframe::{
 };
 
 use crate::{
+    mutation_monitor::MutationMonitor,
     vic::{self, VicImage},
     widgets,
 };
@@ -26,7 +27,7 @@ pub struct Application {
     mode: Mode,
     paint_color: usize,
 
-    image: VicImage,
+    image: MutationMonitor<VicImage>,
 
     image_texture: Option<TextureId>,
 }
@@ -36,7 +37,7 @@ impl Default for Application {
         Self {
             mode: Mode::PixelPaint,
             paint_color: 1,
-            image: VicImage::default(),
+            image: MutationMonitor::new_dirty(VicImage::default()),
             image_texture: None,
         }
     }
@@ -151,9 +152,11 @@ impl epi::App for Application {
                 }
 
                 // Draw the main image
-                image.update();
-                if image_texture.is_some() && image.needs_rendering() {
-                    tex_allocator.free(image_texture.take().unwrap());
+                if image.dirty {
+                    if let Some(t) = image_texture.take() {
+                        tex_allocator.free(t);
+                    }
+                    image.update();
                 }
                 let texture = if let Some(texture) = image_texture {
                     *texture
@@ -164,6 +167,8 @@ impl epi::App for Application {
                     *image_texture = Some(texture);
                     texture
                 };
+                image.dirty = false;
+
                 let mut mesh = Mesh::with_texture(texture);
                 mesh.add_rect_with_uv(
                     response.rect,
