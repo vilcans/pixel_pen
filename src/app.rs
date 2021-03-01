@@ -151,21 +151,23 @@ impl epi::App for Application {
                     let y = (fy * height as f32).round() as i32;
                     if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
                         image.set_pixel(x, y, *paint_color as u8);
-                        tex_allocator.free(image_texture.take().unwrap()); // make sure we create a new texture
                     }
                 }
 
+                // Draw the main image
                 image.update();
-
-                let pixels = image.pixels();
+                if image_texture.is_some() && image.needs_rendering() {
+                    tex_allocator.free(image_texture.take().unwrap());
+                }
                 let texture = if let Some(texture) = image_texture {
                     *texture
                 } else {
+                    image.render();
+                    let pixels = image.pixels();
                     let texture = tex_allocator.alloc_srgba_premultiplied((width, height), &pixels);
                     *image_texture = Some(texture);
                     texture
                 };
-
                 let mut mesh = Mesh::with_texture(texture);
                 mesh.add_rect_with_uv(
                     response.rect,
