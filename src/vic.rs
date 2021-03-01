@@ -34,12 +34,12 @@ pub const GLOBAL_COLORS: [(usize, &'static str, RangeInclusive<u8>); 3] = [
     (2, "Aux", 0..=15),
 ];
 
-struct GlobalColors([u8; 3]);
+pub struct GlobalColors([u8; 3]);
 
 impl GlobalColors {
     const BACKGROUND: u32 = 0;
-    const BORDER: u32 = 1;
-    const AUX: u32 = 2;
+    const _BORDER: u32 = 1;
+    const _AUX: u32 = 2;
 }
 impl Default for GlobalColors {
     fn default() -> Self {
@@ -106,7 +106,7 @@ pub struct VicImage {
     columns: usize,
     rows: usize,
 
-    colors: GlobalColors,
+    pub colors: GlobalColors,
 
     /// The character at each position.
     /// Size: columns x rows.
@@ -205,14 +205,6 @@ impl VicImage {
                 );
             }
         }
-    }
-
-    pub fn global_color(&self, index: u32) -> u8 {
-        self.colors[index]
-    }
-
-    pub fn set_global_color(&mut self, index: u32, color: u8) {
-        self.colors[index] = color;
     }
 }
 

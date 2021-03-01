@@ -112,13 +112,13 @@ impl epi::App for Application {
                             for (index, label, range) in vic::GLOBAL_COLORS.iter() {
                                 let index = *index as u32;
                                 if range.contains(&color_index) {
-                                    let setting = image.global_color(index);
+                                    let setting = image.colors[index];
                                     let mut selected = setting == color_index;
                                     if ui.checkbox(&mut selected, *label).clicked()
                                         && setting != color_index
                                     {
                                         println!("Setting {0} to {1}", label, color_index);
-                                        image.set_global_color(index, color_index);
+                                        image.colors[index] = color_index;
                                     }
                                 }
                             }
