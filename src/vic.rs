@@ -70,7 +70,7 @@ impl Default for Char {
     }
 }
 
-struct GlobalColors {
+pub struct GlobalColors {
     pub background: u8,
     pub border: u8,
     pub aux: u8,
@@ -89,7 +89,7 @@ pub struct VicImage {
     columns: usize,
     rows: usize,
 
-    colors: GlobalColors,
+    pub colors: GlobalColors,
 
     /// The character at each position.
     /// Size: columns x rows.

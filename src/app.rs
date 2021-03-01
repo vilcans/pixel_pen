@@ -3,7 +3,10 @@ use eframe::{
     epi,
 };
 
-use crate::vic::{self, VicImage};
+use crate::{
+    vic::{self, VicImage},
+    widgets,
+};
 
 #[derive(PartialEq)]
 enum Mode {
@@ -97,6 +100,23 @@ impl epi::App for Application {
                         if response.clicked() {
                             *paint_color = color_index;
                         }
+                        let popup_id =
+                            ui.make_persistent_id(format!("color_popup_{}", color_index));
+                        if response.secondary_clicked() {
+                            ui.memory().open_popup(popup_id);
+                        }
+                        widgets::popup(ui, popup_id, &response, |ui| {
+                            if ui.button("Set background").clicked() {
+                                image.colors.background = color_index as u8;
+                                println!("Setting background to {0}", color_index);
+                            }
+                            if ui.button("Set border").clicked() {
+                                image.colors.border = color_index as u8;
+                            }
+                            if ui.button("Set aux").clicked() {
+                                image.colors.aux = color_index as u8;
+                            }
+                        });
                     }
                 }
                 Mode::CharPaint => {}
