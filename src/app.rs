@@ -106,15 +106,23 @@ impl epi::App for Application {
                             ui.memory().open_popup(popup_id);
                         }
                         widgets::popup(ui, popup_id, &response, |ui| {
-                            if ui.button("Set background").clicked() {
-                                image.colors.background = color_index as u8;
-                                println!("Setting background to {0}", color_index);
-                            }
-                            if ui.button("Set border").clicked() {
-                                image.colors.border = color_index as u8;
-                            }
-                            if ui.button("Set aux").clicked() {
-                                image.colors.aux = color_index as u8;
+                            let color_index = color_index as u8;
+                            for (setting, label, max) in [
+                                (&mut image.colors.background, "Background", 0x0f),
+                                (&mut image.colors.border, "Border", 0x07),
+                                (&mut image.colors.aux, "Aux", 0x0f),
+                            ]
+                            .iter_mut()
+                            {
+                                if color_index <= *max {
+                                    let mut selected = **setting == color_index;
+                                    if ui.checkbox(&mut selected, *label).clicked()
+                                        && **setting != color_index
+                                    {
+                                        **setting = color_index;
+                                        println!("Setting {0} to {1}", label, color_index);
+                                    }
+                                }
                             }
                         });
                     }
