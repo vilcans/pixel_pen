@@ -107,6 +107,7 @@ impl epi::App for Application {
                         }
                         widgets::popup(ui, popup_id, &response, |ui| {
                             let color_index = color_index as u8;
+                            ui.label(format!("Color {0} (${0:x})", color_index));
                             for (setting, label, max) in [
                                 (&mut image.colors.background, "Background", 0x0f),
                                 (&mut image.colors.border, "Border", 0x07),
