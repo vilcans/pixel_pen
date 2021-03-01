@@ -108,20 +108,16 @@ impl epi::App for Application {
                         widgets::popup(ui, popup_id, &response, |ui| {
                             let color_index = color_index as u8;
                             ui.label(format!("Color {0} (${0:x})", color_index));
-                            for (setting, label, max) in [
-                                (&mut image.colors.background, "Background", 0x0f),
-                                (&mut image.colors.border, "Border", 0x07),
-                                (&mut image.colors.aux, "Aux", 0x0f),
-                            ]
-                            .iter_mut()
-                            {
-                                if color_index <= *max {
-                                    let mut selected = **setting == color_index;
+                            for (index, label, range) in vic::GLOBAL_COLORS.iter() {
+                                let index = *index as u32;
+                                if range.contains(&color_index) {
+                                    let setting = image.global_color(index);
+                                    let mut selected = setting == color_index;
                                     if ui.checkbox(&mut selected, *label).clicked()
-                                        && **setting != color_index
+                                        && setting != color_index
                                     {
-                                        **setting = color_index;
                                         println!("Setting {0} to {1}", label, color_index);
+                                        image.set_global_color(index, color_index);
                                     }
                                 }
                             }

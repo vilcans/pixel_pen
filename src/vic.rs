@@ -1,3 +1,5 @@
+use std::ops::{Index, IndexMut, RangeInclusive};
+
 use bimap::BiMap;
 use eframe::egui::Color32;
 use imgref::{ImgRefMut, ImgVec};
@@ -26,6 +28,36 @@ const PALETTE: [u32; 16] = [
 /// Number of entries in the palette.
 pub const PALETTE_SIZE: usize = 16;
 
+pub const GLOBAL_COLORS: [(usize, &'static str, RangeInclusive<u8>); 3] = [
+    (0, "Background", 0..=15),
+    (1, "Border", 0..=7),
+    (2, "Aux", 0..=15),
+];
+
+struct GlobalColors([u8; 3]);
+
+impl GlobalColors {
+    const BACKGROUND: u32 = 0;
+    const BORDER: u32 = 1;
+    const AUX: u32 = 2;
+}
+impl Default for GlobalColors {
+    fn default() -> Self {
+        Self([0, 1, 2])
+    }
+}
+impl Index<u32> for GlobalColors {
+    type Output = u8;
+    fn index(&self, index: u32) -> &Self::Output {
+        &self.0[index as usize]
+    }
+}
+impl IndexMut<u32> for GlobalColors {
+    fn index_mut(&mut self, index: u32) -> &mut Self::Output {
+        &mut self.0[index as usize]
+    }
+}
+
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
     bits: [u8; 8],
@@ -42,7 +74,7 @@ impl Char {
         for (bits, pixel_row) in self.bits.iter().zip(pixels.rows_mut()) {
             for (b, p) in pixel_row.iter_mut().enumerate() {
                 let index = if (bits & (0x80 >> b)) == 0 {
-                    colors.background
+                    colors[GlobalColors::BACKGROUND]
                 } else {
                     self.color
                 };
@@ -54,7 +86,7 @@ impl Char {
         debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
         debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
         let bit = 0x80u8 >> x;
-        if color == colors.background {
+        if color == colors[GlobalColors::BACKGROUND] {
             self.bits[y as usize] &= !bit;
         } else {
             self.bits[y as usize] |= bit;
@@ -70,26 +102,11 @@ impl Default for Char {
     }
 }
 
-pub struct GlobalColors {
-    pub background: u8,
-    pub border: u8,
-    pub aux: u8,
-}
-impl Default for GlobalColors {
-    fn default() -> Self {
-        Self {
-            background: 0,
-            border: 1,
-            aux: 2,
-        }
-    }
-}
-
 pub struct VicImage {
     columns: usize,
     rows: usize,
 
-    pub colors: GlobalColors,
+    colors: GlobalColors,
 
     /// The character at each position.
     /// Size: columns x rows.
@@ -200,7 +217,16 @@ impl VicImage {
         self.dirty = false;
     }
 
-    pub fn set_dirty(&mut self) {
+    pub fn global_color(&self, index: u32) -> u8 {
+        self.colors[index]
+    }
+
+    pub fn set_global_color(&mut self, index: u32, color: u8) {
+        self.colors[index] = color;
+        self.set_dirty();
+    }
+
+    fn set_dirty(&mut self) {
         self.dirty = true;
     }
 }
