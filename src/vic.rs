@@ -37,9 +37,9 @@ pub const GLOBAL_COLORS: [(usize, &'static str, RangeInclusive<u8>); 3] = [
 pub struct GlobalColors([u8; 3]);
 
 impl GlobalColors {
-    const BACKGROUND: u32 = 0;
-    const _BORDER: u32 = 1;
-    const _AUX: u32 = 2;
+    pub const BACKGROUND: u32 = 0;
+    pub const _BORDER: u32 = 1;
+    pub const _AUX: u32 = 2;
 }
 impl Default for GlobalColors {
     fn default() -> Self {
