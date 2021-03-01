@@ -1,11 +1,14 @@
 use eframe::{
-    egui::{self, paint::Mesh, Button, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
+    egui::{
+        self, paint::Mesh, Button, Color32, PointerButton, Pos2, Rect, Sense, Shape, Stroke,
+        TextureId, Vec2,
+    },
     epi,
 };
 
 use crate::{
     mutation_monitor::MutationMonitor,
-    vic::{self, VicImage},
+    vic::{self, GlobalColors, VicImage},
     widgets,
 };
 
@@ -136,18 +139,24 @@ impl epi::App for Application {
                 let par = image.pixel_aspect_ratio();
                 let size = Vec2::new(width as f32 * par, height as f32) * zoom;
 
-                let (response, painter) = ui.allocate_painter(size, egui::Sense::drag());
+                let (response, painter) = ui.allocate_painter(size, egui::Sense::click_and_drag());
 
                 let tex_allocator = frame.tex_allocator();
 
                 if let Some(pointer_pos) = response.interact_pointer_pos() {
+                    let pointer = &response.ctx.input().pointer;
+                    let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
+                        image.colors[GlobalColors::BACKGROUND]
+                    } else {
+                        *paint_color as u8
+                    };
                     let p = pointer_pos - response.rect.left_top();
                     let fx = p.x / response.rect.size().x;
                     let fy = p.y / response.rect.size().y;
                     let x = (fx * width as f32).round() as i32;
                     let y = (fy * height as f32).round() as i32;
                     if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
-                        image.set_pixel(x, y, *paint_color as u8);
+                        image.set_pixel(x, y, color_to_set);
                     }
                 }
 
