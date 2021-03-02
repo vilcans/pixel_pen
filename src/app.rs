@@ -1,8 +1,5 @@
 use eframe::{
-    egui::{
-        self, paint::Mesh, Button, Color32, PointerButton, Pos2, Rect, Sense, Shape, Stroke,
-        TextureId, Vec2,
-    },
+    egui::{self, paint::Mesh, Button, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
     epi,
 };
 
