@@ -4,6 +4,7 @@
 
 mod app;
 mod mutation_monitor;
+mod scaling;
 mod vic;
 mod widgets;
 pub use app::Application;

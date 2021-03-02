@@ -38,8 +38,6 @@ You can test the template app at <https://emilk.github.io/egui_template/>.
 
 ☐ Undo
 
-☐ Sharp rendering
-
 ☐ Multicolor
 
 ☐ Import Fluff64
@@ -53,3 +51,7 @@ You can test the template app at <https://emilk.github.io/egui_template/>.
 ☐ Visible border
 
 ☐ Visible grid (toggleable)
+
+## Done
+
+☑ Sharp rendering

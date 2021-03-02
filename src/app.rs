@@ -5,6 +5,7 @@ use eframe::{
 
 use crate::{
     mutation_monitor::MutationMonitor,
+    scaling,
     vic::{self, GlobalColors, VicImage},
     widgets,
 };
@@ -168,9 +169,11 @@ impl epi::App for Application {
                     *texture
                 } else {
                     image.render();
-                    let pixels = image.pixels();
-                    let texture = tex_allocator
-                        .alloc_srgba_premultiplied((width, height), &pixels.to_contiguous_buf().0);
+                    let mut pixels = scaling::scale_image(image.pixels(), par * zoom, zoom);
+                    let texture = tex_allocator.alloc_srgba_premultiplied(
+                        (pixels.width(), pixels.height()),
+                        &pixels.as_contiguous_buf().0,
+                    );
                     *image_texture = Some(texture);
                     texture
                 };
