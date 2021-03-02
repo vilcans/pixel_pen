@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut, RangeInclusive};
 
 use bimap::BiMap;
 use eframe::egui::Color32;
-use imgref::{ImgRefMut, ImgVec};
+use imgref::{ImgRef, ImgRefMut, ImgVec};
 
 // From /usr/lib/vice/VIC20/vice.vpl
 const PALETTE: [u32; 16] = [
@@ -171,9 +171,8 @@ impl VicImage {
 
     /// Get the image as true-color pixels for rendering to screen.
     /// If [`needs_rendering`] returns true, call [`render`] first to make sure the pixels are up to date.
-    pub fn pixels(&self) -> &[Color32] {
-        assert_eq!(self.pixels.stride(), self.pixel_size().0);
-        self.pixels.buf()
+    pub fn pixels(&self) -> ImgRef<'_, Color32> {
+        self.pixels.as_ref()
     }
 
     pub fn update(&mut self) {

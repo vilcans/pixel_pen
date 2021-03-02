@@ -169,7 +169,8 @@ impl epi::App for Application {
                 } else {
                     image.render();
                     let pixels = image.pixels();
-                    let texture = tex_allocator.alloc_srgba_premultiplied((width, height), &pixels);
+                    let texture = tex_allocator
+                        .alloc_srgba_premultiplied((width, height), &pixels.to_contiguous_buf().0);
                     *image_texture = Some(texture);
                     texture
                 };
