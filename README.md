@@ -33,25 +33,3 @@ The finished web app is found in the `docs/` folder (this is so that you can eas
 * `your_crate.js`: Auto-generated binding between Rust and JS.
 
 You can test the template app at <https://emilk.github.io/egui_template/>.
-
-## TODO
-
-☐ Undo
-
-☐ Multicolor
-
-☐ Import Fluff64
-
-☐ Import PNG
-
-☐ Export raw
-
-☐ Save/load (own format)
-
-☐ Visible border
-
-☐ Visible grid (toggleable)
-
-## Done
-
-☑ Sharp rendering
