@@ -169,7 +169,11 @@ impl epi::App for Application {
                     *texture
                 } else {
                     image.render();
-                    let mut pixels = scaling::scale_image(image.pixels(), par * zoom, zoom);
+                    let mut pixels = scaling::scale_image(
+                        image.pixels(),
+                        ((par * zoom).ceil() as u32).max(1),
+                        (zoom.ceil() as u32).max(1),
+                    );
                     let texture = tex_allocator.alloc_srgba_premultiplied(
                         (pixels.width(), pixels.height()),
                         &pixels.as_contiguous_buf().0,
