@@ -5,6 +5,6 @@
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    let app = egui_template::Application::default();
+    let app = pixel_pen::Application::default();
     eframe::run_native(Box::new(app));
 }

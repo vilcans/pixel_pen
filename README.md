@@ -1,4 +1,4 @@
-# vic-paint
+# Pixel Pen
 
 A paint program for creating pictures compatible with Vic-20 hardware.
 
@@ -28,8 +28,6 @@ open http://127.0.0.1:8080/
 
 The finished web app is found in the `docs/` folder (this is so that you can easily share it with [GitHub Pages](https://docs.github.com/en/free-pro-team@latest/github/working-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)). It consists of three files:
 
-* `index.html`: A few lines of HTML, CSS and JS that loads your app. **You need to edit this** (once) to replace `egui_template` with the name of your crate!
-* `your_crate_bg.wasm`: What the Rust code compiles to.
-* `your_crate.js`: Auto-generated binding between Rust and JS.
-
-You can test the template app at <https://emilk.github.io/egui_template/>.
+* `index.html`: A few lines of HTML, CSS and JS that loads your app.
+* `pixel_pen_bg.wasm`: What the Rust code compiles to.
+* `pixel_pen.js`: Auto-generated binding between Rust and JS.

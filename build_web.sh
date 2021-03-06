@@ -3,7 +3,7 @@ set -eu
 
 # ./setup_web.sh # <- call this first!
 
-FOLDER_NAME=${PWD##*/}
+FOLDER_NAME=pixel_pen
 CRATE_NAME=$FOLDER_NAME # assume crate name is the same as the folder name
 
 # This is required to enable the web_sys clipboard API which egui_web uses

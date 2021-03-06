@@ -46,7 +46,7 @@ impl Default for Application {
 
 impl epi::App for Application {
     fn name(&self) -> &str {
-        "Paint Application"
+        "Pixel Pen"
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
