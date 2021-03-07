@@ -34,7 +34,7 @@ pub const GLOBAL_COLORS: [(usize, &'static str, RangeInclusive<u8>); 3] = [
     (2, "Aux", 0..=15),
 ];
 
-pub struct GlobalColors([u8; 3]);
+pub struct GlobalColors(pub [u8; 3]);
 
 impl GlobalColors {
     pub const BACKGROUND: u32 = 0;
@@ -121,8 +121,12 @@ pub struct VicImage {
 
 impl Default for VicImage {
     fn default() -> Self {
-        let columns = 22;
-        let rows = 23;
+        VicImage::new(22, 23)
+    }
+}
+
+impl VicImage {
+    pub fn new(columns: usize, rows: usize) -> Self {
         let pixel_width = columns * Char::WIDTH;
         let pixel_height = rows * Char::HEIGHT;
         Self {
@@ -138,9 +142,7 @@ impl Default for VicImage {
             ),
         }
     }
-}
 
-impl VicImage {
     /// Get the width and height of the image in pixels.
     pub fn pixel_size(&self) -> (usize, usize) {
         (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
