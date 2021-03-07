@@ -34,6 +34,7 @@ pub const GLOBAL_COLORS: [(usize, &'static str, RangeInclusive<u8>); 3] = [
     (2, "Aux", 0..=15),
 ];
 
+#[derive(Debug)]
 pub struct GlobalColors(pub [u8; 3]);
 
 impl GlobalColors {
@@ -60,13 +61,13 @@ impl IndexMut<u32> for GlobalColors {
 
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
-    bits: [u8; 8],
-    color: u8,
+    pub bits: [u8; 8],
+    pub color: u8,
 }
 
 impl Char {
-    const WIDTH: usize = 8;
-    const HEIGHT: usize = 8;
+    pub const WIDTH: usize = 8;
+    pub const HEIGHT: usize = 8;
 
     fn render_to(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
         debug_assert_eq!(Self::WIDTH, pixels.width());
@@ -127,13 +128,20 @@ impl Default for VicImage {
 
 impl VicImage {
     pub fn new(columns: usize, rows: usize) -> Self {
+        let video = ImgVec::new(vec![Char::default(); columns * rows], columns, rows);
+        Self::with_content(video)
+    }
+
+    pub fn with_content(video: ImgVec<Char>) -> Self {
+        let columns = video.width();
+        let rows = video.height();
         let pixel_width = columns * Char::WIDTH;
         let pixel_height = rows * Char::HEIGHT;
         Self {
             columns,
             rows,
             colors: Default::default(),
-            video: ImgVec::new(vec![Char::default(); columns * rows], columns, rows),
+            video,
             bitmaps: BiMap::new(),
             pixels: ImgVec::new(
                 vec![Color32::BLACK; pixel_width * pixel_height],
