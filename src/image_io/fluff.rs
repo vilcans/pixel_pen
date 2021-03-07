@@ -14,9 +14,6 @@ use crate::{
 #[derive(Deserialize, Copy, Clone, Debug)]
 #[repr(packed(1))]
 struct FluffHeader {
-    /// Magic string "FLUFF64"
-    pub identifier: [u8; 7],
-
     /// Version number. 2 on the files I have tested.
     pub version: u32,
 
@@ -98,10 +95,25 @@ struct FluffChar {
 }
 
 pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
+    let mut identifier = [0u8; 7];
+    reader
+        .read_exact(&mut identifier)
+        .map_err(|err| match err.kind() {
+            std::io::ErrorKind::UnexpectedEof => Error::TruncatedData,
+            _ => Error::ReadFailure(err),
+        })?;
+    if &identifier != b"FLUFF64" {
+        return Err(Error::WrongMagic);
+    }
+
     let header: FluffHeader = image_io::read_struct(reader)?;
     println!("Fluff header: {:?}", header);
+
     let width = header.width_chars as usize;
     let height = header.height_chars as usize;
+    if width == 0 || height == 0 {
+        return Err(Error::InvalidSize(width, height));
+    }
     let video_buffer = (0..width * height)
         .map(|index| -> Result<vic::Char, Error> {
             let flf_char: FluffChar = image_io::read_struct(reader)?;

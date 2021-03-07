@@ -7,8 +7,10 @@ pub enum Error {
     ReadFailure(#[from] io::Error),
     #[error("truncated data")]
     TruncatedData,
-    #[error("invalid header")]
-    InvalidHeader,
+    #[error("incorrect file identifier - wrong file type?")]
+    WrongMagic,
+    #[error("invalid image size: {0} columns x {1} rows")]
+    InvalidSize(usize, usize),
     #[error("deserializing struct")]
     Deserialization(Box<bincode::ErrorKind>),
 }

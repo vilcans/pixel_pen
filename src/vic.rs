@@ -129,12 +129,35 @@ impl Char {
     fn set_pixel(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
         debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
         debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
+        if self.multicolor {
+            self.set_pixel_multicolor(x, y, color, colors)
+        } else {
+            self.set_pixel_hires(x, y, color, colors)
+        }
+    }
+
+    fn set_pixel_hires(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
         let bit = 0x80u8 >> x;
         if color == colors[GlobalColors::BACKGROUND] {
             self.bits[y as usize] &= !bit;
         } else {
             self.bits[y as usize] |= bit;
             self.color = color;
+        }
+    }
+
+    fn set_pixel_multicolor(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
+        let x = x & !1;
+        let mask = 0xc0u8 >> x;
+        let old = &self.bits[y as usize];
+        self.bits[y as usize] = match () {
+            _ if color == colors[GlobalColors::BACKGROUND] => old & !mask,
+            _ if color == colors[GlobalColors::BORDER] => (old & !mask) | (mask & 0b01010101),
+            _ if color == colors[GlobalColors::AUX] => old | mask,
+            _ => {
+                self.color = color;
+                (old & !mask) | (mask & 0b10101010)
+            }
         }
     }
 }
