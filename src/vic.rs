@@ -42,8 +42,8 @@ pub struct GlobalColors(pub [u8; 3]);
 
 impl GlobalColors {
     pub const BACKGROUND: u32 = 0;
-    pub const _BORDER: u32 = 1;
-    pub const _AUX: u32 = 2;
+    pub const BORDER: u32 = 1;
+    pub const AUX: u32 = 2;
 }
 impl Default for GlobalColors {
     fn default() -> Self {
@@ -66,6 +66,7 @@ impl IndexMut<u32> for GlobalColors {
 pub struct Char {
     bits: [u8; 8],
     color: u8,
+    multicolor: bool,
 }
 
 impl Char {
@@ -74,12 +75,25 @@ impl Char {
 
     pub fn new(bits: [u8; 8], color: u8) -> Self {
         assert!(ALLOWED_CHAR_COLORS.contains(&color));
-        Self { bits, color }
+        Self {
+            bits,
+            color,
+            multicolor: true,
+        }
     }
 
-    fn render_to(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
+    fn render_to(&self, pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
         debug_assert_eq!(Self::WIDTH, pixels.width());
         debug_assert_eq!(Self::HEIGHT, pixels.height());
+        if self.multicolor {
+            self.render_multicolor(pixels, colors);
+        } else {
+            self.render_hires(pixels, colors);
+        }
+    }
+
+    /// Render high resolution character (not multicolor).
+    fn render_hires(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
         for (bits, pixel_row) in self.bits.iter().zip(pixels.rows_mut()) {
             for (b, p) in pixel_row.iter_mut().enumerate() {
                 let index = if (bits & (0x80 >> b)) == 0 {
@@ -91,6 +105,27 @@ impl Char {
             }
         }
     }
+
+    /// Render multicolor character (low resolution).
+    fn render_multicolor(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
+        for (bits, pixel_row) in self.bits.iter().zip(pixels.rows_mut()) {
+            let mut pixels = pixel_row.iter_mut();
+            for b in (0..8).step_by(2) {
+                let v = (bits >> (6 - b)) & 0b11;
+                let index = match v {
+                    0b00 => colors[GlobalColors::BACKGROUND],
+                    0b01 => colors[GlobalColors::BORDER],
+                    0b10 => self.color,
+                    0b11 => colors[GlobalColors::AUX],
+                    _ => unreachable!(),
+                };
+                let color = palette_color(index);
+                *pixels.next().unwrap() = color;
+                *pixels.next().unwrap() = color;
+            }
+        }
+    }
+
     fn set_pixel(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
         debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
         debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
