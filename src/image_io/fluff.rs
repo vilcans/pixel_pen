@@ -88,6 +88,8 @@ struct FluffHeader {
 #[derive(Deserialize, Debug)]
 #[repr(packed(1))]
 struct FluffChar {
+    /// Bitmap bits. In reverse order compared to memory layout, and with aux=0b10 and color=0b11,
+    // compared to hardware's aux=0b11 and color=0b10.
     bits: [u8; 8],
     _background: u8,
     _border: u8,
@@ -111,12 +113,20 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
 
             let mut bits = [0; 8];
             for i in 0..vic::Char::HEIGHT {
-                // Fluff stores multicolor pixels in reverse order
-                let c = flf_char.bits[i];
-                bits[i] = (((c >> 6) & 3) << 0)
-                    | (((c >> 4) & 3) << 2)
-                    | (((c >> 2) & 3) << 4)
-                    | (((c >> 0) & 3) << 6);
+                // Fluff stores multicolor pixels in reverse order.
+                // Swap aux and color and reverse the pixels.
+                let flf_bits = flf_char.bits[i];
+                let fixed = (0..8)
+                    .step_by(2)
+                    .map(|bit|
+                        match (flf_bits >> (6 - bit)) & 0b11 {
+                                0b10 => 0b11,
+                                0b11 => 0b10,
+                                a => a,
+                            } << bit
+                    )
+                    .sum();
+                bits[i] = fixed;
             }
             Ok(vic::Char::new(
                 bits,
