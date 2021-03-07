@@ -118,15 +118,15 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
                     | (((c >> 2) & 3) << 4)
                     | (((c >> 0) & 3) << 6);
             }
-            Ok(vic::Char {
+            Ok(vic::Char::new(
                 bits,
-                color: if (0..7).contains(&flf_char.color) {
+                if vic::ALLOWED_CHAR_COLORS.contains(&flf_char.color) {
                     flf_char.color
                 } else {
                     // Color may be 255 for characters with no color.
                     1
                 },
-            })
+            ))
         })
         .collect::<Result<Vec<vic::Char>, Error>>()?;
     let mut image = VicImage::with_content(ImgVec::new(video_buffer, width, height));

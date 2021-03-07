@@ -28,6 +28,9 @@ const PALETTE: [u32; 16] = [
 /// Number of entries in the palette.
 pub const PALETTE_SIZE: usize = 16;
 
+/// Which colors are allowed as the "character" color.
+pub const ALLOWED_CHAR_COLORS: RangeInclusive<u8> = 0..=7;
+
 pub const GLOBAL_COLORS: [(usize, &'static str, RangeInclusive<u8>); 3] = [
     (0, "Background", 0..=15),
     (1, "Border", 0..=7),
@@ -61,13 +64,18 @@ impl IndexMut<u32> for GlobalColors {
 
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
-    pub bits: [u8; 8],
-    pub color: u8,
+    bits: [u8; 8],
+    color: u8,
 }
 
 impl Char {
     pub const WIDTH: usize = 8;
     pub const HEIGHT: usize = 8;
+
+    pub fn new(bits: [u8; 8], color: u8) -> Self {
+        assert!(ALLOWED_CHAR_COLORS.contains(&color));
+        Self { bits, color }
+    }
 
     fn render_to(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
         debug_assert_eq!(Self::WIDTH, pixels.width());
@@ -98,8 +106,7 @@ impl Char {
 
 impl Default for Char {
     fn default() -> Self {
-        let bits = [0u8; 8];
-        Self { bits, color: 1 }
+        Self::new([0u8; 8], 1)
     }
 }
 
