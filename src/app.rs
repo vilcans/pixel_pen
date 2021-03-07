@@ -1,9 +1,13 @@
+use std::path::Path;
+
 use eframe::{
     egui::{self, paint::Mesh, Button, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
     epi,
 };
 
 use crate::{
+    error::Error,
+    image_io,
     mutation_monitor::MutationMonitor,
     scaling,
     vic::{self, GlobalColors, VicImage},
@@ -35,12 +39,7 @@ pub struct Application {
 
 impl Default for Application {
     fn default() -> Self {
-        Self {
-            mode: Mode::PixelPaint,
-            paint_color: 1,
-            image: MutationMonitor::new_dirty(VicImage::default()),
-            image_texture: None,
-        }
+        Self::with_image(VicImage::default())
     }
 }
 
@@ -194,5 +193,21 @@ impl epi::App for Application {
                 ui.label(image.info());
             });
         });
+    }
+}
+
+impl Application {
+    pub fn with_image(image: VicImage) -> Self {
+        Application {
+            mode: Mode::PixelPaint,
+            paint_color: 1,
+            image: MutationMonitor::new_dirty(image),
+            image_texture: None,
+        }
+    }
+
+    pub fn load(filename: &Path) -> Result<Application, Error> {
+        let image = image_io::load_file(filename)?;
+        Ok(Self::with_image(image))
     }
 }

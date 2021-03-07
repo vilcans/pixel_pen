@@ -2,9 +2,14 @@
 #![cfg_attr(not(debug_assertions), deny(warnings))] // Forbid warnings in release builds
 #![warn(clippy::all, rust_2018_idioms)]
 
+#[cfg(not(target_arch = "wasm32"))]
+mod cli;
+
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
-    let app = pixel_pen::Application::default();
-    eframe::run_native(Box::new(app));
+    match cli::main() {
+        Ok(_) => {}
+        Err(i) => std::process::exit(i),
+    }
 }

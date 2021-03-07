@@ -3,6 +3,7 @@ use serde::{de::DeserializeOwned, Deserialize};
 use std::{
     fs::File,
     io::{self, BufReader, Read},
+    path::Path,
 };
 
 use crate::{
@@ -34,7 +35,7 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
     Ok(image)
 }
 
-pub fn load_file(filename: &str) -> Result<VicImage, Error> {
+pub fn load_file(filename: &Path) -> Result<VicImage, Error> {
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
     load_fluff64(&mut reader)
