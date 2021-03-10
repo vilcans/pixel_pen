@@ -2,7 +2,7 @@ use std::path::Path;
 
 use eframe::{
     egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
-    epi,
+    epi::{self, TextureAllocator},
 };
 
 use crate::{
@@ -159,30 +159,7 @@ impl epi::App for Application {
                 // Draw the main image
                 let tex_allocator = frame.tex_allocator();
 
-                if image.dirty {
-                    if let Some(t) = image_texture.take() {
-                        tex_allocator.free(t);
-                    }
-                    image.update();
-                }
-                let texture = if let Some(texture) = image_texture {
-                    *texture
-                } else {
-                    image.render();
-
-                    let scale_x = ((par * *zoom).ceil() as u32).max(1).min(MAX_SCALE);
-                    let scale_y = ((*zoom).ceil() as u32).max(1).min(MAX_SCALE);
-                    let mut pixels = scaling::scale_image(image.pixels(), scale_x, scale_y);
-
-                    let texture = tex_allocator.alloc_srgba_premultiplied(
-                        (pixels.width(), pixels.height()),
-                        &pixels.as_contiguous_buf().0,
-                    );
-                    *image_texture = Some(texture);
-                    texture
-                };
-                image.dirty = false;
-
+                let texture = update_texture(image, image_texture, tex_allocator, par, *zoom);
                 let mut mesh = Mesh::with_texture(texture);
                 mesh.add_rect_with_uv(
                     response.rect,
@@ -195,6 +172,39 @@ impl epi::App for Application {
             });
         });
     }
+}
+
+fn update_texture(
+    image: &mut MutationMonitor<VicImage>,
+    image_texture: &mut Option<TextureId>,
+    tex_allocator: &mut dyn TextureAllocator,
+    par: f32,
+    zoom: f32,
+) -> TextureId {
+    if image.dirty {
+        if let Some(t) = image_texture.take() {
+            tex_allocator.free(t);
+        }
+        image.update();
+    }
+    let texture = if let Some(texture) = image_texture {
+        *texture
+    } else {
+        image.render();
+
+        let scale_x = ((par * zoom).ceil() as u32).max(1).min(MAX_SCALE);
+        let scale_y = (zoom.ceil() as u32).max(1).min(MAX_SCALE);
+        let mut pixels = scaling::scale_image(image.pixels(), scale_x, scale_y);
+
+        let texture = tex_allocator.alloc_srgba_premultiplied(
+            (pixels.width(), pixels.height()),
+            &pixels.as_contiguous_buf().0,
+        );
+        *image_texture = Some(texture);
+        texture
+    };
+    image.dirty = false;
+    texture
 }
 
 impl Application {
