@@ -35,3 +35,26 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scale() {
+        let source = ImgVec::new(vec![1, 2, 3, 4, 5, 6], 3, 2);
+        let result = scale_image(source.as_ref(), 4, 3);
+        let (buf, w, h) = result.into_contiguous_buf();
+        assert_eq!(3 * 4, w);
+        assert_eq!(2 * 3, h);
+        #[rustfmt::skip]
+        assert_eq!(buf, vec![
+            1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+            1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+            1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3,
+            4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6,
+            4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6,
+            4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6,
+        ]);
+    }
+}
