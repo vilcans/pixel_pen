@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use eframe::{
-    egui::{self, paint::Mesh, Button, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
+    egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
     epi,
 };
 
@@ -18,14 +18,6 @@ use crate::{
 enum Mode {
     PixelPaint,
     CharPaint,
-}
-
-fn selected_color(selected: bool) -> Option<Color32> {
-    if selected {
-        Some(Color32::BLUE)
-    } else {
-        None
-    }
 }
 
 pub struct Application {
@@ -72,18 +64,8 @@ impl epi::App for Application {
 
             // Toolbar
             ui.horizontal_wrapped(|ui| {
-                if ui
-                    .add(Button::new("Pixel paint").fill(selected_color(*mode == Mode::PixelPaint)))
-                    .clicked()
-                {
-                    *mode = Mode::PixelPaint;
-                }
-                if ui
-                    .add(Button::new("Char paint").fill(selected_color(*mode == Mode::CharPaint)))
-                    .clicked()
-                {
-                    *mode = Mode::CharPaint;
-                }
+                ui.selectable_value(mode, Mode::PixelPaint, "Pixel paint");
+                ui.selectable_value(mode, Mode::CharPaint, "Char paint");
             });
 
             // Color selector
