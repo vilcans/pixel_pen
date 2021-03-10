@@ -14,6 +14,9 @@ use crate::{
     widgets,
 };
 
+/// How much larger to make the texture than the size on screen. To avoid blurry edges.
+const TEXTURE_SCALE: f32 = 2.0;
+
 #[derive(PartialEq)]
 enum Mode {
     PixelPaint,
@@ -23,6 +26,7 @@ enum Mode {
 pub struct Application {
     mode: Mode,
     paint_color: usize,
+    zoom: f32,
 
     image: MutationMonitor<VicImage>,
 
@@ -46,6 +50,7 @@ impl epi::App for Application {
         let Application {
             mode,
             paint_color,
+            zoom,
             image,
             image_texture,
             ..
@@ -66,6 +71,21 @@ impl epi::App for Application {
             ui.horizontal_wrapped(|ui| {
                 ui.selectable_value(mode, Mode::PixelPaint, "Pixel paint");
                 ui.selectable_value(mode, Mode::CharPaint, "Char paint");
+                ui.separator();
+                ui.label("Zoom:");
+                if ui.button("-").on_hover_text("Zoom out").clicked() && *zoom > 1.0 {
+                    *zoom /= 2.0
+                }
+                if ui
+                    .button(format!("{:0.0}x", *zoom))
+                    .on_hover_text("Set to 2x")
+                    .clicked()
+                {
+                    *zoom = 2.0;
+                }
+                if ui.button("+").on_hover_text("Zoom in").clicked() && *zoom < 16.0 {
+                    *zoom *= 2.0
+                }
             });
 
             // Color selector
@@ -114,13 +134,10 @@ impl epi::App for Application {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Main image. ScrollArea unfortunately only provides vertical scrolling.
             egui::ScrollArea::auto_sized().show(ui, |ui| {
-                let zoom = 2.0;
                 let par = image.pixel_aspect_ratio();
-                let size = Vec2::new(width as f32 * par, height as f32) * zoom;
+                let size = Vec2::new(width as f32 * par, height as f32) * *zoom;
 
                 let (response, painter) = ui.allocate_painter(size, egui::Sense::click_and_drag());
-
-                let tex_allocator = frame.tex_allocator();
 
                 if let Some(pointer_pos) = response.interact_pointer_pos() {
                     let pointer = &response.ctx.input().pointer;
@@ -140,6 +157,8 @@ impl epi::App for Application {
                 }
 
                 // Draw the main image
+                let tex_allocator = frame.tex_allocator();
+
                 if image.dirty {
                     if let Some(t) = image_texture.take() {
                         tex_allocator.free(t);
@@ -152,8 +171,8 @@ impl epi::App for Application {
                     image.render();
                     let mut pixels = scaling::scale_image(
                         image.pixels(),
-                        ((par * zoom).ceil() as u32).max(1),
-                        (zoom.ceil() as u32).max(1),
+                        ((par * *zoom * TEXTURE_SCALE).ceil() as u32).max(1),
+                        ((*zoom * TEXTURE_SCALE).ceil() as u32).max(1),
                     );
                     let texture = tex_allocator.alloc_srgba_premultiplied(
                         (pixels.width(), pixels.height()),
@@ -183,6 +202,7 @@ impl Application {
         Application {
             mode: Mode::PixelPaint,
             paint_color: 1,
+            zoom: 2.0,
             image: MutationMonitor::new_dirty(image),
             image_texture: None,
         }
