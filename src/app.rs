@@ -14,8 +14,8 @@ use crate::{
     widgets,
 };
 
-/// How much larger to make the texture than the size on screen. To avoid blurry edges.
-const TEXTURE_SCALE: f32 = 2.0;
+// Don't scale the texture more than this to avoid huge textures when zooming.
+const MAX_SCALE: u32 = 8;
 
 #[derive(PartialEq)]
 enum Mode {
@@ -169,11 +169,11 @@ impl epi::App for Application {
                     *texture
                 } else {
                     image.render();
-                    let mut pixels = scaling::scale_image(
-                        image.pixels(),
-                        ((par * *zoom * TEXTURE_SCALE).ceil() as u32).max(1),
-                        ((*zoom * TEXTURE_SCALE).ceil() as u32).max(1),
-                    );
+
+                    let scale_x = ((par * *zoom).ceil() as u32).max(1).min(MAX_SCALE);
+                    let scale_y = ((*zoom).ceil() as u32).max(1).min(MAX_SCALE);
+                    let mut pixels = scaling::scale_image(image.pixels(), scale_x, scale_y);
+
                     let texture = tex_allocator.alloc_srgba_premultiplied(
                         (pixels.width(), pixels.height()),
                         &pixels.as_contiguous_buf().0,
