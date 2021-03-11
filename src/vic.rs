@@ -221,18 +221,18 @@ impl VicImage {
         (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
     }
 
-    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) {
-        let column = x / Char::WIDTH as i32;
-        let row = y / Char::WIDTH as i32;
-        if !(0..self.columns as i32).contains(&column) || !(0..self.rows as i32).contains(&row) {
-            return;
-        }
-        let cx = x % Char::WIDTH as i32;
-        let cy = y % Char::WIDTH as i32;
-        let index = (column as usize, row as usize);
-        let mut char = self.video[index];
-        char.set_pixel(cx, cy, color, &self.colors);
-        self.video[index] = char;
+    /// Set a pixel at the given coordinates to a given color.
+    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) -> Option<()> {
+        let (column, row, cx, cy) = self.char_coordinates(x, y)?;
+        self.video[(column, row)].set_pixel(cx, cy, color, &self.colors);
+        Some(())
+    }
+
+    /// Change the character color at given pixel coordinates
+    pub fn set_color(&mut self, x: i32, y: i32, color: u8) -> Option<()> {
+        let (column, row, _, _) = self.char_coordinates(x, y)?;
+        self.video[(column, row)].color = color;
+        Some(())
     }
 
     pub fn info(&self) -> String {
@@ -279,6 +279,19 @@ impl VicImage {
                 );
             }
         }
+    }
+
+    /// Given pixel coordinates, return column, row, and x and y inside the character.
+    /// Returns None if the coordinates are outside the image.
+    fn char_coordinates(&self, x: i32, y: i32) -> Option<(usize, usize, i32, i32)> {
+        let column = x / Char::WIDTH as i32;
+        let row = y / Char::WIDTH as i32;
+        if !(0..self.columns as i32).contains(&column) || !(0..self.rows as i32).contains(&row) {
+            return None;
+        }
+        let cx = x % Char::WIDTH as i32;
+        let cy = y % Char::WIDTH as i32;
+        Some((column as usize, row as usize, cx, cy))
     }
 }
 

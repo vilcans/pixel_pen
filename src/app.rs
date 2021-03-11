@@ -20,7 +20,7 @@ const MAX_SCALE: u32 = 8;
 #[derive(PartialEq)]
 enum Mode {
     PixelPaint,
-    CharPaint,
+    ColorPaint,
 }
 
 struct Texture {
@@ -75,7 +75,7 @@ impl epi::App for Application {
             // Toolbar
             ui.horizontal_wrapped(|ui| {
                 ui.selectable_value(mode, Mode::PixelPaint, "Pixel paint");
-                ui.selectable_value(mode, Mode::CharPaint, "Char paint");
+                ui.selectable_value(mode, Mode::ColorPaint, "Color paint");
                 ui.separator();
                 ui.label("Zoom:");
                 if ui.button("-").on_hover_text("Zoom out").clicked() && *zoom > 1.0 {
@@ -93,47 +93,7 @@ impl epi::App for Application {
                 }
             });
 
-            // Color selector
-            ui.horizontal_wrapped(|ui| match *mode {
-                Mode::PixelPaint => {
-                    let size = ui.spacing().interact_size;
-                    for color_index in 0..vic::PALETTE_SIZE {
-                        let color = vic::palette_color(color_index);
-                        let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-                        ui.painter().rect_filled(rect, 0.0, color);
-                        if color_index == *paint_color {
-                            ui.painter()
-                                .rect_stroke(rect, 0.0, Stroke::new(2.0, Color32::BLUE));
-                        }
-                        if response.clicked() {
-                            *paint_color = color_index;
-                        }
-                        let popup_id =
-                            ui.make_persistent_id(format!("color_popup_{}", color_index));
-                        if response.secondary_clicked() {
-                            ui.memory().open_popup(popup_id);
-                        }
-                        widgets::popup(ui, popup_id, &response, |ui| {
-                            let color_index = color_index as u8;
-                            ui.label(format!("Color {0} (${0:x})", color_index));
-                            for (index, label, range) in vic::GLOBAL_COLORS.iter() {
-                                let index = *index as u32;
-                                if range.contains(&color_index) {
-                                    let setting = image.colors[index];
-                                    let mut selected = setting == color_index;
-                                    if ui.checkbox(&mut selected, *label).clicked()
-                                        && setting != color_index
-                                    {
-                                        println!("Setting {0} to {1}", label, color_index);
-                                        image.colors[index] = color_index;
-                                    }
-                                }
-                            }
-                        });
-                    }
-                }
-                Mode::CharPaint => {}
-            });
+            render_palette(ui, paint_color, image);
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -156,8 +116,17 @@ impl epi::App for Application {
                     let fy = p.y / response.rect.size().y;
                     let x = (fx * width as f32).round() as i32;
                     let y = (fy * height as f32).round() as i32;
-                    if x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height {
-                        image.set_pixel(x, y, color_to_set);
+                    let within_bounds =
+                        x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height;
+                    match mode {
+                        Mode::PixelPaint => {
+                            if within_bounds {
+                                image.set_pixel(x, y, color_to_set);
+                            }
+                        }
+                        Mode::ColorPaint => {
+                            image.set_color(x, y, color_to_set);
+                        }
                     }
                 }
 
@@ -177,6 +146,47 @@ impl epi::App for Application {
             });
         });
     }
+}
+
+fn render_palette(
+    ui: &mut egui::Ui,
+    paint_color: &mut usize,
+    image: &mut MutationMonitor<VicImage>,
+) {
+    ui.horizontal_wrapped(|ui| {
+        let size = ui.spacing().interact_size;
+        for color_index in 0..vic::PALETTE_SIZE {
+            let color = vic::palette_color(color_index);
+            let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+            ui.painter().rect_filled(rect, 0.0, color);
+            if color_index == *paint_color {
+                ui.painter()
+                    .rect_stroke(rect, 0.0, Stroke::new(2.0, Color32::BLUE));
+            }
+            if response.clicked() {
+                *paint_color = color_index;
+            }
+            let popup_id = ui.make_persistent_id(format!("color_popup_{}", color_index));
+            if response.secondary_clicked() {
+                ui.memory().open_popup(popup_id);
+            }
+            widgets::popup(ui, popup_id, &response, |ui| {
+                let color_index = color_index as u8;
+                ui.label(format!("Color {0} (${0:x})", color_index));
+                for (index, label, range) in vic::GLOBAL_COLORS.iter() {
+                    let index = *index as u32;
+                    if range.contains(&color_index) {
+                        let setting = image.colors[index];
+                        let mut selected = setting == color_index;
+                        if ui.checkbox(&mut selected, *label).clicked() && setting != color_index {
+                            println!("Setting {0} to {1}", label, color_index);
+                            image.colors[index] = color_index;
+                        }
+                    }
+                }
+            });
+        }
+    });
 }
 
 /// Updates the texture with the current image content, if needed.
