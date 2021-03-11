@@ -3,9 +3,16 @@
 use eframe::egui::{Pos2, Rect};
 
 /// Integer point, e.g. pixel coordinates.
+#[derive(Copy, Clone, Debug)]
 pub struct Point {
     pub x: i32,
     pub y: i32,
+}
+
+impl Point {
+    pub fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
 }
 
 pub struct PixelTransform {
@@ -28,15 +35,20 @@ impl PixelTransform {
 
     /// Convert screen coordinates to pixel coordinates.
     /// Return None if the pixel coordinates are out of bounds.
-    pub fn bounded_pixel_pos(&self, p: impl Into<Pos2>) -> Option<Point> {
+    pub fn pixel_pos(&self, p: impl Into<Pos2>) -> Point {
         let p = p.into();
         let p = p - self.screen_rect.left_top();
         let fx = p.x / self.screen_rect.size().x;
         let fy = p.y / self.screen_rect.size().y;
         let x = (fx * self.pixel_width as f32).round() as i32;
         let y = (fy * self.pixel_height as f32).round() as i32;
-        if x >= 0 && x < self.pixel_width && y >= 0 && y < self.pixel_height {
-            Some(Point { x, y })
+        Point { x, y }
+    }
+
+    pub fn bounded_pixel_pos(&self, p: impl Into<Pos2>) -> Option<Point> {
+        let pix = self.pixel_pos(p);
+        if (0..self.pixel_width).contains(&pix.x) && (0..self.pixel_height).contains(&pix.y) {
+            Some(pix)
         } else {
             None
         }

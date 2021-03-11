@@ -4,6 +4,8 @@ use bimap::BiMap;
 use eframe::egui::Color32;
 use imgref::{ImgRef, ImgRefMut, ImgVec};
 
+use crate::coords::Point;
+
 // From /usr/lib/vice/VIC20/vice.vpl
 const PALETTE: [u32; 16] = [
     // 0xRRGGBB
@@ -233,6 +235,20 @@ impl VicImage {
         let (column, row, _, _) = self.char_coordinates(x, y)?;
         self.video[(column, row)].color = color;
         Some(())
+    }
+
+    /// Get the rectangle of the character at the given pixel coordinates.
+    /// Returns (top left, width, height), or None if the coordinate is outside the image.
+    pub fn character_box(&self, p: Point) -> Option<(Point, i32, i32)> {
+        let (column, row, _, _) = self.char_coordinates(p.x, p.y)?;
+        Some((
+            Point {
+                x: (column * Char::WIDTH) as i32,
+                y: (row * Char::HEIGHT) as i32,
+            },
+            Char::WIDTH as i32,
+            Char::HEIGHT as i32,
+        ))
     }
 
     pub fn info(&self) -> String {

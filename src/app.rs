@@ -144,6 +144,27 @@ impl epi::App for Application {
                 );
                 painter.add(Shape::Mesh(mesh));
 
+                // Highlight character
+                match mode {
+                    Mode::ColorPaint => {
+                        if let Some(pos) = ui.input().pointer.tooltip_pos() {
+                            let pixel_pos = pixel_transform.pixel_pos(pos);
+                            if let Some((top_left, w, h)) = image.character_box(pixel_pos) {
+                                painter.rect_stroke(
+                                    Rect::from_min_max(
+                                        pixel_transform.screen_pos(top_left),
+                                        pixel_transform
+                                            .screen_pos(Point::new(top_left.x + w, top_left.y + h)),
+                                    ),
+                                    0.0,
+                                    (1.0, vic::palette_color(*paint_color)),
+                                );
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+
                 ui.label(image.info());
             });
         });
