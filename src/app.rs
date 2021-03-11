@@ -6,6 +6,7 @@ use eframe::{
 };
 
 use crate::{
+    coords::{PixelTransform, Point},
     error::Error,
     image_io,
     mutation_monitor::MutationMonitor,
@@ -106,6 +107,12 @@ impl epi::App for Application {
 
                 let (response, painter) = ui.allocate_painter(size, egui::Sense::click_and_drag());
 
+                let pixel_transform = PixelTransform {
+                    screen_rect: response.rect,
+                    pixel_width: width as i32,
+                    pixel_height: height as i32,
+                };
+
                 if let Some(pointer_pos) = response.interact_pointer_pos() {
                     let pointer = &response.ctx.input().pointer;
                     let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
@@ -113,21 +120,14 @@ impl epi::App for Application {
                     } else {
                         *paint_color as u8
                     };
-                    let p = pointer_pos - response.rect.left_top();
-                    let fx = p.x / response.rect.size().x;
-                    let fy = p.y / response.rect.size().y;
-                    let x = (fx * width as f32).round() as i32;
-                    let y = (fy * height as f32).round() as i32;
-                    let within_bounds =
-                        x >= 0 && (x as usize) < width && y >= 0 && (y as usize) < height;
-                    match mode {
-                        Mode::PixelPaint => {
-                            if within_bounds {
+                    if let Some(Point { x, y }) = pixel_transform.bounded_pixel_pos(pointer_pos) {
+                        match mode {
+                            Mode::PixelPaint => {
                                 image.set_pixel(x, y, color_to_set);
                             }
-                        }
-                        Mode::ColorPaint => {
-                            image.set_color(x, y, color_to_set);
+                            Mode::ColorPaint => {
+                                image.set_color(x, y, color_to_set);
+                            }
                         }
                     }
                 }
