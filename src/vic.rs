@@ -31,7 +31,7 @@ pub const PALETTE_SIZE: usize = 16;
 /// Which colors are allowed as the "character" color.
 pub const ALLOWED_CHAR_COLORS: RangeInclusive<u8> = 0..=7;
 
-pub const GLOBAL_COLORS: [(usize, &'static str, RangeInclusive<u8>); 3] = [
+pub const GLOBAL_COLORS: [(usize, &str, RangeInclusive<u8>); 3] = [
     (0, "Background", 0..=15),
     (1, "Border", 0..=7),
     (2, "Aux", 0..=15),
