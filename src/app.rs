@@ -23,14 +23,19 @@ enum Mode {
     CharPaint,
 }
 
+struct Texture {
+    pub id: TextureId,
+    pub width: usize,
+    pub height: usize,
+}
+
 pub struct Application {
     mode: Mode,
     paint_color: usize,
     zoom: f32,
 
     image: MutationMonitor<VicImage>,
-
-    image_texture: Option<TextureId>,
+    image_texture: Option<Texture>,
 }
 
 impl Default for Application {
@@ -174,34 +179,48 @@ impl epi::App for Application {
     }
 }
 
+/// Updates the texture with the current image content, if needed.
+/// Returns the texture id.
 fn update_texture(
     image: &mut MutationMonitor<VicImage>,
-    image_texture: &mut Option<TextureId>,
+    image_texture: &mut Option<Texture>,
     tex_allocator: &mut dyn TextureAllocator,
     par: f32,
     zoom: f32,
 ) -> TextureId {
-    if image.dirty {
-        if let Some(t) = image_texture.take() {
-            tex_allocator.free(t);
+    let scale_x = ((par * zoom).ceil() as u32).max(1).min(MAX_SCALE);
+    let scale_y = (zoom.ceil() as u32).max(1).min(MAX_SCALE);
+    let (source_width, source_height) = image.pixel_size();
+    let texture_width = source_width * scale_x as usize;
+    let texture_height = source_height * scale_y as usize;
+
+    // Recreate the texture if the size has changed or the image has been updated
+    if let Some(t) = image_texture {
+        if t.width != texture_width || t.height != texture_height || image.dirty {
+            tex_allocator.free(t.id);
+            *image_texture = None;
         }
+    }
+    if image.dirty {
         image.update();
     }
     let texture = if let Some(texture) = image_texture {
-        *texture
+        texture.id
     } else {
         image.render();
 
-        let scale_x = ((par * zoom).ceil() as u32).max(1).min(MAX_SCALE);
-        let scale_y = (zoom.ceil() as u32).max(1).min(MAX_SCALE);
         let mut pixels = scaling::scale_image(image.pixels(), scale_x, scale_y);
 
-        let texture = tex_allocator.alloc_srgba_premultiplied(
-            (pixels.width(), pixels.height()),
+        let texture_id = tex_allocator.alloc_srgba_premultiplied(
+            (texture_width, texture_height),
             &pixels.as_contiguous_buf().0,
         );
-        *image_texture = Some(texture);
-        texture
+        *image_texture = Some(Texture {
+            id: texture_id,
+            width: texture_width,
+            height: texture_height,
+        });
+        texture_id
     };
     image.dirty = false;
     texture
