@@ -74,8 +74,10 @@ impl epi::App for Application {
 
             // Toolbar
             ui.horizontal_wrapped(|ui| {
-                ui.selectable_value(mode, Mode::PixelPaint, "Pixel paint");
-                ui.selectable_value(mode, Mode::ColorPaint, "Color paint");
+                ui.selectable_value(mode, Mode::PixelPaint, "Pixel paint")
+                    .on_hover_text("Paint pixels");
+                ui.selectable_value(mode, Mode::ColorPaint, "Color paint")
+                    .on_hover_text("Change the color of character cells");
                 ui.separator();
                 ui.label("Zoom:");
                 if ui.button("-").on_hover_text("Zoom out").clicked() && *zoom > 1.0 {
