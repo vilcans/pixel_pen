@@ -7,6 +7,7 @@ mod coords;
 pub mod error;
 mod image_io;
 mod mutation_monitor;
+mod polygons;
 mod scaling;
 mod vic;
 mod widgets;

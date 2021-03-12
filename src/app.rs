@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use eframe::{
-    egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, Stroke, TextureId, Vec2},
+    egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextureId, Vec2},
     epi::{self, TextureAllocator},
 };
 
@@ -10,7 +10,7 @@ use crate::{
     error::Error,
     image_io,
     mutation_monitor::MutationMonitor,
-    scaling,
+    polygons, scaling,
     vic::{self, GlobalColors, VicImage},
     widgets,
 };
@@ -177,14 +177,31 @@ fn render_palette(
     image: &mut MutationMonitor<VicImage>,
 ) {
     ui.horizontal_wrapped(|ui| {
-        let size = ui.spacing().interact_size;
+        let interact_size = ui.spacing().interact_size;
+        let patch_width = interact_size.x.max(interact_size.y);
+        let patch_height = patch_width;
+        let marker_height = patch_height * 0.3;
         for color_index in 0..vic::PALETTE_SIZE {
             let color = vic::palette_color(color_index);
-            let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-            ui.painter().rect_filled(rect, 0.0, color);
+            let (full_rect, response) = ui.allocate_exact_size(
+                Vec2::new(patch_width, patch_height + marker_height),
+                Sense::click(),
+            );
+            let patch_rect = Rect::from_min_max(
+                full_rect.left_top(),
+                Pos2::new(full_rect.right(), full_rect.top() + patch_height),
+            );
+            ui.painter().rect_filled(patch_rect, 0.0, color);
             if color_index == *paint_color {
-                ui.painter()
-                    .rect_stroke(rect, 0.0, Stroke::new(2.0, Color32::BLUE));
+                ui.painter().add(Shape::polygon(
+                    polygons::palette_patch(
+                        patch_rect.center_bottom(),
+                        marker_height,
+                        marker_height,
+                    ),
+                    Color32::WHITE,
+                    (0.1, Color32::RED),
+                ));
             }
             if response.clicked() {
                 *paint_color = color_index;
