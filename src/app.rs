@@ -10,7 +10,7 @@ use crate::{
     error::Error,
     image_io,
     mutation_monitor::MutationMonitor,
-    polygons, scaling,
+    scaling, ui,
     vic::{self, GlobalColors, VicImage},
     widgets,
 };
@@ -96,6 +96,7 @@ impl epi::App for Application {
                 }
             });
 
+            ui.separator();
             render_palette(ui, paint_color, image);
         });
 
@@ -180,29 +181,19 @@ fn render_palette(
         let interact_size = ui.spacing().interact_size;
         let patch_width = interact_size.x.max(interact_size.y);
         let patch_height = patch_width;
-        let marker_height = patch_height * 0.3;
         for color_index in 0..vic::PALETTE_SIZE {
             let color = vic::palette_color(color_index);
-            let (full_rect, response) = ui.allocate_exact_size(
-                Vec2::new(patch_width, patch_height + marker_height),
-                Sense::click(),
+            let (patch_rect, response) =
+                ui.allocate_exact_size(Vec2::new(patch_width, patch_height), Sense::click());
+            ui::palette::palette_patch(
+                ui.painter(),
+                &patch_rect,
+                color,
+                color_index == image.colors[GlobalColors::BACKGROUND] as usize,
+                color_index == image.colors[GlobalColors::BORDER] as usize,
+                color_index == image.colors[GlobalColors::AUX] as usize,
+                color_index == *paint_color,
             );
-            let patch_rect = Rect::from_min_max(
-                full_rect.left_top(),
-                Pos2::new(full_rect.right(), full_rect.top() + patch_height),
-            );
-            ui.painter().rect_filled(patch_rect, 0.0, color);
-            if color_index == *paint_color {
-                ui.painter().add(Shape::polygon(
-                    polygons::palette_patch(
-                        patch_rect.center_bottom(),
-                        marker_height,
-                        marker_height,
-                    ),
-                    Color32::WHITE,
-                    (0.1, Color32::RED),
-                ));
-            }
             if response.clicked() {
                 *paint_color = color_index;
             }
