@@ -36,6 +36,8 @@ pub struct Application {
     paint_color: usize,
     zoom: f32,
 
+    pub file_dialog: Option<Box<fn() -> Option<String>>>,
+
     image: MutationMonitor<VicImage>,
     image_texture: Option<Texture>,
 }
@@ -58,6 +60,7 @@ impl epi::App for Application {
             mode,
             paint_color,
             zoom,
+            file_dialog,
             image,
             image_texture,
             ..
@@ -68,6 +71,13 @@ impl epi::App for Application {
             // Menu bar
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
+                    if let Some(file_dialog) = file_dialog {
+                        if ui.button("Open...").clicked() {
+                            if let Some(filename) = file_dialog() {
+                                println!("Should open {}", filename);
+                            }
+                        }
+                    }
                     if ui.button("Quit").clicked() {
                         frame.quit();
                     }
@@ -291,6 +301,7 @@ impl Application {
             mode: Mode::PixelPaint,
             paint_color: 1,
             zoom: 2.0,
+            file_dialog: None,
             image: MutationMonitor::new_dirty(image),
             image_texture: None,
         }

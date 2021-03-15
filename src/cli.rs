@@ -16,7 +16,7 @@ struct Opts {
 /// On error, returns the exit code for `process::exit`.
 pub fn main() -> Result<(), i32> {
     let opts = Opts::from_args();
-    let app = if let Some(filename) = opts.filename {
+    let mut app = if let Some(filename) = opts.filename {
         Application::load(&filename).map_err(|err| {
             eprintln!(
                 "Could not load file {}: {}",
@@ -28,6 +28,18 @@ pub fn main() -> Result<(), i32> {
     } else {
         Application::default()
     };
+    app.file_dialog = Some(Box::new(file_dialog));
     eframe::run_native(Box::new(app));
     // run_native never returns
+}
+
+fn file_dialog() -> Option<String> {
+    use nfd::Response;
+    let result = nfd::open_file_dialog(Some("png,flf"), None).ok()?;
+
+    match result {
+        Response::Okay(file_path) => Some(file_path),
+        Response::OkayMultiple(files) => files.first().cloned(),
+        Response::Cancel => None,
+    }
 }

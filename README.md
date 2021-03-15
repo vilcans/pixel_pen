@@ -8,7 +8,7 @@ Based on [template repo for egui](https://github.com/emilk/egui_template/).
 
 `cargo run --release`
 
-On Linux you need to first run `sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev`.
+On Linux you need to first run `sudo apt-get install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libgtk-3-dev`.
 
 ### Compiling for the web
 
