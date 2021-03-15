@@ -66,6 +66,7 @@ impl epi::App for Application {
             ..
         } = self;
         let (width, height) = image.pixel_size();
+        let mut new_app = None;
 
         egui::TopPanel::top("top_panel").show(ctx, |ui| {
             // Menu bar
@@ -75,6 +76,14 @@ impl epi::App for Application {
                         if ui.button("Open...").clicked() {
                             if let Some(filename) = file_dialog() {
                                 println!("Should open {}", filename);
+                                match Application::load(std::path::Path::new(&filename)) {
+                                    Ok(app) => {
+                                        new_app = Some(app);
+                                    }
+                                    Err(e) => {
+                                        println!("Failed to load: {:?}", e);
+                                    }
+                                }
                             }
                         }
                     }
@@ -180,6 +189,14 @@ impl epi::App for Application {
                 ui.label(image.info());
             });
         });
+
+        if let Some(new) = new_app {
+            // file_dialog should survive app loads.
+            // Ugly hack. TODO: Keep file_dialog in Application, but create Document struct.
+            let file_dialog = file_dialog.take();
+            *self = new;
+            self.file_dialog = file_dialog;
+        }
     }
 }
 
