@@ -4,6 +4,7 @@ use eframe::{
     egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextureId, Vec2},
     epi::{self, TextureAllocator},
 };
+use itertools::Itertools;
 
 use crate::{
     coords::{PixelTransform, Point},
@@ -197,13 +198,26 @@ fn render_palette(
             if response.clicked() {
                 *paint_color = color_index;
             }
+            let color_description = format!("Color {0} (${0:x})", color_index);
             let popup_id = ui.make_persistent_id(format!("color_popup_{}", color_index));
             if response.secondary_clicked() {
                 ui.memory().open_popup(popup_id);
             }
+            if !ui.memory().is_popup_open(popup_id) {
+                let mut tooltip = color_description.clone();
+                let usages = &vic::GLOBAL_COLORS
+                    .iter()
+                    .filter(|(index, _, _)| image.colors[*index as u32] == color_index as u8)
+                    .map(|(_, label, _)| label)
+                    .join(", ");
+                if usages.len() != 0 {
+                    tooltip = format!("{}\n{}", tooltip, usages);
+                }
+                response.clone().on_hover_text(tooltip);
+            }
             widgets::popup(ui, popup_id, &response, |ui| {
                 let color_index = color_index as u8;
-                ui.label(format!("Color {0} (${0:x})", color_index));
+                ui.label(color_description);
                 for (index, label, range) in vic::GLOBAL_COLORS.iter() {
                     let index = *index as u32;
                     if range.contains(&color_index) {
