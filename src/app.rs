@@ -198,7 +198,11 @@ fn render_palette(
             if response.clicked() {
                 *paint_color = color_index;
             }
-            let color_description = format!("Color {0} (${0:x})", color_index);
+            let color_description = format!(
+                "${0:x} ({0}): {1}",
+                color_index,
+                vic::palette_entry_name(color_index),
+            );
             let popup_id = ui.make_persistent_id(format!("color_popup_{}", color_index));
             if response.secondary_clicked() {
                 ui.memory().open_popup(popup_id);

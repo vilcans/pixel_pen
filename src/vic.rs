@@ -7,24 +7,24 @@ use imgref::{ImgRef, ImgRefMut, ImgVec};
 use crate::coords::Point;
 
 // From /usr/lib/vice/VIC20/vice.vpl
-const PALETTE: [u32; 16] = [
+const PALETTE: [(u32, &str); 16] = [
     // 0xRRGGBB
-    0x000000, // Black
-    0xffffff, // White
-    0xf00000, // Red
-    0x00f0f0, // Cyan
-    0x600060, // Purple
-    0x00a000, // Green
-    0x0000f0, // Blue
-    0xd0d000, // Yellow
-    0xc0a000, // Orange
-    0xffa000, // Light Orange
-    0xf08080, // Pink
-    0x00ffff, // Light Cyan
-    0xff00ff, // Light Purple
-    0x00ff00, // Light Green
-    0x00a0ff, // Light Blue
-    0xffff00, // Light Yellow
+    (0x000000, "Black"),
+    (0xffffff, "White"),
+    (0xf00000, "Red"),
+    (0x00f0f0, "Cyan"),
+    (0x600060, "Purple"),
+    (0x00a000, "Green"),
+    (0x0000f0, "Blue"),
+    (0xd0d000, "Yellow"),
+    (0xc0a000, "Orange"),
+    (0xffa000, "Light Orange"),
+    (0xf08080, "Pink"),
+    (0x00ffff, "Light Cyan"),
+    (0xff00ff, "Light Purple"),
+    (0x00ff00, "Light Green"),
+    (0x00a0ff, "Light Blue"),
+    (0xffff00, "Light Yellow"),
 ];
 
 /// Number of entries in the palette.
@@ -317,6 +317,15 @@ pub fn palette_color<T>(index: T) -> Color32
 where
     T: Into<usize>,
 {
-    let rgb = PALETTE[index.into()];
+    let rgb = PALETTE[index.into()].0;
     Color32::from_rgb((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
+}
+
+/// Get the name of a color from the palette.
+/// `index` must be in the range `0..PALETTE_SIZE`.
+pub fn palette_entry_name<T>(index: T) -> &'static str
+where
+    T: Into<usize>,
+{
+    PALETTE[index.into()].1
 }
