@@ -8,6 +8,7 @@ use itertools::Itertools;
 
 use crate::{
     coords::{PixelTransform, Point},
+    document::Document,
     error::Error,
     image_io,
     mutation_monitor::MutationMonitor,
@@ -31,15 +32,16 @@ struct Texture {
     pub height: usize,
 }
 
-pub struct Application {
+struct UiState {
     mode: Mode,
-    paint_color: usize,
     zoom: f32,
+}
 
-    pub file_dialog: Option<Box<fn() -> Option<String>>>,
-
-    image: MutationMonitor<VicImage>,
+pub struct Application {
+    doc: Document,
+    ui_state: UiState,
     image_texture: Option<Texture>,
+    pub file_dialog: Option<Box<fn() -> Option<String>>>,
 }
 
 impl Default for Application {
@@ -57,15 +59,12 @@ impl epi::App for Application {
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
         let Application {
-            mode,
-            paint_color,
-            zoom,
-            file_dialog,
-            image,
+            ui_state,
+            doc,
             image_texture,
-            ..
+            file_dialog,
         } = self;
-        let (width, height) = image.pixel_size();
+        let (width, height) = doc.image.pixel_size();
         let mut new_app = None;
 
         egui::TopPanel::top("top_panel").show(ctx, |ui| {
@@ -95,36 +94,36 @@ impl epi::App for Application {
 
             // Toolbar
             ui.horizontal_wrapped(|ui| {
-                ui.selectable_value(mode, Mode::PixelPaint, "Pixel paint")
+                ui.selectable_value(&mut ui_state.mode, Mode::PixelPaint, "Pixel paint")
                     .on_hover_text("Paint pixels");
-                ui.selectable_value(mode, Mode::ColorPaint, "Color paint")
+                ui.selectable_value(&mut ui_state.mode, Mode::ColorPaint, "Color paint")
                     .on_hover_text("Change the color of character cells");
                 ui.separator();
                 ui.label("Zoom:");
-                if ui.button("-").on_hover_text("Zoom out").clicked() && *zoom > 1.0 {
-                    *zoom /= 2.0
+                if ui.button("-").on_hover_text("Zoom out").clicked() && ui_state.zoom > 1.0 {
+                    ui_state.zoom /= 2.0
                 }
                 if ui
-                    .button(format!("{:0.0}x", *zoom))
+                    .button(format!("{:0.0}x", ui_state.zoom))
                     .on_hover_text("Set to 2x")
                     .clicked()
                 {
-                    *zoom = 2.0;
+                    ui_state.zoom = 2.0;
                 }
-                if ui.button("+").on_hover_text("Zoom in").clicked() && *zoom < 16.0 {
-                    *zoom *= 2.0
+                if ui.button("+").on_hover_text("Zoom in").clicked() && ui_state.zoom < 16.0 {
+                    ui_state.zoom *= 2.0
                 }
             });
 
             ui.separator();
-            render_palette(ui, paint_color, image);
+            render_palette(ui, &mut doc.paint_color, &mut doc.image);
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             // Main image. ScrollArea unfortunately only provides vertical scrolling.
             egui::ScrollArea::auto_sized().show(ui, |ui| {
-                let par = image.pixel_aspect_ratio();
-                let size = Vec2::new(width as f32 * par, height as f32) * *zoom;
+                let par = doc.image.pixel_aspect_ratio();
+                let size = Vec2::new(width as f32 * par, height as f32) * ui_state.zoom;
 
                 let (response, painter) = ui.allocate_painter(size, egui::Sense::click_and_drag());
 
@@ -137,17 +136,17 @@ impl epi::App for Application {
                 if let Some(pointer_pos) = response.interact_pointer_pos() {
                     let pointer = &response.ctx.input().pointer;
                     let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
-                        image.colors[GlobalColors::BACKGROUND]
+                        doc.image.colors[GlobalColors::BACKGROUND]
                     } else {
-                        *paint_color as u8
+                        doc.paint_color as u8
                     };
                     if let Some(Point { x, y }) = pixel_transform.bounded_pixel_pos(pointer_pos) {
-                        match mode {
+                        match ui_state.mode {
                             Mode::PixelPaint => {
-                                image.set_pixel(x, y, color_to_set);
+                                doc.image.set_pixel(x, y, color_to_set);
                             }
                             Mode::ColorPaint => {
-                                image.set_color(x, y, color_to_set);
+                                doc.image.set_color(x, y, color_to_set);
                             }
                         }
                     }
@@ -156,7 +155,13 @@ impl epi::App for Application {
                 // Draw the main image
                 let tex_allocator = frame.tex_allocator();
 
-                let texture = update_texture(image, image_texture, tex_allocator, par, *zoom);
+                let texture = update_texture(
+                    &mut doc.image,
+                    image_texture,
+                    tex_allocator,
+                    par,
+                    ui_state.zoom,
+                );
                 let mut mesh = Mesh::with_texture(texture);
                 mesh.add_rect_with_uv(
                     response.rect,
@@ -166,11 +171,11 @@ impl epi::App for Application {
                 painter.add(Shape::Mesh(mesh));
 
                 // Highlight character
-                match mode {
+                match ui_state.mode {
                     Mode::ColorPaint => {
                         if let Some(pos) = ui.input().pointer.tooltip_pos() {
                             let pixel_pos = pixel_transform.pixel_pos(pos);
-                            if let Some((top_left, w, h)) = image.character_box(pixel_pos) {
+                            if let Some((top_left, w, h)) = doc.image.character_box(pixel_pos) {
                                 painter.rect_stroke(
                                     Rect::from_min_max(
                                         pixel_transform.screen_pos(top_left),
@@ -178,7 +183,7 @@ impl epi::App for Application {
                                             .screen_pos(Point::new(top_left.x + w, top_left.y + h)),
                                     ),
                                     0.0,
-                                    (1.0, vic::palette_color(*paint_color)),
+                                    (1.0, vic::palette_color(doc.paint_color)),
                                 );
                             }
                         }
@@ -186,7 +191,7 @@ impl epi::App for Application {
                     _ => {}
                 }
 
-                ui.label(image.info());
+                ui.label(doc.image.info());
             });
         });
 
@@ -315,12 +320,16 @@ fn update_texture(
 impl Application {
     pub fn with_image(image: VicImage) -> Self {
         Application {
-            mode: Mode::PixelPaint,
-            paint_color: 1,
-            zoom: 2.0,
-            file_dialog: None,
-            image: MutationMonitor::new_dirty(image),
+            ui_state: UiState {
+                mode: Mode::PixelPaint,
+                zoom: 2.0,
+            },
+            doc: Document {
+                paint_color: 1,
+                image: MutationMonitor::new_dirty(image),
+            },
             image_texture: None,
+            file_dialog: None,
         }
     }
 
