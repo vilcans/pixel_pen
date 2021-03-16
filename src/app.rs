@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use eframe::{
     egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextureId, Vec2},
     epi::{self, TextureAllocator},
@@ -9,8 +7,6 @@ use itertools::Itertools;
 use crate::{
     coords::{PixelTransform, Point},
     document::Document,
-    error::Error,
-    image_io,
     mutation_monitor::MutationMonitor,
     scaling, ui,
     vic::{self, GlobalColors, VicImage},
@@ -46,7 +42,7 @@ pub struct Application {
 
 impl Default for Application {
     fn default() -> Self {
-        Self::with_image(VicImage::default())
+        Self::with_doc(Document::default())
     }
 }
 
@@ -65,7 +61,7 @@ impl epi::App for Application {
             file_dialog,
         } = self;
         let (width, height) = doc.image.pixel_size();
-        let mut new_app = None;
+        let mut new_doc = None;
 
         egui::TopPanel::top("top_panel").show(ctx, |ui| {
             // Menu bar
@@ -75,9 +71,9 @@ impl epi::App for Application {
                         if ui.button("Open...").clicked() {
                             if let Some(filename) = file_dialog() {
                                 println!("Should open {}", filename);
-                                match Application::load(std::path::Path::new(&filename)) {
-                                    Ok(app) => {
-                                        new_app = Some(app);
+                                match Document::load(std::path::Path::new(&filename)) {
+                                    Ok(doc) => {
+                                        new_doc = Some(doc);
                                     }
                                     Err(e) => {
                                         println!("Failed to load: {:?}", e);
@@ -195,12 +191,8 @@ impl epi::App for Application {
             });
         });
 
-        if let Some(new) = new_app {
-            // file_dialog should survive app loads.
-            // Ugly hack. TODO: Keep file_dialog in Application, but create Document struct.
-            let file_dialog = file_dialog.take();
-            *self = new;
-            self.file_dialog = file_dialog;
+        if let Some(doc) = new_doc {
+            self.doc = doc;
         }
     }
 }
@@ -318,23 +310,15 @@ fn update_texture(
 }
 
 impl Application {
-    pub fn with_image(image: VicImage) -> Self {
+    pub fn with_doc(doc: Document) -> Self {
         Application {
             ui_state: UiState {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
             },
-            doc: Document {
-                paint_color: 1,
-                image: MutationMonitor::new_dirty(image),
-            },
+            doc,
             image_texture: None,
             file_dialog: None,
         }
-    }
-
-    pub fn load(filename: &Path) -> Result<Application, Error> {
-        let image = image_io::load_file(filename)?;
-        Ok(Self::with_image(image))
     }
 }

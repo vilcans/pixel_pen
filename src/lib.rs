@@ -13,6 +13,7 @@ mod ui;
 mod vic;
 mod widgets;
 pub use app::Application;
+pub use document::Document;
 
 // ----------------------------------------------------------------------------
 // When compiling for web:

@@ -1,6 +1,6 @@
 //! Command-line interface
 
-use pixel_pen::Application;
+use pixel_pen::{Application, Document};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -17,14 +17,15 @@ struct Opts {
 pub fn main() -> Result<(), i32> {
     let opts = Opts::from_args();
     let mut app = if let Some(filename) = opts.filename {
-        Application::load(&filename).map_err(|err| {
+        let doc = Document::load(&filename).map_err(|err| {
             eprintln!(
                 "Could not load file {}: {}",
                 filename.to_string_lossy(),
                 err
             );
             1
-        })?
+        })?;
+        Application::with_doc(doc)
     } else {
         Application::default()
     };
