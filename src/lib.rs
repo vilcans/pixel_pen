@@ -4,6 +4,7 @@
 
 mod app;
 mod coords;
+mod document;
 pub mod error;
 mod image_io;
 mod mutation_monitor;
