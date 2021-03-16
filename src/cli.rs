@@ -12,11 +12,12 @@ struct Opts {
     filename: Option<PathBuf>,
 }
 
-/// Main entry point. Parses command-line arguments and prints any errors.
+/// Parses command-line arguments and prints any errors, returns Application ready to start.
+/// If app shouldn't start, returns None.
 /// On error, returns the exit code for `process::exit`.
-pub fn main() -> Result<(), i32> {
+pub fn main() -> Result<Option<Application>, i32> {
     let opts = Opts::from_args();
-    let mut app = if let Some(filename) = opts.filename {
+    let app = if let Some(filename) = opts.filename {
         let doc = Document::load(&filename).map_err(|err| {
             eprintln!(
                 "Could not load file {}: {}",
@@ -29,18 +30,5 @@ pub fn main() -> Result<(), i32> {
     } else {
         Application::default()
     };
-    app.file_dialog = Some(Box::new(file_dialog));
-    eframe::run_native(Box::new(app));
-    // run_native never returns
-}
-
-fn file_dialog() -> Option<String> {
-    use nfd::Response;
-    let result = nfd::open_file_dialog(Some("png,flf"), None).ok()?;
-
-    match result {
-        Response::Okay(file_path) => Some(file_path),
-        Response::OkayMultiple(files) => files.first().cloned(),
-        Response::Cancel => None,
-    }
+    Ok(Some(app))
 }
