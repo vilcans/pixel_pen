@@ -13,4 +13,6 @@ pub enum Error {
     InvalidSize(usize, usize),
     #[error("deserializing struct")]
     Deserialization(Box<bincode::ErrorKind>),
+    #[error("failed to load JSON data: {0}")]
+    JsonError(#[from] serde_json::Error),
 }

@@ -9,6 +9,7 @@ pub mod error;
 mod image_io;
 mod mutation_monitor;
 mod scaling;
+pub mod storage;
 mod ui;
 mod vic;
 mod widgets;

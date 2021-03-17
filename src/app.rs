@@ -8,7 +8,7 @@ use crate::{
     coords::{PixelTransform, Point},
     document::Document,
     mutation_monitor::MutationMonitor,
-    scaling, ui,
+    scaling, storage, ui,
     vic::{self, GlobalColors, VicImage},
     widgets,
 };
@@ -71,7 +71,7 @@ impl epi::App for Application {
                         if ui.button("Open...").clicked() {
                             if let Some(filename) = file_dialog() {
                                 println!("Should open {}", filename);
-                                match Document::load(std::path::Path::new(&filename)) {
+                                match storage::load_any_file(std::path::Path::new(&filename)) {
                                     Ok(doc) => {
                                         new_doc = Some(doc);
                                     }

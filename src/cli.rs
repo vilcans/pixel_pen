@@ -1,6 +1,6 @@
 //! Command-line interface
 
-use pixel_pen::{Application, Document};
+use pixel_pen::{storage, Application};
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -18,7 +18,7 @@ struct Opts {
 pub fn main() -> Result<Option<Application>, i32> {
     let opts = Opts::from_args();
     let app = if let Some(filename) = opts.filename {
-        let doc = Document::load(&filename).map_err(|err| {
+        let doc = storage::load_any_file(&filename).map_err(|err| {
             eprintln!(
                 "Could not load file {}: {}",
                 filename.to_string_lossy(),
