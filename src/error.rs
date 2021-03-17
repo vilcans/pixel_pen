@@ -15,4 +15,6 @@ pub enum Error {
     Deserialization(Box<bincode::ErrorKind>),
     #[error("failed to load JSON data: {0}")]
     JsonError(#[from] serde_json::Error),
+    #[error("Internal error: {0}")]
+    InternalError(String),
 }

@@ -7,6 +7,7 @@ use itertools::Itertools;
 use crate::{
     coords::{PixelTransform, Point},
     document::Document,
+    error::Error,
     mutation_monitor::MutationMonitor,
     scaling, storage, ui,
     vic::{self, GlobalColors, VicImage},
@@ -37,7 +38,8 @@ pub struct Application {
     doc: Document,
     ui_state: UiState,
     image_texture: Option<Texture>,
-    pub file_dialog: Option<Box<fn() -> Option<String>>>,
+    pub open_file_dialog: Option<Box<fn() -> Result<Option<String>, Error>>>,
+    pub save_file_dialog: Option<Box<fn() -> Result<Option<String>, Error>>>,
 }
 
 impl Default for Application {
@@ -58,7 +60,8 @@ impl epi::App for Application {
             ui_state,
             doc,
             image_texture,
-            file_dialog,
+            open_file_dialog,
+            save_file_dialog,
         } = self;
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
@@ -67,17 +70,41 @@ impl epi::App for Application {
             // Menu bar
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
-                    if let Some(file_dialog) = file_dialog {
+                    if let Some(file_dialog) = open_file_dialog {
                         if ui.button("Open...").clicked() {
-                            if let Some(filename) = file_dialog() {
-                                println!("Should open {}", filename);
-                                match storage::load_any_file(std::path::Path::new(&filename)) {
-                                    Ok(doc) => {
-                                        new_doc = Some(doc);
+                            match file_dialog() {
+                                Ok(Some(filename)) => {
+                                    println!("Should open {}", filename);
+                                    match storage::load_any_file(std::path::Path::new(&filename)) {
+                                        Ok(doc) => {
+                                            new_doc = Some(doc);
+                                        }
+                                        Err(e) => {
+                                            println!("Failed to load: {:?}", e);
+                                        }
                                     }
-                                    Err(e) => {
-                                        println!("Failed to load: {:?}", e);
+                                }
+                                Ok(None) => {}
+                                Err(e) => {
+                                    println!("Could not get file name: {:?}", e);
+                                }
+                            }
+                        }
+                    }
+                    if let Some(file_dialog) = save_file_dialog {
+                        if ui.button("Save As...").clicked() {
+                            match file_dialog() {
+                                Ok(Some(filename)) => {
+                                    match storage::save(&doc, std::path::Path::new(&filename)) {
+                                        Ok(()) => {}
+                                        Err(e) => {
+                                            println!("Failed to save: {:?}", e);
+                                        }
                                     }
+                                }
+                                Ok(None) => {}
+                                Err(e) => {
+                                    println!("Could not get file name: {:?}", e);
                                 }
                             }
                         }
@@ -318,7 +345,8 @@ impl Application {
             },
             doc,
             image_texture: None,
-            file_dialog: None,
+            open_file_dialog: None,
+            save_file_dialog: None,
         }
     }
 }

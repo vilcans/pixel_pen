@@ -1,6 +1,10 @@
 //! File I/O
 
-use std::{fs::File, io::BufReader, path::Path};
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter},
+    path::Path,
+};
 
 use crate::{error::Error, image_io, mutation_monitor::MutationMonitor, vic::VicImage, Document};
 
@@ -25,4 +29,11 @@ pub fn load_own(filename: &Path) -> Result<Document, Error> {
     let reader = BufReader::new(file);
     let doc = serde_json::from_reader(reader)?;
     Ok(doc)
+}
+
+pub fn save(document: &Document, filename: &Path) -> Result<(), Error> {
+    let file = File::create(filename)?;
+    let writer = BufWriter::new(file);
+    serde_json::to_writer_pretty(writer, document)?;
+    Ok(())
 }
