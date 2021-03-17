@@ -2,6 +2,7 @@ use eframe::{
     egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextureId, Vec2},
     epi::{self, TextureAllocator},
 };
+use imgref::ImgVec;
 use itertools::Itertools;
 
 use crate::{
@@ -317,9 +318,13 @@ fn update_texture(
     let texture = if let Some(texture) = image_texture {
         texture.id
     } else {
-        image.render();
-
-        let mut pixels = scaling::scale_image(image.pixels(), scale_x, scale_y);
+        let mut unscaled_pixels = ImgVec::new(
+            vec![Color32::BLACK; source_width * source_height],
+            source_width,
+            source_height,
+        );
+        image.render(unscaled_pixels.as_mut());
+        let mut pixels = scaling::scale_image(unscaled_pixels.as_ref(), scale_x, scale_y);
 
         let texture_id = tex_allocator.alloc_srgba_premultiplied(
             (texture_width, texture_height),

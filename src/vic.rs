@@ -2,7 +2,7 @@ use std::ops::{Index, IndexMut, RangeInclusive};
 
 use bimap::BiMap;
 use eframe::egui::Color32;
-use imgref::{ImgRef, ImgRefMut, ImgVec};
+use imgref::{ImgRefMut, ImgVec};
 
 use crate::coords::Point;
 
@@ -182,9 +182,6 @@ pub struct VicImage {
 
     /// Bitmap for each character
     bitmaps: BiMap<usize, [u8; 8]>,
-
-    /// The true-color pixels from rendering `video` and `chars`.
-    pixels: ImgVec<Color32>,
 }
 
 impl Default for VicImage {
@@ -202,19 +199,12 @@ impl VicImage {
     pub fn with_content(video: ImgVec<Char>) -> Self {
         let columns = video.width();
         let rows = video.height();
-        let pixel_width = columns * Char::WIDTH;
-        let pixel_height = rows * Char::HEIGHT;
         Self {
             columns,
             rows,
             colors: Default::default(),
             video,
             bitmaps: BiMap::new(),
-            pixels: ImgVec::new(
-                vec![Color32::BLACK; pixel_width * pixel_height],
-                pixel_width,
-                pixel_height,
-            ),
         }
     }
 
@@ -260,12 +250,6 @@ impl VicImage {
         2.0
     }
 
-    /// Get the image as true-color pixels for rendering to screen.
-    /// If [`needs_rendering`] returns true, call [`render`] first to make sure the pixels are up to date.
-    pub fn pixels(&self) -> ImgRef<'_, Color32> {
-        self.pixels.as_ref()
-    }
-
     pub fn update(&mut self) {
         self.allocate_chars();
     }
@@ -283,8 +267,9 @@ impl VicImage {
         self.bitmaps = map;
     }
 
-    pub fn render(&mut self) {
-        let pixels = &mut self.pixels;
+    /// Render true color pixels for this image.
+    pub fn render(&mut self, mut pixels: ImgRefMut<'_, Color32>) {
+        assert_eq!(self.pixel_size(), (pixels.width(), pixels.height()));
         for (row, chars) in self.video.rows().enumerate() {
             for (column, char) in chars.iter().enumerate() {
                 let left = column * Char::WIDTH;
