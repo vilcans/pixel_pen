@@ -1,10 +1,12 @@
-use std::ops::{Index, IndexMut, RangeInclusive};
-
 use bimap::BiMap;
 use eframe::egui::Color32;
 use imgref::{ImgRefMut, ImgVec};
+use serde::{Deserialize, Serialize};
+use std::ops::{Index, IndexMut, RangeInclusive};
 
 use crate::coords::Point;
+
+mod serialization;
 
 // From /usr/lib/vice/VIC20/vice.vpl
 const PALETTE: [(u32, &str); 16] = [
@@ -39,7 +41,7 @@ pub const GLOBAL_COLORS: [(usize, &str, RangeInclusive<u8>); 3] = [
     (2, "Aux", 0..=15),
 ];
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GlobalColors(pub [u8; 3]);
 
 impl GlobalColors {
@@ -82,6 +84,11 @@ impl Char {
             color,
             multicolor: true,
         }
+    }
+
+    /// Return the 4 bit value as stored in color RAM.
+    pub fn raw_nibble(&self) -> u8 {
+        self.color + if self.multicolor { 8 } else { 0 }
     }
 
     fn render_to(&self, pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
@@ -251,10 +258,11 @@ impl VicImage {
     }
 
     pub fn update(&mut self) {
-        self.allocate_chars();
+        self.bitmaps = self.map_characters();
     }
 
-    fn allocate_chars(&mut self) {
+    /// Generate a mapping between character bitmaps and character numbers.
+    pub fn map_characters(&self) -> BiMap<usize, [u8; 8]> {
         let mut map = BiMap::new();
         for char in self.video.pixels() {
             if let Some(_) = map.get_by_right(&char.bits) {
@@ -264,7 +272,7 @@ impl VicImage {
                 map.insert(num, char.bits);
             }
         }
-        self.bitmaps = map;
+        map
     }
 
     /// Render true color pixels for this image.
