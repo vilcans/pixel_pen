@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use hex;
 use serde::{Deserialize, Serialize};
 
 use super::{GlobalColors, VicImage};
@@ -19,8 +18,8 @@ struct VicImageFile {
     /// Size: columns x rows.
     video_colors: Vec<u8>,
 
-    /// Bitmap for each character
-    characters: Vec<Option<[u8; 8]>>,
+    /// Bitmap for each character as hex string
+    characters: Vec<Option<String>>,
 }
 
 impl VicImageFile {
@@ -40,7 +39,7 @@ impl VicImageFile {
             .map(|m| m + 1)
             .unwrap_or(0);
         let characters = (0..max_char)
-            .map(|i| character_map.get_by_left(&i).cloned())
+            .map(|i| character_map.get_by_left(&i).map(|bits| hex::encode(bits)))
             .collect();
         Self {
             columns: image.columns,
