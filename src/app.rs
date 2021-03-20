@@ -37,13 +37,15 @@ struct UiState {
     zoom: f32,
 }
 
+pub type OpenFileDialog = fn() -> Result<Option<PathBuf>, Error>;
+pub type SaveFileDialog = fn(default_extension: &str) -> Result<Option<PathBuf>, Error>;
+
 pub struct Application {
     doc: Document,
     ui_state: UiState,
     image_texture: Option<Texture>,
-    pub open_file_dialog: Option<Box<fn() -> Result<Option<PathBuf>, Error>>>,
-    pub save_file_dialog:
-        Option<Box<fn(default_extension: &str) -> Result<Option<PathBuf>, Error>>>,
+    pub open_file_dialog: Option<Box<OpenFileDialog>>,
+    pub save_file_dialog: Option<Box<SaveFileDialog>>,
 }
 
 impl Default for Application {
