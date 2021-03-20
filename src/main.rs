@@ -21,26 +21,35 @@ fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
+    use std::{path::PathBuf, str::FromStr};
+
     use pixel_pen::error::Error;
     const OPEN_FILE_TYPES: &str = "pixelpen,png,flf";
     const SAVE_FILE_TYPES: &str = "pixelpen";
 
-    pub fn open_file_dialog() -> Result<Option<String>, Error> {
+    pub fn open_file_dialog() -> Result<Option<PathBuf>, Error> {
         let res = nfd::open_file_dialog(Some(OPEN_FILE_TYPES), None);
         map_result(&res)
     }
 
-    pub fn save_file_dialog() -> Result<Option<String>, Error> {
+    pub fn save_file_dialog(default_extension: &str) -> Result<Option<PathBuf>, Error> {
         let res = nfd::open_save_dialog(Some(SAVE_FILE_TYPES), None);
-        map_result(&res)
+        match map_result(&res) {
+            Ok(Some(filename)) if filename.extension().is_none() => {
+                Ok(Some(filename.with_extension(default_extension)))
+            }
+            a => a,
+        }
     }
 
-    fn map_result(result: &nfd::Result<nfd::Response>) -> Result<Option<String>, Error> {
+    fn map_result(result: &nfd::Result<nfd::Response>) -> Result<Option<PathBuf>, Error> {
         use nfd::Response;
         match result {
             Ok(r) => Ok(match r {
-                Response::Okay(file_path) => Some(file_path.clone()),
-                Response::OkayMultiple(files) => files.first().cloned(),
+                Response::Okay(file_path) => PathBuf::from_str(&file_path).ok(),
+                Response::OkayMultiple(files) => {
+                    files.first().and_then(|f| PathBuf::from_str(f).ok())
+                }
                 Response::Cancel => None,
             }),
             Err(e) => Err(Error::InternalError(format!(

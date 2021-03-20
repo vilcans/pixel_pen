@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use eframe::{
     egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextureId, Vec2},
     epi::{self, TextureAllocator},
@@ -39,8 +41,9 @@ pub struct Application {
     doc: Document,
     ui_state: UiState,
     image_texture: Option<Texture>,
-    pub open_file_dialog: Option<Box<fn() -> Result<Option<String>, Error>>>,
-    pub save_file_dialog: Option<Box<fn() -> Result<Option<String>, Error>>>,
+    pub open_file_dialog: Option<Box<fn() -> Result<Option<PathBuf>, Error>>>,
+    pub save_file_dialog:
+        Option<Box<fn(default_extension: &str) -> Result<Option<PathBuf>, Error>>>,
 }
 
 impl Default for Application {
@@ -93,7 +96,7 @@ impl epi::App for Application {
                     }
                     if let Some(file_dialog) = save_file_dialog {
                         if ui.button("Save As...").clicked() {
-                            match file_dialog() {
+                            match file_dialog("pixelpen") {
                                 Ok(Some(filename)) => {
                                     match storage::save(&doc, std::path::Path::new(&filename)) {
                                         Ok(()) => {}
