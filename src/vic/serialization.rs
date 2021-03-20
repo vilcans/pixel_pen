@@ -1,7 +1,11 @@
+use std::collections::HashMap;
+
 use hex;
 use serde::{Deserialize, Serialize};
 
-use super::{GlobalColors, VicImage};
+use crate::error::Error;
+
+use super::{Char, GlobalColors, VicImage};
 
 /// Image for serialization to or deserialization from file.
 #[derive(Serialize, Deserialize)]
@@ -32,7 +36,6 @@ impl VicImageFile {
             .map(|char| *character_map.get_by_right(&char.bits).unwrap())
             .collect();
         let video_colors = image.video.pixels().map(|char| char.raw_nibble()).collect();
-        //let characters = character_map.iter().map(|(k, v)| (*k as u32, *v)).collect();
         let max_char = character_map
             .left_values()
             .max()
@@ -50,8 +53,28 @@ impl VicImageFile {
             characters,
         }
     }
-    pub fn to_image(self) -> VicImage {
-        VicImage::default()
+
+    pub fn to_image(self) -> Result<VicImage, Error> {
+        let VicImageFile { columns, rows, .. } = self;
+        let characters = self
+            .characters
+            .iter()
+            .enumerate()
+            .filter_map(|(num, bits_string)| bits_string.clone().map(|b| (num, b)))
+            .map(|(num, bits_string)| {
+                let mut bits = [0u8; Char::HEIGHT];
+                hex::decode_to_slice(bits_string, &mut bits).unwrap();
+                (num, bits)
+            })
+            .collect::<HashMap<usize, [u8; Char::HEIGHT]>>();
+        Ok(VicImage::from_data(
+            columns,
+            rows,
+            self.colors,
+            self.video_chars,
+            self.video_colors,
+            characters,
+        ))
     }
 }
 
@@ -70,6 +93,8 @@ impl<'de> Deserialize<'de> for VicImage {
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(VicImageFile::deserialize(deserializer)?.to_image())
+        VicImageFile::deserialize(deserializer)?
+            .to_image()
+            .map_err(|e| panic!("Error: {}", e))
     }
 }

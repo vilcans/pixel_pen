@@ -2,7 +2,10 @@ use bimap::BiMap;
 use eframe::egui::Color32;
 use imgref::{ImgRefMut, ImgVec};
 use serde::{Deserialize, Serialize};
-use std::ops::{Index, IndexMut, RangeInclusive};
+use std::{
+    collections::HashMap,
+    ops::{Index, IndexMut, RangeInclusive},
+};
 
 use crate::coords::Point;
 
@@ -201,6 +204,46 @@ impl VicImage {
     pub fn new(columns: usize, rows: usize) -> Self {
         let video = ImgVec::new(vec![Char::default(); columns * rows], columns, rows);
         Self::with_content(video)
+    }
+
+    /// Create an image from video data.
+    /// ## Arguments
+    /// `video_chars`:  The character at each position. Size: columns x rows.
+    /// `video_colors`: The color and multicolor bit at each position. Size: columns x rows.
+    /// `characters`: Bitmap for each character.
+    pub fn from_data(
+        columns: usize,
+        rows: usize,
+        global_colors: GlobalColors,
+        video_chars: Vec<usize>,
+        video_colors: Vec<u8>,
+        characters: HashMap<usize, [u8; Char::HEIGHT]>,
+    ) -> Self {
+        let video = ImgVec::new(
+            video_chars
+                .iter()
+                .zip(video_colors)
+                .map(|(charnum, color)| {
+                    let bits = *characters.get(charnum).unwrap_or(&[0u8; Char::HEIGHT]);
+                    Char {
+                        bits,
+                        color: color & 7,
+                        multicolor: (color & 8) == 8,
+                    }
+                })
+                .collect(),
+            columns,
+            rows,
+        );
+        let mut bitmaps = BiMap::<_, _>::new();
+        bitmaps.extend(characters);
+        Self {
+            columns,
+            rows,
+            colors: global_colors,
+            video: ImgVec::from(video),
+            bitmaps,
+        }
     }
 
     pub fn with_content(video: ImgVec<Char>) -> Self {
