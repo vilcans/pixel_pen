@@ -44,14 +44,16 @@ impl VicImageFile {
         let characters = (0..max_char)
             .map(|i| character_map.get_by_left(&i).map(|bits| hex::encode(bits)))
             .collect();
-        Self {
+        let instance = Self {
             columns: image.columns,
             rows: image.rows,
             colors: image.colors.clone(),
             video_chars,
             video_colors,
             characters,
-        }
+        };
+        assert!(instance.verify().is_ok());
+        instance
     }
 
     pub fn to_image(self) -> Result<VicImage, Error> {
@@ -63,18 +65,28 @@ impl VicImageFile {
             .filter_map(|(num, bits_string)| bits_string.clone().map(|b| (num, b)))
             .map(|(num, bits_string)| {
                 let mut bits = [0u8; Char::HEIGHT];
-                hex::decode_to_slice(bits_string, &mut bits).unwrap();
-                (num, bits)
+                hex::decode_to_slice(bits_string, &mut bits)?;
+                Ok((num, bits))
             })
-            .collect::<HashMap<usize, [u8; Char::HEIGHT]>>();
-        Ok(VicImage::from_data(
+            .collect::<Result<HashMap<usize, [u8; Char::HEIGHT]>, Error>>()?;
+        VicImage::from_data(
             columns,
             rows,
             self.colors,
             self.video_chars,
             self.video_colors,
             characters,
-        ))
+        )
+    }
+
+    pub fn verify(&self) -> Result<(), Error> {
+        if self.columns <= 0 || self.rows <= 0 {
+            Err(Error::InvalidSize(self.columns, self.rows))
+        } else if self.characters.len() == 0 {
+            Err(Error::NoCharacters)
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -93,8 +105,10 @@ impl<'de> Deserialize<'de> for VicImage {
     where
         D: serde::Deserializer<'de>,
     {
-        VicImageFile::deserialize(deserializer)?
-            .to_image()
-            .map_err(|e| panic!("Error: {}", e))
+        let file_image = VicImageFile::deserialize(deserializer)?;
+        file_image
+            .verify()
+            .and_then(|_| file_image.to_image())
+            .map_err(serde::de::Error::custom)
     }
 }

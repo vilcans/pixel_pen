@@ -7,7 +7,7 @@ use std::{
     ops::{Index, IndexMut, RangeInclusive},
 };
 
-use crate::coords::Point;
+use crate::{coords::Point, error::Error};
 
 mod serialization;
 
@@ -79,6 +79,7 @@ pub struct Char {
 impl Char {
     pub const WIDTH: usize = 8;
     pub const HEIGHT: usize = 8;
+    pub const EMPTY_BITMAP: [u8; Self::HEIGHT] = [0u8; Self::HEIGHT];
 
     pub fn new(bits: [u8; 8], color: u8) -> Self {
         assert!(ALLOWED_CHAR_COLORS.contains(&color));
@@ -218,32 +219,34 @@ impl VicImage {
         video_chars: Vec<usize>,
         video_colors: Vec<u8>,
         characters: HashMap<usize, [u8; Char::HEIGHT]>,
-    ) -> Self {
-        let video = ImgVec::new(
-            video_chars
-                .iter()
-                .zip(video_colors)
-                .map(|(charnum, color)| {
-                    let bits = *characters.get(charnum).unwrap_or(&[0u8; Char::HEIGHT]);
-                    Char {
-                        bits,
-                        color: color & 7,
-                        multicolor: (color & 8) == 8,
-                    }
-                })
-                .collect(),
-            columns,
-            rows,
-        );
-        let mut bitmaps = BiMap::<_, _>::new();
+    ) -> Result<Self, Error> {
+        let size = columns * rows;
+        let raw_video: Vec<Char> = video_chars
+            .iter()
+            .zip(video_colors)
+            .map(|(charnum, color)| {
+                let bits = *characters.get(charnum).unwrap_or(&Char::EMPTY_BITMAP);
+                Char {
+                    bits,
+                    color: color & 7,
+                    multicolor: (color & 8) == 8,
+                }
+            })
+            // Add padding in case video_colors is too short
+            .chain(std::iter::repeat(Char::default()))
+            .take(size)
+            .collect();
+        assert_eq!(size, raw_video.len());
+        let video = ImgVec::new(raw_video, columns, rows);
+        let mut bitmaps = BiMap::new();
         bitmaps.extend(characters);
-        Self {
+        Ok(Self {
             columns,
             rows,
             colors: global_colors,
             video: ImgVec::from(video),
             bitmaps,
-        }
+        })
     }
 
     pub fn with_content(video: ImgVec<Char>) -> Self {

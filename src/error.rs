@@ -15,6 +15,8 @@ pub enum Error {
     Deserialization(Box<bincode::ErrorKind>),
     #[error("failed to load JSON data: {0}")]
     JsonError(#[from] serde_json::Error),
+    #[error("No characters defined")]
+    NoCharacters,
     #[error("Invalid hexadecimal value: {0}")]
     HexError(#[from] hex::FromHexError),
     #[error("Internal error: {0}")]
