@@ -79,9 +79,9 @@ impl VicImageFile {
     }
 
     pub fn verify(&self) -> Result<(), Error> {
-        if self.columns <= 0 || self.rows <= 0 {
+        if self.columns == 0 || self.rows == 0 {
             Err(Error::InvalidSize(self.columns, self.rows))
-        } else if self.characters.len() == 0 {
+        } else if self.characters.is_empty() {
             Err(Error::NoCharacters)
         } else {
             Ok(())
