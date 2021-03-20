@@ -268,7 +268,7 @@ fn render_palette(
                     .filter(|(index, _, _)| image.colors[*index as u32] == color_index as u8)
                     .map(|(_, label, _)| label)
                     .join(", ");
-                if usages.len() != 0 {
+                if !usages.is_empty() {
                     tooltip = format!("{}\n{}", tooltip, usages);
                 }
                 response.clone().on_hover_text(tooltip);

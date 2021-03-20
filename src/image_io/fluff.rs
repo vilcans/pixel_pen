@@ -117,10 +117,9 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
         .map(|_| -> Result<vic::Char, Error> {
             let flf_char: FluffChar = image_io::read_struct(reader)?;
             let mut bits = [0; 8];
-            for i in 0..vic::Char::HEIGHT {
+            for (flf_bits, result_bits) in flf_char.bits.iter().zip(bits.iter_mut()) {
                 // Fluff stores multicolor pixels in reverse order.
                 // Swap aux and color and reverse the pixels.
-                let flf_bits = flf_char.bits[i];
                 let fixed = (0..8)
                     .step_by(2)
                     .map(|bit|
@@ -131,7 +130,7 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
                             } << bit
                     )
                     .sum();
-                bits[i] = fixed;
+                *result_bits = fixed;
             }
             Ok(vic::Char::new(
                 bits,

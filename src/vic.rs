@@ -244,7 +244,7 @@ impl VicImage {
             columns,
             rows,
             colors: global_colors,
-            video: ImgVec::from(video),
+            video,
             bitmaps,
         })
     }
@@ -311,7 +311,7 @@ impl VicImage {
     pub fn map_characters(&self) -> BiMap<usize, [u8; 8]> {
         let mut map = BiMap::new();
         for char in self.video.pixels() {
-            if let Some(_) = map.get_by_right(&char.bits) {
+            if map.get_by_right(&char.bits).is_some() {
                 // Existing bitmap
             } else {
                 let num = map.len();

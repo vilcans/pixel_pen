@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use hex;
 use serde::{Deserialize, Serialize};
 
 use crate::error::Error;
@@ -42,7 +41,7 @@ impl VicImageFile {
             .map(|m| m + 1)
             .unwrap_or(0);
         let characters = (0..max_char)
-            .map(|i| character_map.get_by_left(&i).map(|bits| hex::encode(bits)))
+            .map(|i| character_map.get_by_left(&i).map(hex::encode))
             .collect();
         let instance = Self {
             columns: image.columns,
@@ -56,7 +55,7 @@ impl VicImageFile {
         instance
     }
 
-    pub fn to_image(self) -> Result<VicImage, Error> {
+    pub fn into_image(self) -> Result<VicImage, Error> {
         let VicImageFile { columns, rows, .. } = self;
         let characters = self
             .characters
@@ -108,7 +107,7 @@ impl<'de> Deserialize<'de> for VicImage {
         let file_image = VicImageFile::deserialize(deserializer)?;
         file_image
             .verify()
-            .and_then(|_| file_image.to_image())
+            .and_then(|_| file_image.into_image())
             .map_err(serde::de::Error::custom)
     }
 }
