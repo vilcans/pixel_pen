@@ -107,7 +107,6 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
     }
 
     let header: FluffHeader = image_io::read_struct(reader)?;
-    println!("Fluff header: {:?}", header);
 
     let width = header.width_chars as usize;
     let height = header.height_chars as usize;
@@ -115,14 +114,8 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
         return Err(Error::InvalidSize(width, height));
     }
     let video_buffer = (0..width * height)
-        .map(|index| -> Result<vic::Char, Error> {
+        .map(|_| -> Result<vic::Char, Error> {
             let flf_char: FluffChar = image_io::read_struct(reader)?;
-            //println!("Fluff char: {:?}", flf_char);
-            print!("{:2x}", flf_char.color);
-            if index % width == width - 1 {
-                println!();
-            }
-
             let mut bits = [0; 8];
             for i in 0..vic::Char::HEIGHT {
                 // Fluff stores multicolor pixels in reverse order.
@@ -153,6 +146,5 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
         .collect::<Result<Vec<vic::Char>, Error>>()?;
     let mut image = VicImage::with_content(ImgVec::new(video_buffer, width, height));
     image.colors = GlobalColors([header.background, header.border, header.aux]);
-    println!("Colors: {:?}", image.colors);
     Ok(image)
 }

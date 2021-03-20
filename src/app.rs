@@ -75,19 +75,18 @@ impl epi::App for Application {
                         if ui.button("Open...").clicked() {
                             match file_dialog() {
                                 Ok(Some(filename)) => {
-                                    println!("Should open {}", filename);
                                     match storage::load_any_file(std::path::Path::new(&filename)) {
                                         Ok(doc) => {
                                             new_doc = Some(doc);
                                         }
                                         Err(e) => {
-                                            println!("Failed to load: {:?}", e);
+                                            eprintln!("Failed to load: {:?}", e);
                                         }
                                     }
                                 }
                                 Ok(None) => {}
                                 Err(e) => {
-                                    println!("Could not get file name: {:?}", e);
+                                    eprintln!("Could not get file name: {:?}", e);
                                 }
                             }
                         }
@@ -99,13 +98,13 @@ impl epi::App for Application {
                                     match storage::save(&doc, std::path::Path::new(&filename)) {
                                         Ok(()) => {}
                                         Err(e) => {
-                                            println!("Failed to save: {:?}", e);
+                                            eprintln!("Failed to save: {:?}", e);
                                         }
                                     }
                                 }
                                 Ok(None) => {}
                                 Err(e) => {
-                                    println!("Could not get file name: {:?}", e);
+                                    eprintln!("Could not get file name: {:?}", e);
                                 }
                             }
                         }
