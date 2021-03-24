@@ -198,12 +198,17 @@ impl epi::App for Application {
                 );
                 painter.add(Shape::Mesh(mesh));
 
+                let hover_pos = ui
+                    .input()
+                    .pointer
+                    .tooltip_pos()
+                    .and_then(|p| pixel_transform.bounded_pixel_pos(p));
+
                 // Highlight character
                 match ui_state.mode {
                     Mode::ColorPaint => {
-                        if let Some(pos) = ui.input().pointer.tooltip_pos() {
-                            let pixel_pos = pixel_transform.pixel_pos(pos);
-                            if let Some((top_left, w, h)) = doc.image.character_box(pixel_pos) {
+                        if let Some(pos) = hover_pos {
+                            if let Some((top_left, w, h)) = doc.image.character_box(pos) {
                                 painter.rect_stroke(
                                     Rect::from_min_max(
                                         pixel_transform.screen_pos(top_left),
@@ -219,7 +224,10 @@ impl epi::App for Application {
                     _ => {}
                 }
 
-                ui.label(doc.image.info());
+                ui.label(doc.image.image_info());
+                if let Some(p) = hover_pos {
+                    ui.label(doc.image.pixel_info(p));
+                }
             });
         });
 

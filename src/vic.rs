@@ -370,8 +370,31 @@ impl VicImage {
         ))
     }
 
-    pub fn info(&self) -> String {
+    /// General information about the image
+    pub fn image_info(&self) -> String {
         format!("{} characters used", self.bitmaps.len())
+    }
+
+    /// Information about the given pixel in the image
+    pub fn pixel_info(&self, position: Point) -> String {
+        if let Some((column, row, _cx, _cy)) = self.char_coordinates(position.x, position.y) {
+            let char = &self.video[(column, row)];
+            format!(
+                "({}, {}): column {}, row {} {} color {}",
+                position.x,
+                position.y,
+                column,
+                row,
+                if char.multicolor {
+                    "multicolor"
+                } else {
+                    "high-res"
+                },
+                char.color
+            )
+        } else {
+            String::new()
+        }
     }
 
     /// Width of one pixel compared to its height.

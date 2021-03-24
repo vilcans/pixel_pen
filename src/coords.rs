@@ -34,7 +34,7 @@ impl PixelTransform {
     }
 
     /// Convert screen coordinates to pixel coordinates.
-    /// Return None if the pixel coordinates are out of bounds.
+    /// May return pixel coordinates outside the image.
     pub fn pixel_pos(&self, p: impl Into<Pos2>) -> Point {
         let p = p.into();
         let p = p - self.screen_rect.left_top();
@@ -45,6 +45,8 @@ impl PixelTransform {
         Point { x, y }
     }
 
+    /// Convert screen coordinates to pixel coordinates.
+    /// Returns None if the pixel coordinates are out of bounds.
     pub fn bounded_pixel_pos(&self, p: impl Into<Pos2>) -> Option<Point> {
         let pix = self.pixel_pos(p);
         if (0..self.pixel_width).contains(&pix.x) && (0..self.pixel_height).contains(&pix.y) {
