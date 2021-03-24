@@ -8,6 +8,7 @@ mod coords;
 mod document;
 pub mod error;
 mod image_io;
+mod image_operations;
 mod mutation_monitor;
 mod scaling;
 pub mod storage;

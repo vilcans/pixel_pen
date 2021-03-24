@@ -832,6 +832,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "imagequant"
+version = "3.0.3+sys2.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "670a496b08ae806100367d0c3734ccf48562d8f3f1c61c2c6f13e6aca1ae2881"
+dependencies = [
+ "imagequant-sys",
+ "libc",
+ "rgb",
+]
+
+[[package]]
+name = "imagequant-sys"
+version = "3.0.3+sys2.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3689df1fd74c4a1737ea60ba03a05105d37d0fc8e7ba3028e7e10f162939f8fd"
+dependencies = [
+ "bitflags",
+ "cc",
+ "rgb",
+]
+
+[[package]]
 name = "imgref"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1344,6 +1366,7 @@ dependencies = [
  "eframe",
  "hex",
  "image",
+ "imagequant",
  "imgref",
  "itertools",
  "nfd",
@@ -1463,6 +1486,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94341e4e44e24f6b591b59e47a8a027df12e008d73fd5672dbea9cc22f4507d9"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "rgb"
+version = "0.8.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "287f3c3f8236abb92d8b7e36797f19159df4b58f0a658cc3fb6dd3004b1f3bd3"
+dependencies = [
+ "bytemuck",
 ]
 
 [[package]]

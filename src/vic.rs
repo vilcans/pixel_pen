@@ -1,15 +1,17 @@
 use bimap::BiMap;
 use eframe::egui::Color32;
 use image::{DynamicImage, GenericImage, GenericImageView, Pixel, RgbaImage};
+use imagequant::RGBA;
 use imgref::{ImgRefMut, ImgVec};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
+    cmp::Ordering,
     collections::HashMap,
     ops::{Index, IndexMut, RangeInclusive},
 };
 
-use crate::{color_operations, coords::Point, error::Error};
+use crate::{color_operations, coords::Point, error::Error, image_operations};
 
 mod serialization;
 
@@ -321,16 +323,28 @@ impl VicImage {
             extended
         };
 
-        let colors = GlobalColors([0, 1, 2]);
+        let global_colors = GlobalColors([0, 1, 2]);
+
+        // Reused for each character
+        let mut char_image = RgbaImage::new(Char::WIDTH as u32, Char::HEIGHT as u32);
+
         let video = (0..rows)
             .cartesian_product(0..columns)
             .map(|(row, column)| {
-                Char::from_image(
-                    &image,
-                    (column * Char::WIDTH) as u32,
-                    (row * Char::HEIGHT) as u32,
-                    &colors,
-                )
+                char_image
+                    .copy_from(
+                        &image.view(
+                            (column * Char::WIDTH) as u32,
+                            (row * Char::HEIGHT) as u32,
+                            Char::WIDTH as u32,
+                            Char::HEIGHT as u32,
+                        ),
+                        0,
+                        0,
+                    )
+                    .unwrap();
+                let image = optimized_image(&char_image, &global_colors);
+                Char::from_image(&image, 0, 0, &global_colors)
             })
             .collect();
 
@@ -459,6 +473,16 @@ where
     Color32::from_rgb((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
 }
 
+/// Get a color from the palette.
+/// `index` must be in the range `0..PALETTE_SIZE`.
+pub fn palette_color_rgba<T>(index: T) -> RGBA
+where
+    T: Into<usize>,
+{
+    let rgb = PALETTE[index.into()].0;
+    RGBA::new((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8, 0xff)
+}
+
 /// Get the name of a color from the palette.
 /// `index` must be in the range `0..PALETTE_SIZE`.
 pub fn palette_entry_name<T>(index: T) -> &'static str
@@ -466,4 +490,22 @@ where
     T: Into<usize>,
 {
     PALETTE[index.into()].1
+}
+
+fn optimized_image(original: &RgbaImage, global_colors: &GlobalColors) -> RgbaImage {
+    let fixed_colors = [palette_color_rgba(global_colors[GlobalColors::BACKGROUND])];
+    let (pixels, palette, _error) = ALLOWED_CHAR_COLORS
+        .filter(|attempted_color| *attempted_color != global_colors[GlobalColors::BACKGROUND])
+        .map(|attempted_color| {
+            let mut palette = Vec::with_capacity(fixed_colors.len() + 1);
+            palette.extend_from_slice(&fixed_colors);
+            palette.push(palette_color_rgba(attempted_color));
+            image_operations::palettize(original, &palette)
+        })
+        .min_by(|(_, _, error0), (_, _, error1)| {
+            error0.partial_cmp(error1).unwrap_or(Ordering::Equal)
+        })
+        .unwrap();
+
+    image_operations::depalettize(original.width(), original.height(), &pixels, &palette)
 }
