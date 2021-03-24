@@ -9,17 +9,15 @@ use std::{
 use crate::{error::Error, image_io, mutation_monitor::MutationMonitor, vic::VicImage, Document};
 
 pub fn load_any_file(filename: &Path) -> Result<Document, Error> {
-    let ext = filename
-        .extension()
-        .map(|e| e.to_string_lossy().to_lowercase());
-    if ext == Some("flf".to_string()) {
-        let image = image_io::load_file(filename)?;
-        Ok(Document {
-            image: MutationMonitor::<VicImage>::new_dirty(image),
-            ..Default::default()
-        })
-    } else {
-        load_own(filename)
+    match image_io::identify_file(filename) {
+        Some(format) => {
+            let image = image_io::load_file(filename, format)?;
+            Ok(Document {
+                image: MutationMonitor::<VicImage>::new_dirty(image),
+                ..Default::default()
+            })
+        }
+        None => load_own(filename),
     }
 }
 

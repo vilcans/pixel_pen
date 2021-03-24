@@ -1,13 +1,15 @@
 use bimap::BiMap;
 use eframe::egui::Color32;
+use image::{DynamicImage, GenericImage, GenericImageView, Pixel, RgbaImage};
 use imgref::{ImgRefMut, ImgVec};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     ops::{Index, IndexMut, RangeInclusive},
 };
 
-use crate::{coords::Point, error::Error};
+use crate::{color_operations, coords::Point, error::Error};
 
 mod serialization;
 
@@ -88,6 +90,50 @@ impl Char {
             color,
             multicolor: true,
         }
+    }
+
+    pub fn from_image(image: &RgbaImage, left: u32, top: u32, colors: &GlobalColors) -> Self {
+        let mut histogram = [0i32; PALETTE_SIZE];
+        for (y, x) in (0..Self::WIDTH as u32).cartesian_product(0..Self::HEIGHT as u32) {
+            let rgba = image.get_pixel(x + left, y + top).to_rgba();
+            let rgb = color_operations::rgba_to_rgb(&rgba);
+            let color = color_operations::closest_palette_entry(
+                &rgb,
+                ALLOWED_CHAR_COLORS.map(|i| palette_color(i)),
+            );
+            histogram[color] += 1;
+        }
+        let most_used = histogram
+            .iter()
+            .enumerate()
+            .filter(|&(index, _count)| index as u32 != GlobalColors::BACKGROUND)
+            .filter(|&(_index, count)| *count != 0)
+            .sorted_by(|(_, count1), (_, count2)| count2.cmp(count1))
+            .map(|(index, _)| index)
+            .next();
+
+        let mut char = Self::new(Self::EMPTY_BITMAP, 1);
+        char.multicolor = false;
+
+        if let Some(most_used) = most_used {
+            for (y, x) in (0..Self::WIDTH as u32).cartesian_product(0..Self::HEIGHT as u32) {
+                let rgba = image.get_pixel(x + left, y + top).to_rgba();
+                let rgb = color_operations::rgba_to_rgb(&rgba);
+                if color_operations::closest_palette_entry(
+                    &rgb,
+                    [
+                        palette_color(colors[GlobalColors::BACKGROUND]),
+                        palette_color(most_used),
+                    ]
+                    .iter()
+                    .cloned(),
+                ) == 1
+                {
+                    char.set_pixel(x as i32, y as i32, most_used as u8, &colors)
+                };
+            }
+        }
+        char
     }
 
     /// Return the 4 bit value as stored in color RAM.
@@ -259,6 +305,36 @@ impl VicImage {
             video,
             bitmaps: BiMap::new(),
         }
+    }
+
+    pub fn from_image(image: DynamicImage) -> Result<VicImage, Error> {
+        let columns = (image.width() as usize + Char::WIDTH - 1) / Char::WIDTH;
+        let rows = (image.height() as usize + Char::HEIGHT - 1) / Char::HEIGHT;
+
+        // Extend to whole character cells and convert to RGBA
+        let image = {
+            let mut extended = RgbaImage::new(
+                columns as u32 * Char::WIDTH as u32,
+                rows as u32 * Char::HEIGHT as u32,
+            );
+            extended.copy_from(&image, 0, 0)?;
+            extended
+        };
+
+        let colors = GlobalColors([0, 1, 2]);
+        let video = (0..rows)
+            .cartesian_product(0..columns)
+            .map(|(row, column)| {
+                Char::from_image(
+                    &image,
+                    (column * Char::WIDTH) as u32,
+                    (row * Char::HEIGHT) as u32,
+                    &colors,
+                )
+            })
+            .collect();
+
+        Ok(Self::with_content(ImgVec::new(video, columns, rows)))
     }
 
     /// Get the width and height of the image in pixels.

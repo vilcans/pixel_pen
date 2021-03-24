@@ -21,4 +21,6 @@ pub enum Error {
     HexError(#[from] hex::FromHexError),
     #[error("Internal error: {0}")]
     InternalError(String),
+    #[error("Invalid image")]
+    ImageError(#[from] image::ImageError),
 }
