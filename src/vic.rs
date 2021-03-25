@@ -1,9 +1,9 @@
 use bimap::BiMap;
 use eframe::egui::Color32;
 use image::{DynamicImage, GenericImage, GenericImageView, Pixel, RgbaImage};
-use imagequant::RGBA;
 use imgref::{ImgRefMut, ImgVec};
 use itertools::Itertools;
+use rgb::RGBA;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
@@ -475,7 +475,7 @@ where
 
 /// Get a color from the palette.
 /// `index` must be in the range `0..PALETTE_SIZE`.
-pub fn palette_color_rgba<T>(index: T) -> RGBA
+pub fn palette_color_rgba<T>(index: T) -> RGBA<u8>
 where
     T: Into<usize>,
 {

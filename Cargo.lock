@@ -1370,6 +1370,7 @@ dependencies = [
  "imgref",
  "itertools",
  "nfd",
+ "rgb",
  "serde",
  "serde_json",
  "structopt",

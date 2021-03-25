@@ -1,26 +1,21 @@
 use image::RgbaImage;
-use imagequant::RGBA;
+use rgb::{AsPixels, RGBA8};
 
 /// Returns (pixels, palette, error).
-pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA]) -> (Vec<u8>, Vec<RGBA>, f64) {
-    let (width, height) = image.dimensions();
-    let pixels = image
-        .pixels()
-        .map(|p| imagequant::RGBA {
-            r: p[0],
-            g: p[1],
-            b: p[2],
-            a: p[3],
-        })
-        .collect::<Vec<_>>();
-
+pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, Vec<RGBA8>, f64) {
     let mut liq = imagequant::new();
     liq.set_speed(5);
     //liq.set_quality(0, 99);
     liq.set_max_colors(palette.len() as i32);
 
+    let (width, height) = image.dimensions();
     let ref mut img = liq
-        .new_image(&pixels, width as usize, height as usize, 0.0)
+        .new_image(
+            image.as_raw().as_pixels(),
+            width as usize,
+            height as usize,
+            0.0,
+        )
         .unwrap();
     for &palette_entry in palette {
         img.add_fixed_color(palette_entry);
@@ -39,7 +34,7 @@ pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA]) -> (Vec<u8>, Vec<RGBA>
     (final_pixels, palette, res.quantization_error().unwrap())
 }
 
-pub fn depalettize(width: u32, height: u32, pixels: &Vec<u8>, palette: &[RGBA]) -> RgbaImage {
+pub fn depalettize(width: u32, height: u32, pixels: &Vec<u8>, palette: &[RGBA8]) -> RgbaImage {
     let mut rgba_bytes = Vec::with_capacity((width * height * 4) as usize);
     for &palette_index in pixels {
         let rgba = palette[palette_index as usize];
