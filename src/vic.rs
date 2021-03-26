@@ -504,8 +504,7 @@ fn optimized_image(original: &RgbaImage, global_colors: &GlobalColors) -> ImgVec
                 .iter()
                 .map(|&c| palette_color_rgba(c as usize))
                 .collect::<Vec<_>>();
-            let (pixels, final_palette, error) = image_operations::palettize(original, &palette);
-            assert_eq!(palette, final_palette);
+            let (pixels, error) = image_operations::palettize(original, &palette);
             (pixels, colors, error)
         })
         .min_by(|(_, _, error0), (_, _, error1)| error0.partial_cmp(error1).unwrap())
