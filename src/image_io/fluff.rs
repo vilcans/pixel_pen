@@ -11,6 +11,9 @@ use crate::{
     vic::{self, GlobalColors, VicImage},
 };
 
+/// The first 7 bytes of a Fluff file
+pub const FILE_IDENTIFIER: &[u8; 7] = b"FLUFF64";
+
 #[derive(Deserialize, Copy, Clone, Debug)]
 #[repr(packed(1))]
 struct FluffHeader {
@@ -102,7 +105,7 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
             std::io::ErrorKind::UnexpectedEof => Error::TruncatedData,
             _ => Error::ReadFailure(err),
         })?;
-    if &identifier != b"FLUFF64" {
+    if &identifier != FILE_IDENTIFIER {
         return Err(Error::WrongMagic);
     }
 

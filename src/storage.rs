@@ -6,18 +6,25 @@ use std::{
     path::Path,
 };
 
-use crate::{error::Error, image_io, mutation_monitor::MutationMonitor, vic::VicImage, Document};
+use crate::{
+    error::Error,
+    image_io::{self, FileFormat},
+    mutation_monitor::MutationMonitor,
+    vic::VicImage,
+    Document,
+};
 
 pub fn load_any_file(filename: &Path) -> Result<Document, Error> {
-    match image_io::identify_file(filename) {
-        Some(format) => {
+    match image_io::identify_file(filename)? {
+        FileFormat::Unknown => load_own(filename),
+        format => {
+            //println!("Loading \"{}\" in format {:?}", filename.display(), format);
             let image = image_io::load_file(filename, format)?;
             Ok(Document {
                 image: MutationMonitor::<VicImage>::new_dirty(image),
                 ..Default::default()
             })
         }
-        None => load_own(filename),
     }
 }
 

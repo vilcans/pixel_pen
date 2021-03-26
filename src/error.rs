@@ -23,4 +23,6 @@ pub enum Error {
     InternalError(String),
     #[error("Invalid image")]
     ImageError(#[from] image::ImageError),
+    #[error("Unknown file format on file \"{0}\"")]
+    UnknownFileFormat(std::path::PathBuf),
 }
