@@ -3,7 +3,6 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod app;
-mod color_operations;
 mod coords;
 mod document;
 pub mod error;

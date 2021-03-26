@@ -1,17 +1,16 @@
 use bimap::BiMap;
 use eframe::egui::Color32;
-use image::{DynamicImage, GenericImage, GenericImageView, Pixel, RgbaImage};
-use imgref::{ImgRefMut, ImgVec};
+use image::{DynamicImage, GenericImage, GenericImageView, RgbaImage};
+use imgref::{ImgRef, ImgRefMut, ImgVec};
 use itertools::Itertools;
 use rgb::RGBA;
 use serde::{Deserialize, Serialize};
 use std::{
-    cmp::Ordering,
     collections::HashMap,
     ops::{Index, IndexMut, RangeInclusive},
 };
 
-use crate::{color_operations, coords::Point, error::Error, image_operations};
+use crate::{coords::Point, error::Error, image_operations};
 
 mod serialization;
 
@@ -85,6 +84,7 @@ impl Char {
     pub const HEIGHT: usize = 8;
     pub const EMPTY_BITMAP: [u8; Self::HEIGHT] = [0u8; Self::HEIGHT];
 
+    /// Create a new multicolor character
     pub fn new(bits: [u8; 8], color: u8) -> Self {
         assert!(ALLOWED_CHAR_COLORS.contains(&color));
         Self {
@@ -94,48 +94,41 @@ impl Char {
         }
     }
 
-    pub fn from_image(image: &RgbaImage, left: u32, top: u32, colors: &GlobalColors) -> Self {
-        let mut histogram = [0i32; PALETTE_SIZE];
-        for (y, x) in (0..Self::WIDTH as u32).cartesian_product(0..Self::HEIGHT as u32) {
-            let rgba = image.get_pixel(x + left, y + top).to_rgba();
-            let rgb = color_operations::rgba_to_rgb(&rgba);
-            let color = color_operations::closest_palette_entry(
-                &rgb,
-                ALLOWED_CHAR_COLORS.map(|i| palette_color(i)),
-            );
-            histogram[color] += 1;
+    /// Create a new high resolution character
+    pub fn new_highres(bits: [u8; 8], color: u8) -> Self {
+        assert!(ALLOWED_CHAR_COLORS.contains(&color));
+        Self {
+            bits,
+            color,
+            multicolor: false,
         }
-        let most_used = histogram
-            .iter()
-            .enumerate()
-            .filter(|&(index, _count)| index as u32 != GlobalColors::BACKGROUND)
-            .filter(|&(_index, count)| *count != 0)
-            .sorted_by(|(_, count1), (_, count2)| count2.cmp(count1))
-            .map(|(index, _)| index)
-            .next();
+    }
 
-        let mut char = Self::new(Self::EMPTY_BITMAP, 1);
-        char.multicolor = false;
+    pub fn highres_from_colors(colors: ImgRef<'_, u8>, global_colors: &GlobalColors) -> Self {
+        assert_eq!(colors.width(), Self::WIDTH);
+        assert_eq!(colors.height(), Self::HEIGHT);
 
-        if let Some(most_used) = most_used {
-            for (y, x) in (0..Self::WIDTH as u32).cartesian_product(0..Self::HEIGHT as u32) {
-                let rgba = image.get_pixel(x + left, y + top).to_rgba();
-                let rgb = color_operations::rgba_to_rgb(&rgba);
-                if color_operations::closest_palette_entry(
-                    &rgb,
-                    [
-                        palette_color(colors[GlobalColors::BACKGROUND]),
-                        palette_color(most_used),
-                    ]
-                    .iter()
-                    .cloned(),
-                ) == 1
-                {
-                    char.set_pixel(x as i32, y as i32, most_used as u8, &colors)
-                };
-            }
+        let mut cell_color = 1u8; // the final color of the cell
+        let bg_color = global_colors[GlobalColors::BACKGROUND] as u8;
+        let mut bitmap = [0u8; Self::HEIGHT];
+
+        for (pixel_row, bits) in colors.rows().zip(bitmap.iter_mut()) {
+            *bits = pixel_row
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(x, pixel_color)| {
+                    if pixel_color == bg_color {
+                        0
+                    } else {
+                        cell_color = pixel_color; // Use the last found color as the color for the cell
+                        0x80u8 >> x
+                    }
+                })
+                .sum();
         }
-        char
+
+        Self::new_highres(bitmap, cell_color)
     }
 
     /// Return the 4 bit value as stored in color RAM.
@@ -343,8 +336,8 @@ impl VicImage {
                         0,
                     )
                     .unwrap();
-                let image = optimized_image(&char_image, &global_colors);
-                Char::from_image(&image, 0, 0, &global_colors)
+                let colors = optimized_image(&char_image, &global_colors);
+                Char::highres_from_colors(colors.as_ref(), &global_colors)
             })
             .collect();
 
@@ -492,20 +485,35 @@ where
     PALETTE[index.into()].1
 }
 
-fn optimized_image(original: &RgbaImage, global_colors: &GlobalColors) -> RgbaImage {
-    let fixed_colors = [palette_color_rgba(global_colors[GlobalColors::BACKGROUND])];
-    let (pixels, palette, _error) = ALLOWED_CHAR_COLORS
+/// Generates an optimized image using the hardware palette colors.
+/// Tries different colors and finds the one that gives the least quantization error.
+/// Returns the resulting color numbers.
+fn optimized_image(original: &RgbaImage, global_colors: &GlobalColors) -> ImgVec<u8> {
+    // These colors will be used in each attempt.
+    let fixed_colors = [global_colors[GlobalColors::BACKGROUND]];
+
+    let (pixels, colors, _error) = ALLOWED_CHAR_COLORS
         .filter(|attempted_color| *attempted_color != global_colors[GlobalColors::BACKGROUND])
         .map(|attempted_color| {
-            let mut palette = Vec::with_capacity(fixed_colors.len() + 1);
-            palette.extend_from_slice(&fixed_colors);
-            palette.push(palette_color_rgba(attempted_color));
-            image_operations::palettize(original, &palette)
+            // Generate a list of the color combinations to try
+            let mut colors = Vec::with_capacity(fixed_colors.len() + 1);
+            colors.extend_from_slice(&fixed_colors);
+            colors.push(attempted_color);
+            // Generate RGBA palette from those colors.
+            let palette = colors
+                .iter()
+                .map(|&c| palette_color_rgba(c as usize))
+                .collect::<Vec<_>>();
+            let (pixels, final_palette, error) = image_operations::palettize(original, &palette);
+            assert_eq!(palette, final_palette);
+            (pixels, colors, error)
         })
-        .min_by(|(_, _, error0), (_, _, error1)| {
-            error0.partial_cmp(error1).unwrap_or(Ordering::Equal)
-        })
+        .min_by(|(_, _, error0), (_, _, error1)| error0.partial_cmp(error1).unwrap())
         .unwrap();
 
-    image_operations::depalettize(original.width(), original.height(), &pixels, &palette)
+    ImgVec::new(
+        pixels.iter().map(|&c| colors[c as usize]).collect(),
+        original.width() as usize,
+        original.height() as usize,
+    )
 }
