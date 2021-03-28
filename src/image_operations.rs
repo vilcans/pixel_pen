@@ -40,14 +40,14 @@ pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
 
 /// Returns (pixels, palette, error).
 #[cfg(not(feature = "imagequant"))]
-pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
+pub fn palettize(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
     use crate::colors;
 
     let it = image
         .pixels()
-        .map(|color| colors::closest_palette_entry(colors::to_rgba(color), palette))
+        .map(|color| colors::closest_palette_entry(colors::rgba_from_image(*color), palette.iter()))
         .map(|(index, error)| (index, error as f64));
-    let indices = it.clone().map(|(index, _)| index).collect();
+    let indices = it.clone().map(|(index, _)| index as u8).collect();
     let error_sum = it.map(|(_, error)| error).sum();
     (indices, error_sum)
 }
