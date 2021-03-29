@@ -71,6 +71,33 @@ impl IndexMut<u32> for GlobalColors {
         &mut self.0[index as usize]
     }
 }
+impl IntoIterator for GlobalColors {
+    type Item = u8;
+    type IntoIter = GlobalColorsIntoIterator;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Self::IntoIter {
+            value: self,
+            index: 0,
+        }
+    }
+}
+pub struct GlobalColorsIntoIterator {
+    value: GlobalColors,
+    index: u32,
+}
+impl Iterator for GlobalColorsIntoIterator {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        if (self.index as usize) < self.value.0.len() {
+            let c = self.value[self.index];
+            self.index += 1;
+            Some(c)
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
@@ -375,6 +402,18 @@ impl VicImage {
             Char::WIDTH as i32,
             Char::HEIGHT as i32,
         ))
+    }
+
+    /// Check if it's possible to paint with the given color.
+    pub fn is_allowed_paint_color(&self, color: usize) -> bool {
+        let color = color as u8;
+        ALLOWED_CHAR_COLORS.contains(&color)
+            || self
+                .colors
+                .clone()
+                .into_iter()
+                .find(|c| *c == color)
+                .is_some()
     }
 
     /// General information about the image
