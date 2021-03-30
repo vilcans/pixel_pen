@@ -405,15 +405,34 @@ impl VicImage {
     }
 
     /// Check if it's possible to paint with the given color.
-    pub fn is_allowed_paint_color(&self, color: usize) -> bool {
+    /// If it's not possible to paint with the given color at that point,
+    /// returns a message describing why. If painting is allowed, returns None.
+    pub fn check_allowed_paint(&self, color: usize, pos: Point) -> Option<String> {
         let color = color as u8;
-        ALLOWED_CHAR_COLORS.contains(&color)
-            || self
-                .colors
-                .clone()
-                .into_iter()
-                .find(|c| *c == color)
-                .is_some()
+        match self.char_coordinates(pos.x, pos.y) {
+            Some((column, row, _, _)) => {
+                if self.video[(column, row)].multicolor {
+                    if ALLOWED_CHAR_COLORS.contains(&color)
+                        || color == self.colors[GlobalColors::BACKGROUND]
+                        || color == self.colors[GlobalColors::BORDER]
+                        || color == self.colors[GlobalColors::AUX]
+                    {
+                        None
+                    } else {
+                        Some("Multicolor characters can be painted with color 0-7, background, border, or aux".to_string())
+                    }
+                } else {
+                    if ALLOWED_CHAR_COLORS.contains(&color)
+                        || color == self.colors[GlobalColors::BACKGROUND]
+                    {
+                        None
+                    } else {
+                        Some("High resolution characters can be painted with color 0-7, or background".to_string())
+                    }
+                }
+            }
+            None => None,
+        }
     }
 
     /// General information about the image

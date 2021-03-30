@@ -161,20 +161,34 @@ impl epi::App for Application {
                     pixel_height: height as i32,
                 };
 
+                let hover_pos_screen = ui.input().pointer.tooltip_pos();
+                let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
+
+                let disallowed_message = &hover_pos.and_then(|hover_pos| {
+                    doc.image.check_allowed_paint(doc.paint_color, hover_pos)
+                });
+
+                if let Some(message) = disallowed_message {
+                    egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
+                }
+
                 if let Some(pointer_pos) = response.interact_pointer_pos() {
-                    let pointer = &response.ctx.input().pointer;
-                    let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
-                        doc.image.colors[GlobalColors::BACKGROUND]
-                    } else {
-                        doc.paint_color as u8
-                    };
-                    if let Some(Point { x, y }) = pixel_transform.bounded_pixel_pos(pointer_pos) {
-                        match ui_state.mode {
-                            Mode::PixelPaint => {
-                                doc.image.set_pixel(x, y, color_to_set);
-                            }
-                            Mode::ColorPaint => {
-                                doc.image.set_color(x, y, color_to_set);
+                    if disallowed_message.is_none() {
+                        let pointer = &response.ctx.input().pointer;
+                        let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
+                            doc.image.colors[GlobalColors::BACKGROUND]
+                        } else {
+                            doc.paint_color as u8
+                        };
+                        if let Some(Point { x, y }) = pixel_transform.bounded_pixel_pos(pointer_pos)
+                        {
+                            match ui_state.mode {
+                                Mode::PixelPaint => {
+                                    doc.image.set_pixel(x, y, color_to_set);
+                                }
+                                Mode::ColorPaint => {
+                                    doc.image.set_color(x, y, color_to_set);
+                                }
                             }
                         }
                     }
@@ -197,12 +211,6 @@ impl epi::App for Application {
                     Color32::WHITE,
                 );
                 painter.add(Shape::Mesh(mesh));
-
-                let hover_pos = ui
-                    .input()
-                    .pointer
-                    .tooltip_pos()
-                    .and_then(|p| pixel_transform.bounded_pixel_pos(p));
 
                 // Highlight character
                 match ui_state.mode {
