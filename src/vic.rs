@@ -421,14 +421,15 @@ impl VicImage {
                     } else {
                         Some("Multicolor characters can be painted with color 0-7, background, border, or aux".to_string())
                     }
+                } else if ALLOWED_CHAR_COLORS.contains(&color)
+                    || color == self.colors[GlobalColors::BACKGROUND]
+                {
+                    None
                 } else {
-                    if ALLOWED_CHAR_COLORS.contains(&color)
-                        || color == self.colors[GlobalColors::BACKGROUND]
-                    {
-                        None
-                    } else {
-                        Some("High resolution characters can be painted with color 0-7, or background".to_string())
-                    }
+                    Some(
+                        "High resolution characters can be painted with color 0-7, or background"
+                            .to_string(),
+                    )
                 }
             }
             None => None,
