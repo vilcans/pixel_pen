@@ -29,7 +29,7 @@ rgb = "0.8.25"
 nfd = "0.0.4"
 
 [features]
-default = []
+default = ["imagequant"]
 http = ["eframe/http"] # Enable if you want to do http requests
 
 [profile.release]
