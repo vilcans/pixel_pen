@@ -38,7 +38,7 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --lib --target wasm32-unknown-unknown
+          args: --no-default-features --lib --target wasm32-unknown-unknown
 
   test:
     name: Test Suite
