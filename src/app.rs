@@ -39,6 +39,7 @@ struct UiState {
 
 pub type OpenFileDialog = fn() -> Result<Option<PathBuf>, Error>;
 pub type SaveFileDialog = fn(default_extension: &str) -> Result<Option<PathBuf>, Error>;
+pub type ErrorDisplay = fn(&str);
 
 pub struct Application {
     doc: Document,
@@ -46,6 +47,7 @@ pub struct Application {
     image_texture: Option<Texture>,
     pub open_file_dialog: Option<Box<OpenFileDialog>>,
     pub save_file_dialog: Option<Box<SaveFileDialog>>,
+    pub show_error_message: Box<ErrorDisplay>,
 }
 
 impl Default for Application {
@@ -68,6 +70,7 @@ impl epi::App for Application {
             image_texture,
             open_file_dialog,
             save_file_dialog,
+            show_error_message,
         } = self;
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
@@ -85,13 +88,16 @@ impl epi::App for Application {
                                             new_doc = Some(doc);
                                         }
                                         Err(e) => {
-                                            eprintln!("Failed to load: {:?}", e);
+                                            show_error_message(&format!("Failed to load: {:?}", e));
                                         }
                                     }
                                 }
                                 Ok(None) => {}
                                 Err(e) => {
-                                    eprintln!("Could not get file name: {:?}", e);
+                                    show_error_message(&format!(
+                                        "Could not get file name: {:?}",
+                                        e
+                                    ));
                                 }
                             }
                         }
@@ -103,13 +109,16 @@ impl epi::App for Application {
                                     match storage::save(&doc, std::path::Path::new(&filename)) {
                                         Ok(()) => {}
                                         Err(e) => {
-                                            eprintln!("Failed to save: {:?}", e);
+                                            show_error_message(&format!("Failed to save: {:?}", e));
                                         }
                                     }
                                 }
                                 Ok(None) => {}
                                 Err(e) => {
-                                    eprintln!("Could not get file name: {:?}", e);
+                                    show_error_message(&format!(
+                                        "Could not get file name: {:?}",
+                                        e
+                                    ));
                                 }
                             }
                         }
@@ -369,6 +378,7 @@ impl Application {
             image_texture: None,
             open_file_dialog: None,
             save_file_dialog: None,
+            show_error_message: Box::new(|message| eprintln!("{}\n", message)),
         }
     }
 }

@@ -12,6 +12,7 @@ fn main() {
         Ok(Some(mut app)) => {
             app.open_file_dialog = Some(Box::new(native::open_file_dialog));
             app.save_file_dialog = Some(Box::new(native::save_file_dialog));
+            app.show_error_message = Box::new(native::show_error_message);
             eframe::run_native(Box::new(app)); // never returns
         }
         Ok(None) => {}
@@ -40,6 +41,10 @@ mod native {
             }
             a => a,
         }
+    }
+
+    pub fn show_error_message(message: &str) {
+        eprintln!("{}\n", message);
     }
 
     fn map_result(result: &nfd::Result<nfd::Response>) -> Result<Option<PathBuf>, Error> {
