@@ -22,45 +22,48 @@ fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
-    use std::{path::PathBuf, str::FromStr};
-
+    use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
-    const OPEN_FILE_TYPES: &str = "pixelpen,png,flf";
-    const SAVE_FILE_TYPES: &str = "pixelpen";
+    use std::path::PathBuf;
 
     pub fn open_file_dialog() -> Result<Option<PathBuf>, Error> {
-        let res = nfd::open_file_dialog(Some(OPEN_FILE_TYPES), None);
-        map_result(&res)
+        let path = FileDialog::new()
+            //.set_location("~/Desktop")
+            .add_filter("Pixel Pen Image", &["pixelpen"])
+            .add_filter("Turbo Rascal FLUFF", &["flf"])
+            .add_filter("PNG Image", &["png"])
+            .add_filter("JPEG Image", &["jpg", "jpeg"])
+            .show_open_single_file()
+            .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
+        Ok(path)
     }
 
     pub fn save_file_dialog(default_extension: &str) -> Result<Option<PathBuf>, Error> {
-        let res = nfd::open_save_dialog(Some(SAVE_FILE_TYPES), None);
-        match map_result(&res) {
-            Ok(Some(filename)) if filename.extension().is_none() => {
+        let path = FileDialog::new()
+            //.set_location("~/Desktop")
+            .add_filter("Pixel Pen Image", &["pixelpen"])
+            .show_save_single_file()
+            .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
+
+        match path {
+            Some(filename) if filename.extension().is_none() => {
                 Ok(Some(filename.with_extension(default_extension)))
             }
-            a => a,
+            p => Ok(p),
         }
     }
 
     pub fn show_error_message(message: &str) {
-        eprintln!("{}\n", message);
-    }
-
-    fn map_result(result: &nfd::Result<nfd::Response>) -> Result<Option<PathBuf>, Error> {
-        use nfd::Response;
-        match result {
-            Ok(r) => Ok(match r {
-                Response::Okay(file_path) => PathBuf::from_str(&file_path).ok(),
-                Response::OkayMultiple(files) => {
-                    files.first().and_then(|f| PathBuf::from_str(f).ok())
-                }
-                Response::Cancel => None,
-            }),
-            Err(e) => Err(Error::InternalError(format!(
-                "Failed to open dialog: {}",
-                e
-            ))),
+        match MessageDialog::new()
+            .set_type(MessageType::Error)
+            .set_title("Error")
+            .set_text(message)
+            .show_alert()
+        {
+            Err(e) => {
+                eprintln!("Failed to show error message \"{0}\": {1}", message, e);
+            }
+            Ok(()) => {}
         }
     }
 }
