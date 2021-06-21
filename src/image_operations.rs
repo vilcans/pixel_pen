@@ -3,7 +3,7 @@ use rgb::RGBA8;
 
 /// Returns (pixels, palette, error).
 #[cfg(feature = "imagequant")]
-pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
+pub fn palettize(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
     use rgb::AsPixels;
 
     let mut liq = imagequant::new();
@@ -12,7 +12,7 @@ pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
     liq.set_max_colors(palette.len() as i32);
 
     let (width, height) = image.dimensions();
-    let ref mut img = liq
+    let mut img = liq
         .new_image(
             image.as_raw().as_pixels(),
             width as usize,
@@ -24,7 +24,7 @@ pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
         img.add_fixed_color(palette_entry);
     }
 
-    let mut res = match liq.quantize(img) {
+    let mut res = match liq.quantize(&img) {
         Ok(res) => res,
         Err(err) => panic!("Quantization failed, because: {:?}", err),
     };
@@ -33,7 +33,7 @@ pub fn palettize<'a>(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
     res.set_dithering_level(1.0);
 
     // You can reuse the result to generate several images with the same palette
-    let (final_palette, final_pixels) = res.remapped(img).unwrap();
+    let (final_palette, final_pixels) = res.remapped(&mut img).unwrap();
     debug_assert_eq!(final_palette, palette);
     (final_pixels, res.quantization_error().unwrap())
 }
