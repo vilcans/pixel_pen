@@ -12,6 +12,7 @@ mod image_operations;
 mod mutation_monitor;
 mod scaling;
 pub mod storage;
+pub mod system;
 mod ui;
 mod vic;
 mod widgets;

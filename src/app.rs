@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use eframe::{
     egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextureId, Vec2},
     epi::{self, TextureAllocator},
@@ -10,9 +8,10 @@ use itertools::Itertools;
 use crate::{
     coords::{PixelTransform, Point},
     document::Document,
-    error::Error,
     mutation_monitor::MutationMonitor,
-    scaling, storage, ui,
+    scaling, storage,
+    system::SystemFunctions,
+    ui,
     vic::{self, GlobalColors, VicImage},
     widgets,
 };
@@ -37,17 +36,11 @@ struct UiState {
     zoom: f32,
 }
 
-pub type OpenFileDialog = fn() -> Result<Option<PathBuf>, Error>;
-pub type SaveFileDialog = fn(default_extension: &str) -> Result<Option<PathBuf>, Error>;
-pub type ErrorDisplay = fn(&str);
-
 pub struct Application {
     doc: Document,
     ui_state: UiState,
     image_texture: Option<Texture>,
-    pub open_file_dialog: Option<Box<OpenFileDialog>>,
-    pub save_file_dialog: Option<Box<SaveFileDialog>>,
-    pub show_error_message: Box<ErrorDisplay>,
+    pub system: SystemFunctions,
 }
 
 impl Default for Application {
@@ -68,9 +61,7 @@ impl epi::App for Application {
             ui_state,
             doc,
             image_texture,
-            open_file_dialog,
-            save_file_dialog,
-            show_error_message,
+            system,
         } = self;
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
@@ -79,47 +70,37 @@ impl epi::App for Application {
             // Menu bar
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
-                    if let Some(file_dialog) = open_file_dialog {
-                        if ui.button("Open...").clicked() {
-                            match file_dialog() {
-                                Ok(Some(filename)) => {
-                                    match storage::load_any_file(std::path::Path::new(&filename)) {
-                                        Ok(doc) => {
-                                            new_doc = Some(doc);
-                                        }
-                                        Err(e) => {
-                                            show_error_message(&format!("Failed to load: {:?}", e));
-                                        }
+                    if system.open_file_dialog.is_some() && ui.button("Open...").clicked() {
+                        match system.open_file_dialog() {
+                            Ok(Some(filename)) => {
+                                match storage::load_any_file(std::path::Path::new(&filename)) {
+                                    Ok(doc) => {
+                                        new_doc = Some(doc);
+                                    }
+                                    Err(e) => {
+                                        system.show_error(&format!("Failed to load: {:?}", e));
                                     }
                                 }
-                                Ok(None) => {}
-                                Err(e) => {
-                                    show_error_message(&format!(
-                                        "Could not get file name: {:?}",
-                                        e
-                                    ));
-                                }
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                system.show_error(&format!("Could not get file name: {:?}", e));
                             }
                         }
                     }
-                    if let Some(file_dialog) = save_file_dialog {
-                        if ui.button("Save As...").clicked() {
-                            match file_dialog("pixelpen") {
-                                Ok(Some(filename)) => {
-                                    match storage::save(&doc, std::path::Path::new(&filename)) {
-                                        Ok(()) => {}
-                                        Err(e) => {
-                                            show_error_message(&format!("Failed to save: {:?}", e));
-                                        }
+                    if system.save_file_dialog.is_some() && ui.button("Save As...").clicked() {
+                        match system.save_file_dialog("pixelpen") {
+                            Ok(Some(filename)) => {
+                                match storage::save(&doc, std::path::Path::new(&filename)) {
+                                    Ok(()) => {}
+                                    Err(e) => {
+                                        system.show_error(&format!("Failed to save: {:?}", e));
                                     }
                                 }
-                                Ok(None) => {}
-                                Err(e) => {
-                                    show_error_message(&format!(
-                                        "Could not get file name: {:?}",
-                                        e
-                                    ));
-                                }
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                system.show_error(&format!("Could not get file name: {:?}", e));
                             }
                         }
                     }
@@ -376,9 +357,7 @@ impl Application {
             },
             doc,
             image_texture: None,
-            open_file_dialog: None,
-            save_file_dialog: None,
-            show_error_message: Box::new(|message| eprintln!("{}\n", message)),
+            system: Default::default(),
         }
     }
 }

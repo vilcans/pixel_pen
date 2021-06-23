@@ -10,9 +10,7 @@ mod cli;
 fn main() {
     match cli::main() {
         Ok(Some(mut app)) => {
-            app.open_file_dialog = Some(Box::new(native::open_file_dialog));
-            app.save_file_dialog = Some(Box::new(native::save_file_dialog));
-            app.show_error_message = Box::new(native::show_error_message);
+            app.system = native::system();
             eframe::run_native(Box::new(app)); // never returns
         }
         Ok(None) => {}
@@ -24,7 +22,16 @@ fn main() {
 mod native {
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
+    use pixel_pen::system::SystemFunctions;
     use std::path::PathBuf;
+
+    pub fn system() -> SystemFunctions {
+        SystemFunctions {
+            open_file_dialog: Some(Box::new(open_file_dialog)),
+            save_file_dialog: Some(Box::new(save_file_dialog)),
+            show_error: Box::new(show_error_message),
+        }
+    }
 
     pub fn open_file_dialog() -> Result<Option<PathBuf>, Error> {
         let path = FileDialog::new()
