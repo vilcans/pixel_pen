@@ -154,36 +154,16 @@ impl epi::App for Application {
                 let hover_pos_screen = ui.input().pointer.tooltip_pos();
                 let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
 
-                let disallowed_message = &hover_pos.and_then(|hover_pos| {
-                    doc.image.check_allowed_paint(doc.paint_color, hover_pos)
-                });
-
-                if let Some(message) = disallowed_message {
-                    egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
+                if matches!(ui_state.mode, Mode::PixelPaint | Mode::ColorPaint) {
+                    update_in_paint_mode(
+                        hover_pos,
+                        doc,
+                        ui,
+                        &response,
+                        &pixel_transform,
+                        &ui_state,
+                    );
                 }
-
-                if let Some(pointer_pos) = response.interact_pointer_pos() {
-                    if disallowed_message.is_none() {
-                        let pointer = &response.ctx.input().pointer;
-                        let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
-                            doc.image.colors[GlobalColors::BACKGROUND]
-                        } else {
-                            doc.paint_color as u8
-                        };
-                        if let Some(Point { x, y }) = pixel_transform.bounded_pixel_pos(pointer_pos)
-                        {
-                            match ui_state.mode {
-                                Mode::PixelPaint => {
-                                    doc.image.set_pixel(x, y, color_to_set);
-                                }
-                                Mode::ColorPaint => {
-                                    doc.image.set_color(x, y, color_to_set);
-                                }
-                            }
-                        }
-                    }
-                }
-
                 // Draw the main image
                 let tex_allocator = frame.tex_allocator();
 
@@ -228,6 +208,41 @@ impl epi::App for Application {
 
         if let Some(doc) = new_doc {
             self.doc = doc;
+        }
+    }
+}
+
+fn update_in_paint_mode(
+    hover_pos: Option<Point>,
+    doc: &mut Document,
+    ui: &mut egui::Ui,
+    response: &egui::Response,
+    pixel_transform: &PixelTransform,
+    ui_state: &UiState,
+) {
+    let disallowed_message =
+        &hover_pos.and_then(|hover_pos| doc.image.check_allowed_paint(doc.paint_color, hover_pos));
+    if let Some(message) = disallowed_message {
+        egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
+    }
+    if let Some(pointer_pos) = response.interact_pointer_pos() {
+        if disallowed_message.is_none() {
+            let pointer = &response.ctx.input().pointer;
+            let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
+                doc.image.colors[GlobalColors::BACKGROUND]
+            } else {
+                doc.paint_color as u8
+            };
+            if let Some(Point { x, y }) = pixel_transform.bounded_pixel_pos(pointer_pos) {
+                match ui_state.mode {
+                    Mode::PixelPaint => {
+                        doc.image.set_pixel(x, y, color_to_set);
+                    }
+                    Mode::ColorPaint => {
+                        doc.image.set_color(x, y, color_to_set);
+                    }
+                }
+            }
         }
     }
 }
