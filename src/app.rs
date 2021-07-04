@@ -19,8 +19,9 @@ use crate::{
 // Don't scale the texture more than this to avoid huge textures when zooming.
 const MAX_SCALE: u32 = 8;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum Mode {
+    Import,
     PixelPaint,
     ColorPaint,
 }
@@ -112,6 +113,8 @@ impl epi::App for Application {
 
             // Toolbar
             ui.horizontal_wrapped(|ui| {
+                ui.selectable_value(&mut ui_state.mode, Mode::Import, "Import")
+                    .on_hover_text("Import image file");
                 ui.selectable_value(&mut ui_state.mode, Mode::PixelPaint, "Pixel paint")
                     .on_hover_text("Paint pixels");
                 ui.selectable_value(&mut ui_state.mode, Mode::ColorPaint, "Color paint")
@@ -154,15 +157,16 @@ impl epi::App for Application {
                 let hover_pos_screen = ui.input().pointer.tooltip_pos();
                 let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
 
-                if matches!(ui_state.mode, Mode::PixelPaint | Mode::ColorPaint) {
-                    update_in_paint_mode(
+                match ui_state.mode {
+                    Mode::Import => {}
+                    Mode::PixelPaint | Mode::ColorPaint => update_in_paint_mode(
                         hover_pos,
                         doc,
                         ui,
                         &response,
                         &pixel_transform,
                         &ui_state,
-                    );
+                    ),
                 }
                 // Draw the main image
                 let tex_allocator = frame.tex_allocator();
@@ -241,6 +245,10 @@ fn update_in_paint_mode(
                     Mode::ColorPaint => {
                         doc.image.set_color(x, y, color_to_set);
                     }
+                    _ => panic!(
+                        "update_in paint_mode with invalid mode: {:?}",
+                        ui_state.mode
+                    ),
                 }
             }
         }
