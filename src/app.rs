@@ -111,36 +111,46 @@ impl epi::App for Application {
                 });
             });
 
-            // Toolbar
-            ui.horizontal_wrapped(|ui| {
+            // Top toolbar
+            ui.vertical(|ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label("Zoom:");
+                    if ui.button("-").on_hover_text("Zoom out").clicked() && ui_state.zoom > 1.0 {
+                        ui_state.zoom /= 2.0
+                    }
+                    if ui
+                        .button(format!("{:0.0}x", ui_state.zoom))
+                        .on_hover_text("Set to 2x")
+                        .clicked()
+                    {
+                        ui_state.zoom = 2.0;
+                    }
+                    if ui.button("+").on_hover_text("Zoom in").clicked() && ui_state.zoom < 16.0 {
+                        ui_state.zoom *= 2.0
+                    }
+                });
+                ui.separator();
+                render_palette(ui, &mut doc.paint_color, &mut doc.image);
+            });
+        });
+
+        // Left toolbar
+        egui::SidePanel::left("toolbar", 250.0).show(ctx, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                // Import
                 ui.selectable_value(&mut ui_state.mode, Mode::Import, "Import")
                     .on_hover_text("Import image file");
+                ui.shrink_width_to_current();
+                if let Mode::Import = ui_state.mode {
+                    render_import(ui, doc, system);
+                }
+                // PixelPaint
                 ui.selectable_value(&mut ui_state.mode, Mode::PixelPaint, "Pixel paint")
                     .on_hover_text("Paint pixels");
+                // ColorPaint
                 ui.selectable_value(&mut ui_state.mode, Mode::ColorPaint, "Color paint")
                     .on_hover_text("Change the color of character cells");
-                ui.separator();
-                ui.label("Zoom:");
-                if ui.button("-").on_hover_text("Zoom out").clicked() && ui_state.zoom > 1.0 {
-                    ui_state.zoom /= 2.0
-                }
-                if ui
-                    .button(format!("{:0.0}x", ui_state.zoom))
-                    .on_hover_text("Set to 2x")
-                    .clicked()
-                {
-                    ui_state.zoom = 2.0;
-                }
-                if ui.button("+").on_hover_text("Zoom in").clicked() && ui_state.zoom < 16.0 {
-                    ui_state.zoom *= 2.0
-                }
             });
-
-            ui.separator();
-            if let Mode::Import = ui_state.mode {
-                render_import(ui, doc, system);
-            }
-            render_palette(ui, &mut doc.paint_color, &mut doc.image);
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -220,21 +230,28 @@ impl epi::App for Application {
 }
 
 fn render_import(ui: &mut egui::Ui, doc: &mut Document, system: &mut SystemFunctions) {
-    ui.horizontal_for_text(TextStyle::Body, |ui| {
-        ui.label("File name:");
-        let mut filename = doc.import.filename.clone().unwrap_or_default();
-        ui.text_edit_singleline(&mut filename);
-        let filename = filename.trim();
-        if filename.is_empty() {
-            doc.import.filename = None;
-        } else {
-            doc.import.filename = Some(filename.to_string());
-        }
-        if ui.button("Browse").clicked() {
-            if let Ok(Some(f)) = system.open_file_dialog() {
-                doc.import.filename = f.to_str().map(str::to_string);
-            }
-        }
+    ui.vertical(|ui| {
+        ui.horizontal_for_text(TextStyle::Body, |ui| {
+            let mut filename = doc.import.filename.clone().unwrap_or_default();
+            ui.label("File name:");
+            ui.vertical(|ui| {
+                ui.text_edit_singleline(&mut filename);
+                let filename = if ui.button("Browse...").clicked() {
+                    if let Ok(Some(f)) = system.open_file_dialog() {
+                        f.to_str().map(str::to_string)
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(filename.trim().to_string())
+                };
+                doc.import.filename = match filename {
+                    Some(f) if f.is_empty() => None,
+                    Some(f) => Some(f),
+                    None => None,
+                };
+            });
+        });
     });
 }
 
