@@ -1,5 +1,5 @@
 use eframe::{
-    egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextureId, Vec2},
+    egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextStyle, TextureId, Vec2},
     epi::{self, TextureAllocator},
 };
 use imgref::ImgVec;
@@ -137,6 +137,9 @@ impl epi::App for Application {
             });
 
             ui.separator();
+            if let Mode::Import = ui_state.mode {
+                render_import(ui, doc, system);
+            }
             render_palette(ui, &mut doc.paint_color, &mut doc.image);
         });
 
@@ -214,6 +217,25 @@ impl epi::App for Application {
             self.doc = doc;
         }
     }
+}
+
+fn render_import(ui: &mut egui::Ui, doc: &mut Document, system: &mut SystemFunctions) {
+    ui.horizontal_for_text(TextStyle::Body, |ui| {
+        ui.label("File name:");
+        let mut filename = doc.import.filename.clone().unwrap_or_default();
+        ui.text_edit_singleline(&mut filename);
+        let filename = filename.trim();
+        if filename.is_empty() {
+            doc.import.filename = None;
+        } else {
+            doc.import.filename = Some(filename.to_string());
+        }
+        if ui.button("Browse").clicked() {
+            if let Ok(Some(f)) = system.open_file_dialog() {
+                doc.import.filename = f.to_str().map(str::to_string);
+            }
+        }
+    });
 }
 
 fn update_in_paint_mode(
