@@ -136,20 +136,23 @@ impl epi::App for Application {
 
         // Left toolbar
         egui::SidePanel::left("toolbar", 250.0).show(ctx, |ui| {
-            ui.vertical_centered_justified(|ui| {
-                // Import
-                ui.selectable_value(&mut ui_state.mode, Mode::Import, "Import")
-                    .on_hover_text("Import image file");
-                ui.shrink_width_to_current();
-                if let Mode::Import = ui_state.mode {
-                    render_import(ui, doc, system);
-                }
-                // PixelPaint
-                ui.selectable_value(&mut ui_state.mode, Mode::PixelPaint, "Pixel paint")
-                    .on_hover_text("Paint pixels");
-                // ColorPaint
-                ui.selectable_value(&mut ui_state.mode, Mode::ColorPaint, "Color paint")
-                    .on_hover_text("Change the color of character cells");
+            // Main image. ScrollArea unfortunately only provides vertical scrolling.
+            egui::ScrollArea::auto_sized().show(ui, |ui| {
+                ui.vertical_centered_justified(|ui| {
+                    // Import
+                    ui.selectable_value(&mut ui_state.mode, Mode::Import, "Import")
+                        .on_hover_text("Import image file");
+                    ui.shrink_width_to_current();
+                    if let Mode::Import = ui_state.mode {
+                        render_import(ui, doc, system);
+                    }
+                    // PixelPaint
+                    ui.selectable_value(&mut ui_state.mode, Mode::PixelPaint, "Pixel paint")
+                        .on_hover_text("Paint pixels");
+                    // ColorPaint
+                    ui.selectable_value(&mut ui_state.mode, Mode::ColorPaint, "Color paint")
+                        .on_hover_text("Change the color of character cells");
+                });
             });
         });
 
