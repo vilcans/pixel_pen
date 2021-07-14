@@ -215,6 +215,15 @@ impl epi::App for Application {
             let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
 
             let input = ui.input();
+            if input.modifiers.command {
+                if input.scroll_delta.y < 0.0 {
+                    user_actions.zoom_out = true;
+                } else if input.scroll_delta.y > 0.0 {
+                    user_actions.zoom_in = true;
+                }
+            } else {
+                ui_state.pan += input.scroll_delta;
+            }
 
             if response.drag_started() && input.pointer.button_down(PointerButton::Middle)
                 || (input.pointer.button_down(PointerButton::Secondary) && input.modifiers.shift)
