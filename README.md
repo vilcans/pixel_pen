@@ -13,6 +13,21 @@ There is also Pixel Pen's own file format (file extension: `pixelpen`), the deta
 
 Apart from that, you can paint single pixels, and that's about it right now.
 
+## Input
+
+| Input                               | Action
+| ----------------------------------- | ---------------------------------
+| Left mouse button                   | Paint
+| Right mouse button                  | Paint with background color
+| +                                   | Zoom in
+| -                                   | Zoom out
+| Scroll wheel                        | Scroll
+| Ctrl + scroll wheel                 | Zoom
+| Hold middle mouse button            | Pan
+| Hold shift + right mouse button     | Pan (for systems without a middle mouse button or where it scrolls instead)
+
+On a Mac, substitute Ctrl for ⌘.
+
 ## Command-line interface
 
 Oh, and there's a command-line interface! Run `pixel_pen --help` to get the possible commands:
