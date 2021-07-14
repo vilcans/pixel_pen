@@ -43,6 +43,21 @@ struct UiState {
     pan: Vec2,
 }
 
+#[derive(Default)]
+struct UserActions {
+    pub zoom_in: bool,
+    pub zoom_out: bool,
+}
+impl UserActions {
+    pub fn update_from_text(&mut self, t: &str) {
+        match t {
+            "+" => self.zoom_in = true,
+            "-" => self.zoom_out = true,
+            _ => (),
+        }
+    }
+}
+
 pub struct Application {
     doc: Document,
     ui_state: UiState,
@@ -72,6 +87,14 @@ impl epi::App for Application {
         } = self;
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
+
+        let mut user_actions = UserActions::default();
+        for e in ctx.input().events.iter() {
+            match e {
+                egui::Event::Text(t) => user_actions.update_from_text(&t),
+                _ => {}
+            }
+        }
 
         egui::TopPanel::top("top_panel").show(ctx, |ui| {
             // Menu bar
@@ -121,9 +144,7 @@ impl epi::App for Application {
             ui.vertical(|ui| {
                 ui.horizontal_wrapped(|ui| {
                     ui.label("Zoom:");
-                    if ui.button("-").on_hover_text("Zoom out").clicked() && ui_state.zoom > 1.0 {
-                        ui_state.zoom /= 2.0
-                    }
+                    user_actions.zoom_out |= ui.button("-").on_hover_text("Zoom out").clicked();
                     if ui
                         .button(format!("{:0.0}x", ui_state.zoom))
                         .on_hover_text("Set to 2x")
@@ -131,9 +152,7 @@ impl epi::App for Application {
                     {
                         ui_state.zoom = 2.0;
                     }
-                    if ui.button("+").on_hover_text("Zoom in").clicked() && ui_state.zoom < 16.0 {
-                        ui_state.zoom *= 2.0
-                    }
+                    user_actions.zoom_in |= ui.button("+").on_hover_text("Zoom in").clicked();
                 });
                 ui.separator();
                 render_palette(ui, &mut doc.paint_color, &mut doc.image);
@@ -258,6 +277,13 @@ impl epi::App for Application {
                 Color32::WHITE,
             );
         });
+
+        if user_actions.zoom_in && ui_state.zoom < 16.0 {
+            ui_state.zoom *= 2.0
+        }
+        if user_actions.zoom_out && ui_state.zoom > 1.0 {
+            ui_state.zoom /= 2.0
+        }
 
         if let Some(doc) = new_doc {
             self.doc = doc;
