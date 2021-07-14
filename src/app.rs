@@ -1,7 +1,7 @@
 use eframe::{
     egui::{
-        self, paint::Mesh, Align2, Color32, Painter, Pos2, Rect, Response, Sense, Shape, TextStyle,
-        TextureId, Vec2,
+        self, paint::Mesh, Align2, Color32, Painter, PointerButton, Pos2, Rect, Response, Sense,
+        Shape, TextStyle, TextureId, Vec2,
     },
     epi::{self, TextureAllocator},
 };
@@ -38,6 +38,9 @@ struct Texture {
 struct UiState {
     mode: Mode,
     zoom: f32,
+    /// Whether user is currently panning
+    panning: bool,
+    pan: Vec2,
 }
 
 pub struct Application {
@@ -165,8 +168,11 @@ impl epi::App for Application {
             let (response, painter) = image_painter(ui);
             let pixel_transform = PixelTransform {
                 screen_rect: Rect::from_center_size(
-                    response.rect.center(),
-                    Vec2::new(width as f32 * par * ui_state.zoom, height as f32 * par),
+                    response.rect.center() + ui_state.pan,
+                    Vec2::new(
+                        width as f32 * par * ui_state.zoom,
+                        height as f32 * ui_state.zoom,
+                    ),
                 ),
                 pixel_width: width as i32,
                 pixel_height: height as i32,
@@ -175,12 +181,32 @@ impl epi::App for Application {
             let hover_pos_screen = ui.input().pointer.tooltip_pos();
             let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
 
-            match ui_state.mode {
-                Mode::Import => {}
-                Mode::PixelPaint | Mode::ColorPaint => {
-                    update_in_paint_mode(hover_pos, doc, ui, &response, &pixel_transform, &ui_state)
+            let input = ui.input();
+
+            if response.drag_started() && input.pointer.button_down(PointerButton::Middle)
+                || (input.pointer.button_down(PointerButton::Secondary) && input.modifiers.shift)
+            {
+                ui_state.panning = true;
+            }
+            if ui_state.panning {
+                ui_state.pan += input.pointer.delta();
+            } else {
+                match ui_state.mode {
+                    Mode::Import => {}
+                    Mode::PixelPaint | Mode::ColorPaint => update_in_paint_mode(
+                        hover_pos,
+                        doc,
+                        ui,
+                        &response,
+                        &pixel_transform,
+                        &ui_state,
+                    ),
                 }
             }
+            if response.drag_released() {
+                ui_state.panning = false;
+            }
+
             // Draw the main image
             let tex_allocator = frame.tex_allocator();
 
@@ -435,6 +461,8 @@ impl Application {
             ui_state: UiState {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
+                panning: false,
+                pan: Vec2::ZERO,
             },
             doc,
             image_texture: None,
