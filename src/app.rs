@@ -1,5 +1,8 @@
 use eframe::{
-    egui::{self, paint::Mesh, Color32, Pos2, Rect, Sense, Shape, TextStyle, TextureId, Vec2},
+    egui::{
+        self, paint::Mesh, Align2, Color32, Painter, Pos2, Rect, Response, Sense, Shape, TextStyle,
+        TextureId, Vec2,
+    },
     epi::{self, TextureAllocator},
 };
 use imgref::ImgVec;
@@ -156,80 +159,93 @@ impl epi::App for Application {
             });
         });
 
+        // Main image.
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Main image. ScrollArea unfortunately only provides vertical scrolling.
-            egui::ScrollArea::auto_sized().show(ui, |ui| {
-                let par = doc.image.pixel_aspect_ratio();
-                let size = Vec2::new(width as f32 * par, height as f32) * ui_state.zoom;
+            let par = doc.image.pixel_aspect_ratio();
+            let (response, painter) = image_painter(ui);
+            let pixel_transform = PixelTransform {
+                screen_rect: Rect::from_center_size(
+                    response.rect.center(),
+                    Vec2::new(width as f32 * par * ui_state.zoom, height as f32 * par),
+                ),
+                pixel_width: width as i32,
+                pixel_height: height as i32,
+            };
 
-                let (response, painter) = ui.allocate_painter(size, egui::Sense::click_and_drag());
+            let hover_pos_screen = ui.input().pointer.tooltip_pos();
+            let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
 
-                let pixel_transform = PixelTransform {
-                    screen_rect: response.rect,
-                    pixel_width: width as i32,
-                    pixel_height: height as i32,
-                };
-
-                let hover_pos_screen = ui.input().pointer.tooltip_pos();
-                let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
-
-                match ui_state.mode {
-                    Mode::Import => {}
-                    Mode::PixelPaint | Mode::ColorPaint => update_in_paint_mode(
-                        hover_pos,
-                        doc,
-                        ui,
-                        &response,
-                        &pixel_transform,
-                        &ui_state,
-                    ),
+            match ui_state.mode {
+                Mode::Import => {}
+                Mode::PixelPaint | Mode::ColorPaint => {
+                    update_in_paint_mode(hover_pos, doc, ui, &response, &pixel_transform, &ui_state)
                 }
-                // Draw the main image
-                let tex_allocator = frame.tex_allocator();
+            }
+            // Draw the main image
+            let tex_allocator = frame.tex_allocator();
 
-                let texture = update_texture(
-                    &mut doc.image,
-                    image_texture,
-                    tex_allocator,
-                    par,
-                    ui_state.zoom,
-                );
-                let mut mesh = Mesh::with_texture(texture);
-                mesh.add_rect_with_uv(
-                    response.rect,
-                    Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
-                    Color32::WHITE,
-                );
-                painter.add(Shape::Mesh(mesh));
+            let texture = update_texture(
+                &mut doc.image,
+                image_texture,
+                tex_allocator,
+                par,
+                ui_state.zoom,
+            );
+            let mut mesh = Mesh::with_texture(texture);
+            mesh.add_rect_with_uv(
+                pixel_transform.screen_rect,
+                Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
+                Color32::WHITE,
+            );
+            painter.add(Shape::Mesh(mesh));
 
-                // Highlight character
-                if let Mode::ColorPaint = ui_state.mode {
-                    if let Some(pos) = hover_pos {
-                        if let Some((top_left, w, h)) = doc.image.character_box(pos) {
-                            painter.rect_stroke(
-                                Rect::from_min_max(
-                                    pixel_transform.screen_pos(top_left),
-                                    pixel_transform
-                                        .screen_pos(Point::new(top_left.x + w, top_left.y + h)),
-                                ),
-                                0.0,
-                                (1.0, vic::palette_color(doc.paint_color)),
-                            );
-                        }
+            // Highlight character
+            if let Mode::ColorPaint = ui_state.mode {
+                if let Some(pos) = hover_pos {
+                    if let Some((top_left, w, h)) = doc.image.character_box(pos) {
+                        painter.rect_stroke(
+                            Rect::from_min_max(
+                                pixel_transform.screen_pos(top_left),
+                                pixel_transform
+                                    .screen_pos(Point::new(top_left.x + w, top_left.y + h)),
+                            ),
+                            0.0,
+                            (1.0, vic::palette_color(doc.paint_color)),
+                        );
                     }
                 }
+            }
 
-                ui.label(doc.image.image_info());
+            let info_text = {
+                let t = doc.image.image_info();
                 if let Some(p) = hover_pos {
-                    ui.label(doc.image.pixel_info(p));
+                    format!("{}\n{}", t, doc.image.pixel_info(p))
+                } else {
+                    t
                 }
-            });
+            };
+            painter.text(
+                response.rect.left_bottom(),
+                Align2::LEFT_BOTTOM,
+                &info_text,
+                TextStyle::Monospace,
+                Color32::WHITE,
+            );
         });
 
         if let Some(doc) = new_doc {
             self.doc = doc;
         }
     }
+}
+
+/// Create a Response and Painter for the main image area.
+fn image_painter(ui: &mut egui::Ui) -> (Response, Painter) {
+    let size = ui.available_size();
+    let response = ui.allocate_response(size, egui::Sense::click_and_drag());
+    let clip_rect = ui.clip_rect().intersect(response.rect);
+    let painter = Painter::new(ui.ctx().clone(), ui.layer_id(), clip_rect);
+    (response, painter)
 }
 
 fn render_import(ui: &mut egui::Ui, doc: &mut Document, system: &mut SystemFunctions) {
