@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use eframe::{
     egui::{
         self, paint::Mesh, Align2, Color32, Painter, PointerButton, Pos2, Rect, Response, Sense,
@@ -22,6 +24,8 @@ use crate::{
 // Don't scale the texture more than this to avoid huge textures when zooming.
 const MAX_SCALE: u32 = 8;
 
+const POPUP_MESSAGE_TIME: f32 = 3.0;
+
 #[derive(PartialEq, Debug)]
 enum Mode {
     Import,
@@ -41,6 +45,13 @@ struct UiState {
     /// Whether user is currently panning
     panning: bool,
     pan: Vec2,
+
+    message: Option<(Instant, String)>,
+}
+impl UiState {
+    fn show_warning(&mut self, message: String) {
+        self.message = Some((Instant::now(), message));
+    }
 }
 
 #[derive(Default)]
@@ -80,11 +91,12 @@ impl epi::App for Application {
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
         let Application {
-            ui_state,
             doc,
             image_texture,
             system,
+            ..
         } = self;
+        let ui_state = &mut self.ui_state;
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
 
@@ -218,7 +230,7 @@ impl epi::App for Application {
                         ui,
                         &response,
                         &pixel_transform,
-                        &ui_state,
+                        ui_state,
                     ),
                 }
             }
@@ -269,6 +281,15 @@ impl epi::App for Application {
                     t
                 }
             };
+            if let Some((time, message)) = ui_state.message.as_ref() {
+                let age = Instant::now()
+                    .saturating_duration_since(*time)
+                    .as_secs_f32();
+                egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
+                if age >= POPUP_MESSAGE_TIME {
+                    ui_state.message = None;
+                }
+            }
             painter.text(
                 response.rect.left_bottom(),
                 Align2::LEFT_BOTTOM,
@@ -327,17 +348,17 @@ fn render_import(ui: &mut egui::Ui, doc: &mut Document, system: &mut SystemFunct
 }
 
 fn update_in_paint_mode(
-    hover_pos: Option<Point>,
+    pixel_pos: Option<Point>,
     doc: &mut Document,
     ui: &mut egui::Ui,
     response: &egui::Response,
     _pixel_transform: &PixelTransform,
-    ui_state: &UiState,
+    ui_state: &mut UiState,
 ) {
-    if hover_pos.is_none() {
+    if pixel_pos.is_none() {
         return;
     }
-    let hover_pos = hover_pos.unwrap();
+    let hover_pos = pixel_pos.unwrap();
 
     let color = if response.secondary_clicked()
         || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
@@ -351,7 +372,7 @@ fn update_in_paint_mode(
     if let Some(color) = color {
         let disallowed_message = doc.image.check_allowed_paint(color, hover_pos);
         if let Some(message) = disallowed_message {
-            egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
+            ui_state.show_warning(message);
         } else {
             let Point { x, y } = hover_pos;
             match ui_state.mode {
@@ -494,6 +515,7 @@ impl Application {
                 zoom: 2.0,
                 panning: false,
                 pan: Vec2::ZERO,
+                message: None,
             },
             doc,
             image_texture: None,
