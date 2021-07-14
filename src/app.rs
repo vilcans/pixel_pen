@@ -105,9 +105,8 @@ impl epi::App for Application {
 
         let mut user_actions = UserActions::default();
         for e in ctx.input().events.iter() {
-            match e {
-                egui::Event::Text(t) => user_actions.update_from_text(&t),
-                _ => {}
+            if let egui::Event::Text(t) = e {
+                user_actions.update_from_text(&t)
             }
         }
 
