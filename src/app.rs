@@ -331,35 +331,40 @@ fn update_in_paint_mode(
     doc: &mut Document,
     ui: &mut egui::Ui,
     response: &egui::Response,
-    pixel_transform: &PixelTransform,
+    _pixel_transform: &PixelTransform,
     ui_state: &UiState,
 ) {
-    let disallowed_message =
-        &hover_pos.and_then(|hover_pos| doc.image.check_allowed_paint(doc.paint_color, hover_pos));
-    if let Some(message) = disallowed_message {
-        egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
+    if hover_pos.is_none() {
+        return;
     }
-    if let Some(pointer_pos) = response.interact_pointer_pos() {
-        if disallowed_message.is_none() {
-            let pointer = &response.ctx.input().pointer;
-            let color_to_set = if pointer.button_down(egui::PointerButton::Secondary) {
-                doc.image.colors[GlobalColors::BACKGROUND]
-            } else {
-                doc.paint_color as u8
-            };
-            if let Some(Point { x, y }) = pixel_transform.bounded_pixel_pos(pointer_pos) {
-                match ui_state.mode {
-                    Mode::PixelPaint => {
-                        doc.image.set_pixel(x, y, color_to_set);
-                    }
-                    Mode::ColorPaint => {
-                        doc.image.set_color(x, y, color_to_set);
-                    }
-                    _ => panic!(
-                        "update_in paint_mode with invalid mode: {:?}",
-                        ui_state.mode
-                    ),
+    let hover_pos = hover_pos.unwrap();
+
+    let color = if response.secondary_clicked()
+        || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
+    {
+        Some(doc.image.colors[GlobalColors::BACKGROUND] as usize)
+    } else if response.clicked() || response.dragged() {
+        Some(doc.paint_color)
+    } else {
+        None
+    };
+    if let Some(color) = color {
+        let disallowed_message = doc.image.check_allowed_paint(color, hover_pos);
+        if let Some(message) = disallowed_message {
+            egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
+        } else {
+            let Point { x, y } = hover_pos;
+            match ui_state.mode {
+                Mode::PixelPaint => {
+                    doc.image.set_pixel(x, y, color as u8);
                 }
+                Mode::ColorPaint => {
+                    doc.image.set_color(x, y, color as u8);
+                }
+                _ => panic!(
+                    "update_in paint_mode with invalid mode: {:?}",
+                    ui_state.mode
+                ),
             }
         }
     }
