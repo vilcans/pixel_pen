@@ -26,6 +26,9 @@ const MAX_SCALE: u32 = 8;
 
 const POPUP_MESSAGE_TIME: f32 = 3.0;
 
+const BORDER_CORNER_RADIUS: f32 = 15.0;
+const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
+
 #[derive(PartialEq, Debug)]
 enum Mode {
     Import,
@@ -237,6 +240,14 @@ impl epi::App for Application {
             if response.drag_released() {
                 ui_state.panning = false;
             }
+
+            painter.rect_filled(
+                pixel_transform
+                    .screen_rect
+                    .expand2(BORDER_SIZE * ui_state.zoom),
+                BORDER_CORNER_RADIUS * ui_state.zoom,
+                doc.image.border(),
+            );
 
             // Draw the main image
             let tex_allocator = frame.tex_allocator();

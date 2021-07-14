@@ -486,6 +486,11 @@ impl VicImage {
         map
     }
 
+    pub fn border(&self) -> Color32 {
+        let i = self.colors[GlobalColors::BORDER];
+        palette_color(i)
+    }
+
     /// Render true color pixels for this image.
     pub fn render(&mut self, mut pixels: ImgRefMut<'_, Color32>) {
         assert_eq!(self.pixel_size(), (pixels.width(), pixels.height()));
