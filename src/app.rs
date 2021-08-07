@@ -296,7 +296,7 @@ impl epi::App for Application {
             let info_text = {
                 let t = doc.image.image_info();
                 if let Some(p) = hover_pos {
-                    format!("{}\n{}", t, doc.image.pixel_info(p))
+                    format!("{}\n{}", doc.image.pixel_info(p), t)
                 } else {
                     t
                 }
