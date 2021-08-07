@@ -315,7 +315,7 @@ impl epi::App for Application {
                 Align2::LEFT_BOTTOM,
                 &info_text,
                 TextStyle::Monospace,
-                Color32::WHITE,
+                Color32::from_rgb(0x88, 0x88, 0x88),
             );
         });
 
