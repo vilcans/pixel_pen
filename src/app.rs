@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use eframe::{
     egui::{
-        self, paint::Mesh, Align2, Color32, Painter, PointerButton, Pos2, Rect, Response, Sense,
-        Shape, TextStyle, TextureId, Vec2,
+        self, paint::Mesh, Align2, Color32, CursorIcon, Painter, PointerButton, Pos2, Rect,
+        Response, Sense, Shape, TextStyle, TextureId, Vec2,
     },
     epi::{self, TextureAllocator},
 };
@@ -232,6 +232,7 @@ impl epi::App for Application {
             }
             if ui_state.panning {
                 ui_state.pan += input.pointer.delta();
+                ctx.output().cursor_icon = CursorIcon::Grabbing;
             } else {
                 match ui_state.mode {
                     Mode::Import => {}
