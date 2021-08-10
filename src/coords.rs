@@ -40,8 +40,8 @@ impl PixelTransform {
         let p = p - self.screen_rect.left_top();
         let fx = p.x / self.screen_rect.size().x;
         let fy = p.y / self.screen_rect.size().y;
-        let x = (fx * self.pixel_width as f32).round() as i32;
-        let y = (fy * self.pixel_height as f32).round() as i32;
+        let x = (fx * self.pixel_width as f32) as i32;
+        let y = (fy * self.pixel_height as f32) as i32;
         Point { x, y }
     }
 
