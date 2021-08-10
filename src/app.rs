@@ -102,6 +102,7 @@ impl epi::App for Application {
         let ui_state = &mut self.ui_state;
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
+        let mut cursor_icon = None;
 
         let mut user_actions = UserActions::default();
         for e in ctx.input().events.iter() {
@@ -232,18 +233,21 @@ impl epi::App for Application {
             }
             if ui_state.panning {
                 ui_state.pan += input.pointer.delta();
-                ctx.output().cursor_icon = CursorIcon::Grabbing;
+                cursor_icon = Some(CursorIcon::Grabbing);
             } else {
                 match ui_state.mode {
                     Mode::Import => {}
-                    Mode::PixelPaint | Mode::ColorPaint => update_in_paint_mode(
-                        hover_pos,
-                        doc,
-                        ui,
-                        &response,
-                        &pixel_transform,
-                        ui_state,
-                    ),
+                    Mode::PixelPaint | Mode::ColorPaint => {
+                        update_in_paint_mode(
+                            hover_pos,
+                            doc,
+                            ui,
+                            &response,
+                            &pixel_transform,
+                            ui_state,
+                            &mut cursor_icon,
+                        );
+                    }
                 }
             }
             if response.drag_released() {
@@ -329,6 +333,10 @@ impl epi::App for Application {
         if let Some(doc) = new_doc {
             self.doc = doc;
         }
+
+        if let Some(icon) = cursor_icon {
+            ctx.output().cursor_icon = icon;
+        }
     }
 }
 
@@ -374,11 +382,14 @@ fn update_in_paint_mode(
     response: &egui::Response,
     _pixel_transform: &PixelTransform,
     ui_state: &mut UiState,
+    cursor_icon: &mut Option<CursorIcon>,
 ) {
     if pixel_pos.is_none() {
         return;
     }
     let hover_pos = pixel_pos.unwrap();
+
+    *cursor_icon = Some(CursorIcon::PointingHand);
 
     let color = if response.secondary_clicked()
         || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
