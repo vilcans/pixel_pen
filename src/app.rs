@@ -174,6 +174,7 @@ impl epi::App for Application {
                         ui_state.zoom = 2.0;
                     }
                     user_actions.zoom_in |= ui.button("+").on_hover_text("Zoom in").clicked();
+                    ui.separator();
                     ui.checkbox(&mut ui_state.grid, "Grid");
                 });
                 ui.separator();
