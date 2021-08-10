@@ -406,17 +406,17 @@ fn update_in_paint_mode(
             ui_state.show_warning(message);
         } else {
             let Point { x, y } = hover_pos;
-            match ui_state.mode {
-                Mode::PixelPaint => {
-                    doc.image.set_pixel(x, y, color as u8);
-                }
-                Mode::ColorPaint => {
-                    doc.image.set_color(x, y, color as u8);
-                }
+            let was_dirty = doc.image.dirty;
+            let changed = match ui_state.mode {
+                Mode::PixelPaint => doc.image.set_pixel(x, y, color as u8),
+                Mode::ColorPaint => doc.image.set_color(x, y, color as u8),
                 _ => panic!(
                     "update_in paint_mode with invalid mode: {:?}",
                     ui_state.mode
                 ),
+            };
+            if !changed {
+                doc.image.dirty = was_dirty;
             }
         }
     }

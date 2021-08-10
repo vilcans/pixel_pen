@@ -377,17 +377,28 @@ impl VicImage {
     }
 
     /// Set a pixel at the given coordinates to a given color.
-    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) -> Option<()> {
-        let (column, row, cx, cy) = self.char_coordinates(x, y)?;
-        self.video[(column, row)].set_pixel(cx, cy, color, &self.colors);
-        Some(())
+    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) -> bool {
+        if let Some((column, row, cx, cy)) = self.char_coordinates(x, y) {
+            self.video[(column, row)].set_pixel(cx, cy, color, &self.colors);
+            true
+        } else {
+            false
+        }
     }
 
     /// Change the character color at given pixel coordinates
-    pub fn set_color(&mut self, x: i32, y: i32, color: u8) -> Option<()> {
-        let (column, row, _, _) = self.char_coordinates(x, y)?;
-        self.video[(column, row)].color = color;
-        Some(())
+    pub fn set_color(&mut self, x: i32, y: i32, color: u8) -> bool {
+        if let Some((column, row, _cx, _cy)) = self.char_coordinates(x, y) {
+            let cell = &mut self.video[(column, row)];
+            if cell.color == color {
+                false
+            } else {
+                cell.color = color;
+                true
+            }
+        } else {
+            false
+        }
     }
 
     /// Get the rectangle of the character at the given pixel coordinates.
