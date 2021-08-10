@@ -3,7 +3,7 @@ use std::time::Instant;
 use eframe::{
     egui::{
         self, paint::Mesh, Align2, Color32, CursorIcon, Painter, PointerButton, Pos2, Rect,
-        Response, Sense, Shape, TextStyle, TextureId, Vec2,
+        Response, Sense, Shape, Stroke, TextStyle, TextureId, Vec2,
     },
     epi::{self, TextureAllocator},
 };
@@ -29,6 +29,8 @@ const POPUP_MESSAGE_TIME: f32 = 3.0;
 const BORDER_CORNER_RADIUS: f32 = 15.0;
 const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
 
+const GRID_COLOR: Color32 = Color32::GRAY;
+
 #[derive(PartialEq, Debug)]
 enum Mode {
     Import,
@@ -45,6 +47,8 @@ struct Texture {
 struct UiState {
     mode: Mode,
     zoom: f32,
+    /// Enable showing the character grid
+    grid: bool,
     /// Whether user is currently panning
     panning: bool,
     pan: Vec2,
@@ -61,12 +65,14 @@ impl UiState {
 struct UserActions {
     pub zoom_in: bool,
     pub zoom_out: bool,
+    pub toggle_grid: bool,
 }
 impl UserActions {
     pub fn update_from_text(&mut self, t: &str) {
         match t {
             "+" => self.zoom_in = true,
             "-" => self.zoom_out = true,
+            "g" => self.toggle_grid = true,
             _ => (),
         }
     }
@@ -168,6 +174,7 @@ impl epi::App for Application {
                         ui_state.zoom = 2.0;
                     }
                     user_actions.zoom_in |= ui.button("+").on_hover_text("Zoom in").clicked();
+                    ui.checkbox(&mut ui_state.grid, "Grid");
                 });
                 ui.separator();
                 render_palette(ui, &mut doc.paint_color, &mut doc.image);
@@ -280,6 +287,11 @@ impl epi::App for Application {
             );
             painter.add(Shape::Mesh(mesh));
 
+            // Grid lines
+            if ui_state.grid {
+                draw_grid(&doc.image, &painter, &pixel_transform);
+            }
+
             // Highlight character
             if let Mode::ColorPaint = ui_state.mode {
                 if let Some(pos) = hover_pos {
@@ -329,6 +341,9 @@ impl epi::App for Application {
         if user_actions.zoom_out && ui_state.zoom > 1.0 {
             ui_state.zoom /= 2.0
         }
+        if user_actions.toggle_grid {
+            ui_state.grid = !ui_state.grid;
+        }
 
         if let Some(doc) = new_doc {
             self.doc = doc;
@@ -337,6 +352,35 @@ impl epi::App for Application {
         if let Some(icon) = cursor_icon {
             ctx.output().cursor_icon = icon;
         }
+    }
+}
+
+fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransform) {
+    let (width, height) = image.pixel_size();
+    let stroke = Stroke {
+        width: 1.0,
+        color: GRID_COLOR,
+    };
+    for x in image.vertical_grid_lines() {
+        painter.line_segment(
+            [
+                pixel_transform.screen_pos(Point { x, y: 0 }),
+                pixel_transform.screen_pos(Point {
+                    x,
+                    y: height as i32,
+                }),
+            ],
+            stroke,
+        )
+    }
+    for y in image.horizontal_grid_lines() {
+        painter.line_segment(
+            [
+                pixel_transform.screen_pos(Point { x: 0, y }),
+                pixel_transform.screen_pos(Point { x: width as i32, y }),
+            ],
+            stroke,
+        )
     }
 }
 
@@ -544,6 +588,7 @@ impl Application {
             ui_state: UiState {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
+                grid: false,
                 panning: false,
                 pan: Vec2::ZERO,
                 message: None,

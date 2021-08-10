@@ -415,6 +415,16 @@ impl VicImage {
         ))
     }
 
+    /// Get at which pixel coordinates to dispay grid lines
+    pub fn vertical_grid_lines(&self) -> impl Iterator<Item = i32> {
+        (0..=self.columns).map(|c| (c * Char::WIDTH) as i32)
+    }
+
+    /// Get at which pixel coordinates to dispay grid lines
+    pub fn horizontal_grid_lines(&self) -> impl Iterator<Item = i32> {
+        (0..=self.rows).map(|r| (r * Char::HEIGHT) as i32)
+    }
+
     /// Check if it's possible to paint with the given color.
     /// If it's not possible to paint with the given color at that point,
     /// returns a message describing why. If painting is allowed, returns None.
