@@ -1,6 +1,6 @@
 use bimap::BiMap;
 use eframe::egui::Color32;
-use image::{DynamicImage, GenericImage, GenericImageView, RgbaImage};
+use image::{GenericImage, GenericImageView, RgbaImage};
 use imgref::{ImgRef, ImgRefMut, ImgVec};
 use itertools::Itertools;
 use rgb::RGBA;
@@ -329,46 +329,54 @@ impl VicImage {
         }
     }
 
-    pub fn from_image(image: DynamicImage) -> Result<VicImage, Error> {
-        let columns = (image.width() as usize + Char::WIDTH - 1) / Char::WIDTH;
-        let rows = (image.height() as usize + Char::HEIGHT - 1) / Char::HEIGHT;
+    pub fn from_image(source_image: &RgbaImage) -> Result<VicImage, Error> {
+        let columns = (source_image.width() as usize + Char::WIDTH - 1) / Char::WIDTH;
+        let rows = (source_image.height() as usize + Char::HEIGHT - 1) / Char::HEIGHT;
+        let mut image = VicImage::new(columns, rows);
+        image.paste_image(source_image, 0, 0);
+        Ok(image)
+    }
 
-        // Extend to whole character cells and convert to RGBA
-        let image = {
-            let mut extended = RgbaImage::new(
-                columns as u32 * Char::WIDTH as u32,
-                rows as u32 * Char::HEIGHT as u32,
-            );
-            extended.copy_from(&image, 0, 0)?;
-            extended
-        };
+    /// Paste a true color image into this image.
+    pub fn paste_image(&mut self, source: &RgbaImage, target_x: i32, target_y: i32) {
+        const CELL_W: i32 = Char::WIDTH as i32;
+        const CELL_H: i32 = Char::HEIGHT as i32;
+        let start_column = (target_x / CELL_W as i32).max(0);
+        let end_column =
+            ((target_x + source.width() as i32 + CELL_W - 1) / CELL_W).min(self.columns as i32);
+        let start_row = (target_y / CELL_H as i32).max(0);
+        let end_row =
+            ((target_y + source.height() as i32 + CELL_H - 1) / CELL_H).min(self.rows as i32);
 
-        let global_colors = GlobalColors([0, 1, 2]);
+        let global_colors = &self.colors;
 
-        // Reused for each character
-        let mut char_image = RgbaImage::new(Char::WIDTH as u32, Char::HEIGHT as u32);
+        for (r, c) in (start_row..end_row).cartesian_product(start_column..end_column) {
+            let left = (c * CELL_W) - target_x;
+            let top = (r * CELL_H) - target_y;
+            let right = left + CELL_W;
+            let bottom = top + CELL_H;
+            let clamped_left = i32::max(0, left);
+            let clamped_top = i32::max(0, top);
+            let clamped_right = i32::min(source.width() as i32, right);
+            let clamped_bottom = i32::min(source.height() as i32, bottom);
 
-        let video = (0..rows)
-            .cartesian_product(0..columns)
-            .map(|(row, column)| {
-                char_image
-                    .copy_from(
-                        &image.view(
-                            (column * Char::WIDTH) as u32,
-                            (row * Char::HEIGHT) as u32,
-                            Char::WIDTH as u32,
-                            Char::HEIGHT as u32,
-                        ),
-                        0,
-                        0,
-                    )
-                    .unwrap();
-                let colors = optimized_image(&char_image, &global_colors);
+            let mut char_image = RgbaImage::new(Char::WIDTH as u32, Char::HEIGHT as u32);
+            char_image
+                .copy_from(
+                    &source.view(
+                        clamped_left as u32,
+                        clamped_top as u32,
+                        (clamped_right - clamped_left) as u32,
+                        (clamped_bottom - clamped_top) as u32,
+                    ),
+                    (clamped_left - left) as u32,
+                    (clamped_top - top) as u32,
+                )
+                .unwrap();
+            let colors = optimized_image(&char_image, &global_colors);
+            self.video[(c as usize, r as usize)] =
                 Char::highres_from_colors(colors.as_ref(), &global_colors)
-            })
-            .collect();
-
-        Ok(Self::with_content(ImgVec::new(video, columns, rows)))
+        }
     }
 
     /// Get the width and height of the image in pixels.

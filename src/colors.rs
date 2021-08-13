@@ -13,6 +13,12 @@ pub fn rgba_from_image(color: image::Rgba<u8>) -> RGBA8 {
     RGBA8::new(color.0[0], color.0[1], color.0[2], color.0[3])
 }
 
+/// Convert from [`image::Rgba`] to [`Color32`].
+#[allow(dead_code)]
+pub fn color32_from_image(color: image::Rgba<u8>) -> Color32 {
+    Color32::from_rgba_unmultiplied(color.0[0], color.0[1], color.0[2], color.0[3])
+}
+
 /// Find the color in the given palette that best matches the given color.
 /// Returns the index of the best palette entry and the amount of error compared to the color.
 #[allow(dead_code)]

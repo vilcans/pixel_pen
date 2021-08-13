@@ -3,14 +3,12 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{import::ImportSettings, mutation_monitor::MutationMonitor, vic::VicImage};
+use crate::{mutation_monitor::MutationMonitor, vic::VicImage};
 
 /// A "document" the user is working on.
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Document {
-    #[serde(default)]
-    pub import: ImportSettings,
     pub paint_color: usize,
     pub image: MutationMonitor<VicImage>,
 }
@@ -28,7 +26,6 @@ impl Default for Document {
     fn default() -> Self {
         let image = VicImage::default();
         Self {
-            import: Default::default(),
             paint_color: 1,
             image: MutationMonitor::new_dirty(image),
         }

@@ -27,4 +27,6 @@ pub enum Error {
     UnknownFileFormat(std::path::PathBuf),
     #[error("File dialog failed: {0}")]
     FileDialogError(String),
+    #[error("No file name given")]
+    NoFileName,
 }

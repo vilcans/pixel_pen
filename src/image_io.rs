@@ -56,7 +56,7 @@ pub fn load_standard_image(filename: &Path) -> Result<VicImage, Error> {
         img.dimensions(),
         img.color()
     );
-    VicImage::from_image(img)
+    VicImage::from_image(&img.into_rgba8())
 }
 
 pub fn read_struct<T>(reader: &mut impl Read) -> Result<T, Error>

@@ -1,5 +1,16 @@
 use std::time::Instant;
 
+use crate::{
+    coords::{PixelTransform, Point},
+    document::Document,
+    import::{self, Import},
+    mutation_monitor::MutationMonitor,
+    scaling, storage,
+    system::SystemFunctions,
+    ui,
+    vic::{self, GlobalColors, VicImage},
+    widgets,
+};
 use eframe::{
     egui::{
         self, paint::Mesh, Align2, Color32, CursorIcon, Painter, PointerButton, Pos2, Rect,
@@ -9,17 +20,6 @@ use eframe::{
 };
 use imgref::ImgVec;
 use itertools::Itertools;
-
-use crate::{
-    coords::{PixelTransform, Point},
-    document::Document,
-    mutation_monitor::MutationMonitor,
-    scaling, storage,
-    system::SystemFunctions,
-    ui,
-    vic::{self, GlobalColors, VicImage},
-    widgets,
-};
 
 // Don't scale the texture more than this to avoid huge textures when zooming.
 const MAX_SCALE: u32 = 8;
@@ -31,9 +31,9 @@ const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
 
 const GRID_COLOR: Color32 = Color32::GRAY;
 
-#[derive(PartialEq, Debug)]
+#[derive(Debug)]
 enum Mode {
-    Import,
+    Import(Import),
     PixelPaint,
     ColorPaint,
 }
@@ -101,11 +101,12 @@ impl epi::App for Application {
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
         let Application {
             doc,
+            ui_state,
             image_texture,
             system,
             ..
         } = self;
-        let ui_state = &mut self.ui_state;
+
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
         let mut cursor_icon = None;
@@ -136,6 +137,25 @@ impl epi::App for Application {
                             Ok(None) => {}
                             Err(e) => {
                                 system.show_error(&format!("Could not get file name: {:?}", e));
+                            }
+                        }
+                    }
+                    if system.open_file_dialog.is_some() && ui.button("Import...").clicked() {
+                        match system.open_file_dialog() {
+                            Ok(Some(filename)) => {
+                                // TODO: get rid of unwrap, use PathBuf instead of String for file names
+                                let filename = filename.into_os_string().into_string().unwrap();
+                                match Import::load(&filename) {
+                                    Ok(i) => ui_state.mode = Mode::Import(i),
+                                    Err(e) => system.show_error(&format!(
+                                        "Could not import file {}: {:?}",
+                                        filename, e
+                                    )),
+                                }
+                            }
+                            Ok(None) => {}
+                            Err(e) => {
+                                system.show_error(&format!("Could not get file name: {:?}", e))
                             }
                         }
                     }
@@ -184,22 +204,24 @@ impl epi::App for Application {
 
         // Left toolbar
         egui::SidePanel::left("toolbar", 250.0).show(ctx, |ui| {
-            // Main image. ScrollArea unfortunately only provides vertical scrolling.
             egui::ScrollArea::auto_sized().show(ui, |ui| {
                 ui.vertical_centered_justified(|ui| {
-                    // Import
-                    ui.selectable_value(&mut ui_state.mode, Mode::Import, "Import")
-                        .on_hover_text("Import image file");
-                    ui.shrink_width_to_current();
-                    if let Mode::Import = ui_state.mode {
-                        render_import(ui, doc, system);
-                    }
                     // PixelPaint
-                    ui.selectable_value(&mut ui_state.mode, Mode::PixelPaint, "Pixel paint")
-                        .on_hover_text("Paint pixels");
+                    if ui
+                        .selectable_label(matches!(ui_state.mode, Mode::PixelPaint), "Pixel paint")
+                        .on_hover_text("Paint pixels")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::PixelPaint;
+                    }
                     // ColorPaint
-                    ui.selectable_value(&mut ui_state.mode, Mode::ColorPaint, "Color paint")
-                        .on_hover_text("Change the color of character cells");
+                    if ui
+                        .selectable_label(matches!(ui_state.mode, Mode::ColorPaint), "Color paint")
+                        .on_hover_text("Change the color of character cells")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::ColorPaint;
+                    }
                 });
             });
         });
@@ -244,7 +266,7 @@ impl epi::App for Application {
                 cursor_icon = Some(CursorIcon::Grabbing);
             } else {
                 match ui_state.mode {
-                    Mode::Import => {}
+                    Mode::Import(_) => {}
                     Mode::PixelPaint | Mode::ColorPaint => {
                         update_in_paint_mode(
                             hover_pos,
@@ -271,12 +293,10 @@ impl epi::App for Application {
             );
 
             // Draw the main image
-            let tex_allocator = frame.tex_allocator();
-
             let texture = update_texture(
                 &mut doc.image,
                 image_texture,
-                tex_allocator,
+                frame.tex_allocator(),
                 par,
                 ui_state.zoom,
             );
@@ -291,6 +311,11 @@ impl epi::App for Application {
             // Grid lines
             if ui_state.grid {
                 draw_grid(&doc.image, &painter, &pixel_transform);
+            }
+
+            // Import preview
+            if let Mode::Import(import) = &mut ui_state.mode {
+                import::image_ui(ui, &painter, import, &pixel_transform);
             }
 
             // Highlight character
@@ -335,6 +360,16 @@ impl epi::App for Application {
                 Color32::from_rgb(0x88, 0x88, 0x88),
             );
         });
+
+        if let Mode::Import(import) = &mut ui_state.mode {
+            let mut keep_open = true;
+            egui::Window::new("Import").show(ctx, |ui| {
+                keep_open = import::tool_ui(ui, doc, import);
+            });
+            if !keep_open {
+                ui_state.mode = Mode::PixelPaint;
+            }
+        }
 
         if user_actions.zoom_in && ui_state.zoom < 16.0 {
             ui_state.zoom *= 2.0
@@ -392,32 +427,6 @@ fn image_painter(ui: &mut egui::Ui) -> (Response, Painter) {
     let clip_rect = ui.clip_rect().intersect(response.rect);
     let painter = Painter::new(ui.ctx().clone(), ui.layer_id(), clip_rect);
     (response, painter)
-}
-
-fn render_import(ui: &mut egui::Ui, doc: &mut Document, system: &mut SystemFunctions) {
-    ui.vertical(|ui| {
-        ui.horizontal_for_text(TextStyle::Body, |ui| {
-            let mut filename = doc.import.filename.clone().unwrap_or_default();
-            ui.label("File name:");
-            ui.vertical(|ui| {
-                ui.text_edit_singleline(&mut filename);
-                let filename = if ui.button("Browse...").clicked() {
-                    if let Ok(Some(f)) = system.open_file_dialog() {
-                        f.to_str().map(str::to_string)
-                    } else {
-                        None
-                    }
-                } else {
-                    Some(filename.trim().to_string())
-                };
-                doc.import.filename = match filename {
-                    Some(f) if f.is_empty() => None,
-                    Some(f) => Some(f),
-                    None => None,
-                };
-            });
-        });
-    });
 }
 
 fn update_in_paint_mode(
