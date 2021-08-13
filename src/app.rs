@@ -13,8 +13,8 @@ use crate::{
 };
 use eframe::{
     egui::{
-        self, paint::Mesh, Align2, Color32, CursorIcon, Painter, PointerButton, Pos2, Rect,
-        Response, Sense, Shape, Stroke, TextStyle, TextureId, Vec2,
+        self, paint::Mesh, Align2, Color32, CursorIcon, Label, Painter, PointerButton, Pos2, Rect,
+        Response, Rgba, Sense, Shape, Stroke, TextStyle, TextureId, Vec2,
     },
     epi::{self, TextureAllocator},
 };
@@ -25,6 +25,7 @@ use itertools::Itertools;
 const MAX_SCALE: u32 = 8;
 
 const POPUP_MESSAGE_TIME: f32 = 3.0;
+const POPUP_HIGHLIGHT_TIME: f32 = 0.3;
 
 const BORDER_CORNER_RADIUS: f32 = 15.0;
 const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
@@ -113,8 +114,10 @@ impl epi::App for Application {
 
         let mut user_actions = UserActions::default();
         for e in ctx.input().events.iter() {
-            if let egui::Event::Text(t) = e {
-                user_actions.update_from_text(&t)
+            if !ctx.wants_keyboard_input() {
+                if let egui::Event::Text(t) = e {
+                    user_actions.update_from_text(&t)
+                }
             }
         }
 
@@ -200,6 +203,24 @@ impl epi::App for Application {
                 ui.separator();
                 render_palette(ui, &mut doc.paint_color, &mut doc.image);
             });
+        });
+
+        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+            if let Some((time, message)) = ui_state.message.as_ref() {
+                let age = Instant::now()
+                    .saturating_duration_since(*time)
+                    .as_secs_f32();
+                let highlight = 1.0 - (age / POPUP_HIGHLIGHT_TIME).clamp(0.0, 1.0);
+                let color = Rgba::RED * highlight;
+                ui.add(Label::new(message).background_color(color));
+                if age >= POPUP_MESSAGE_TIME {
+                    ui_state.message = None;
+                } else if highlight > 0.0 {
+                    ctx.request_repaint(); // to animate color highlight
+                }
+            } else {
+                ui.label("Have fun!");
+            }
         });
 
         // Left toolbar
@@ -351,15 +372,6 @@ impl epi::App for Application {
                     t
                 }
             };
-            if let Some((time, message)) = ui_state.message.as_ref() {
-                let age = Instant::now()
-                    .saturating_duration_since(*time)
-                    .as_secs_f32();
-                egui::popup::show_tooltip_text(ui.ctx(), egui::Id::new("not_allowed"), message);
-                if age >= POPUP_MESSAGE_TIME {
-                    ui_state.message = None;
-                }
-            }
             painter.text(
                 response.rect.left_bottom(),
                 Align2::LEFT_BOTTOM,
