@@ -224,36 +224,28 @@ impl epi::App for Application {
         });
 
         // Left toolbar
-        egui::SidePanel::left("toolbar")
-            .default_width(250.0)
-            .show(ctx, |ui| {
-                egui::ScrollArea::auto_sized().show(ui, |ui| {
-                    ui.vertical_centered_justified(|ui| {
-                        // PixelPaint
-                        if ui
-                            .selectable_label(
-                                matches!(ui_state.mode, Mode::PixelPaint),
-                                "Pixel paint",
-                            )
-                            .on_hover_text("Paint pixels")
-                            .clicked()
-                        {
-                            ui_state.mode = Mode::PixelPaint;
-                        }
-                        // ColorPaint
-                        if ui
-                            .selectable_label(
-                                matches!(ui_state.mode, Mode::ColorPaint),
-                                "Color paint",
-                            )
-                            .on_hover_text("Change the color of character cells")
-                            .clicked()
-                        {
-                            ui_state.mode = Mode::ColorPaint;
-                        }
-                    });
+        egui::SidePanel::left("toolbar").show(ctx, |ui| {
+            egui::ScrollArea::auto_sized().show(ui, |ui| {
+                ui.vertical_centered_justified(|ui| {
+                    // PixelPaint
+                    if ui
+                        .selectable_label(matches!(ui_state.mode, Mode::PixelPaint), "Pixel paint")
+                        .on_hover_text("Paint pixels")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::PixelPaint;
+                    }
+                    // ColorPaint
+                    if ui
+                        .selectable_label(matches!(ui_state.mode, Mode::ColorPaint), "Color paint")
+                        .on_hover_text("Change the color of character cells")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::ColorPaint;
+                    }
                 });
             });
+        });
 
         // Main image.
         egui::CentralPanel::default().show(ctx, |ui| {
