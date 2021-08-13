@@ -122,21 +122,21 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
 
             ui.add(Label::new("Left"));
             ui.add(
-                DragValue::i32(&mut import.settings.left)
+                DragValue::new(&mut import.settings.left)
                     .clamp_range(-(import.settings.width as f32)..=target_width as f32 - 1.0),
             );
             ui.end_row();
 
             ui.add(Label::new("Top"));
             ui.add(
-                DragValue::i32(&mut import.settings.top)
+                DragValue::new(&mut import.settings.top)
                     .clamp_range(-(import.settings.height as f32)..=target_height as f32 - 1.0),
             );
             ui.end_row();
 
             ui.add(Label::new("Width"));
             ui.add(
-                DragValue::u32(&mut import.settings.width)
+                DragValue::new(&mut import.settings.width)
                     .clamp_range(1.0..=target_width as f32 * 4.0),
             );
             ui.end_row();

@@ -11,7 +11,8 @@ fn main() {
     match cli::main() {
         Ok(Some(mut app)) => {
             app.system = native::system();
-            eframe::run_native(Box::new(app)); // never returns
+            let options = eframe::NativeOptions::default();
+            eframe::run_native(Box::new(app), options); // never returns
         }
         Ok(None) => {}
         Err(i) => std::process::exit(i),

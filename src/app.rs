@@ -118,7 +118,7 @@ impl epi::App for Application {
             }
         }
 
-        egui::TopPanel::top("top_panel").show(ctx, |ui| {
+        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // Menu bar
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
@@ -203,28 +203,36 @@ impl epi::App for Application {
         });
 
         // Left toolbar
-        egui::SidePanel::left("toolbar", 250.0).show(ctx, |ui| {
-            egui::ScrollArea::auto_sized().show(ui, |ui| {
-                ui.vertical_centered_justified(|ui| {
-                    // PixelPaint
-                    if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::PixelPaint), "Pixel paint")
-                        .on_hover_text("Paint pixels")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::PixelPaint;
-                    }
-                    // ColorPaint
-                    if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::ColorPaint), "Color paint")
-                        .on_hover_text("Change the color of character cells")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::ColorPaint;
-                    }
+        egui::SidePanel::left("toolbar")
+            .default_width(250.0)
+            .show(ctx, |ui| {
+                egui::ScrollArea::auto_sized().show(ui, |ui| {
+                    ui.vertical_centered_justified(|ui| {
+                        // PixelPaint
+                        if ui
+                            .selectable_label(
+                                matches!(ui_state.mode, Mode::PixelPaint),
+                                "Pixel paint",
+                            )
+                            .on_hover_text("Paint pixels")
+                            .clicked()
+                        {
+                            ui_state.mode = Mode::PixelPaint;
+                        }
+                        // ColorPaint
+                        if ui
+                            .selectable_label(
+                                matches!(ui_state.mode, Mode::ColorPaint),
+                                "Color paint",
+                            )
+                            .on_hover_text("Change the color of character cells")
+                            .clicked()
+                        {
+                            ui_state.mode = Mode::ColorPaint;
+                        }
+                    });
                 });
             });
-        });
 
         // Main image.
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -242,7 +250,7 @@ impl epi::App for Application {
                 pixel_height: height as i32,
             };
 
-            let hover_pos_screen = ui.input().pointer.tooltip_pos();
+            let hover_pos_screen = ui.input().pointer.hover_pos();
             let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
 
             let input = ui.input();

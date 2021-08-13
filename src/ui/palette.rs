@@ -36,7 +36,7 @@ pub fn palette_patch(
     }
 
     if selected_pen {
-        painter.add(Shape::polygon(
+        painter.add(Shape::convex_polygon(
             vec![
                 patch_rect.center_top(),
                 rect.center_top() - Vec2::new(r, 0.0),
