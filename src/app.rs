@@ -219,7 +219,7 @@ impl epi::App for Application {
                     ctx.request_repaint(); // to animate color highlight
                 }
             } else {
-                ui.label("Have fun!");
+                ui.label(mode_instructions(&ui_state.mode));
             }
         });
 
@@ -602,6 +602,16 @@ fn update_texture(
     };
     image.dirty = false;
     texture
+}
+
+fn mode_instructions(mode: &Mode) -> &str {
+    match mode {
+        Mode::Import(_) => "Tweak settings and click Import.",
+        Mode::PixelPaint => "Click to paint. Right-click to paint with background color.",
+        Mode::ColorPaint => {
+            "Click to change the color of the character cell. Right-click for background color."
+        }
+    }
 }
 
 impl Application {
