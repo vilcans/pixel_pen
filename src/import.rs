@@ -4,6 +4,7 @@ use crate::error::Error;
 use crate::Document;
 use eframe::egui;
 use eframe::egui::Color32;
+use eframe::egui::ComboBox;
 use eframe::egui::DragValue;
 use eframe::egui::Label;
 use eframe::egui::Painter;
@@ -18,10 +19,23 @@ const IMPORT_IMAGE_EXTENTS_COLOR: Color32 = Color32::GRAY;
 const UNKNOWN_SOURCE_TEXT: &str = "unknown source";
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(remote = "FilterType")]
+enum FilterTypeForSerialization {
+    Nearest,
+    Triangle,
+    CatmullRom,
+    Gaussian,
+    Lanczos3,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct ImportSettings {
     #[serde(default)]
     pub filename: Option<String>,
+
+    #[serde(with = "FilterTypeForSerialization")]
+    pub filter: FilterType,
 
     // Placement in target image's pixel coordinates
     pub left: i32,
@@ -55,6 +69,7 @@ impl Import {
         Ok(Import {
             settings: ImportSettings {
                 filename: Some(filename.to_string()),
+                filter: FilterType::Gaussian,
                 left: 0,
                 top: 0,
                 width: image.dimensions().0,
@@ -71,7 +86,7 @@ impl Import {
             &self.image,
             settings.width,
             settings.height,
-            FilterType::Gaussian,
+            settings.filter,
         )
     }
 }
@@ -98,71 +113,95 @@ pub fn image_ui(_ui: &mut egui::Ui, p: &Painter, import: &mut Import, transform:
 pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bool {
     let mut keep_open = true;
 
-    egui::Grid::new("import_grid")
-        //.num_columns(2)
-        .show(ui, |ui| {
-            let source = &import.image;
-            let target = &doc.image;
-            let (source_width, source_height) = source.dimensions();
-            let (target_width, target_height) = target.pixel_size();
-            let source_aspect_ratio = source.width() as f32 / source.height() as f32;
+    egui::Grid::new("import_grid").show(ui, |ui| {
+        let source = &import.image;
+        let target = &doc.image;
+        let (source_width, source_height) = source.dimensions();
+        let (target_width, target_height) = target.pixel_size();
+        let source_aspect_ratio = source.width() as f32 / source.height() as f32;
 
-            ui.label("Source");
-            ui.label(format!(
-                "{}\n({}x{} pixels)",
-                import
-                    .settings
-                    .filename
-                    .clone()
-                    .unwrap_or_else(|| UNKNOWN_SOURCE_TEXT.to_string()),
-                source_width,
-                source_height
-            ));
-            ui.end_row();
+        ui.label("Source");
+        ui.label(format!(
+            "{}\n({}x{} pixels)",
+            import
+                .settings
+                .filename
+                .clone()
+                .unwrap_or_else(|| UNKNOWN_SOURCE_TEXT.to_string()),
+            source_width,
+            source_height
+        ));
+        ui.end_row();
 
-            ui.add(Label::new("Left"));
-            ui.add(
-                DragValue::new(&mut import.settings.left)
-                    .clamp_range(-(import.settings.width as f32)..=target_width as f32 - 1.0),
-            );
-            ui.end_row();
+        ui.add(Label::new("Left"));
+        ui.add(
+            DragValue::new(&mut import.settings.left)
+                .clamp_range(-(import.settings.width as f32)..=target_width as f32 - 1.0),
+        );
+        ui.end_row();
 
-            ui.add(Label::new("Top"));
-            ui.add(
-                DragValue::new(&mut import.settings.top)
-                    .clamp_range(-(import.settings.height as f32)..=target_height as f32 - 1.0),
-            );
-            ui.end_row();
+        ui.add(Label::new("Top"));
+        ui.add(
+            DragValue::new(&mut import.settings.top)
+                .clamp_range(-(import.settings.height as f32)..=target_height as f32 - 1.0),
+        );
+        ui.end_row();
 
-            ui.add(Label::new("Width"));
-            ui.add(
-                DragValue::new(&mut import.settings.width)
-                    .clamp_range(1.0..=target_width as f32 * 4.0),
-            );
-            ui.end_row();
+        ui.add(Label::new("Width"));
+        ui.add(
+            DragValue::new(&mut import.settings.width).clamp_range(1.0..=target_width as f32 * 4.0),
+        );
+        ui.end_row();
 
-            import.settings.height = ((import.settings.width as f32 / source_aspect_ratio
-                * target.pixel_aspect_ratio())
-            .round() as u32)
-                .max(1);
+        import.settings.height = ((import.settings.width as f32 / source_aspect_ratio
+            * target.pixel_aspect_ratio())
+        .round() as u32)
+            .max(1);
 
-            ui.label("Height");
-            ui.label(format!("{}", import.settings.height));
-            ui.end_row();
+        ui.label("Height");
+        ui.label(format!("{}", import.settings.height));
+        ui.end_row();
 
-            ui.label(""); // empty left column
-            ui.horizontal(|ui| {
-                if ui.button("Import").clicked() {
-                    let scaled = import.scale_image();
-                    doc.image
-                        .paste_image(&scaled, import.settings.left, import.settings.top);
-                }
-                if ui.button("Close").clicked() {
-                    keep_open = false;
-                }
+        ui.label("Scaling filter");
+        ComboBox::from_id_source("import_scaling_filter")
+            .selected_text(format!("{:?}", import.settings.filter))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut import.settings.filter, FilterType::Nearest, "Nearest");
+                ui.selectable_value(
+                    &mut import.settings.filter,
+                    FilterType::Triangle,
+                    "Triangle",
+                );
+                ui.selectable_value(
+                    &mut import.settings.filter,
+                    FilterType::CatmullRom,
+                    "CatmullRom",
+                );
+                ui.selectable_value(
+                    &mut import.settings.filter,
+                    FilterType::Gaussian,
+                    "Gaussian",
+                );
+                ui.selectable_value(
+                    &mut import.settings.filter,
+                    FilterType::Lanczos3,
+                    "Lanczos3",
+                );
             });
-            ui.end_row();
-        });
+        ui.end_row();
+    });
+    ui.separator();
+    ui.horizontal(|ui| {
+        if ui.button("Import").clicked() {
+            let scaled = import.scale_image();
+            doc.image
+                .paste_image(&scaled, import.settings.left, import.settings.top);
+        }
+        if ui.button("Close").clicked() {
+            keep_open = false;
+        }
+    });
+    ui.end_row();
 
     keep_open
 }
