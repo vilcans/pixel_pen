@@ -6,7 +6,7 @@ use crate::{
     import::{self, Import},
     mutation_monitor::MutationMonitor,
     scaling, storage,
-    system::SystemFunctions,
+    system::{self, SystemFunctions},
     ui,
     vic::{self, GlobalColors, VicImage},
     widgets,
@@ -83,13 +83,7 @@ pub struct Application {
     doc: Document,
     ui_state: UiState,
     image_texture: Option<Texture>,
-    pub system: SystemFunctions,
-}
-
-impl Default for Application {
-    fn default() -> Self {
-        Self::with_doc(Document::default())
-    }
+    pub system: Box<dyn SystemFunctions>,
 }
 
 impl epi::App for Application {
@@ -125,7 +119,7 @@ impl epi::App for Application {
             // Menu bar
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
-                    if system.open_file_dialog.is_some() && ui.button("Open...").clicked() {
+                    if system.has_open_file_dialog() && ui.button("Open...").clicked() {
                         match system.open_file_dialog() {
                             Ok(Some(filename)) => {
                                 match storage::load_any_file(std::path::Path::new(&filename)) {
@@ -143,7 +137,7 @@ impl epi::App for Application {
                             }
                         }
                     }
-                    if system.open_file_dialog.is_some() && ui.button("Import...").clicked() {
+                    if system.has_open_file_dialog() && ui.button("Import...").clicked() {
                         match system.open_file_dialog() {
                             Ok(Some(filename)) => {
                                 // TODO: get rid of unwrap, use PathBuf instead of String for file names
@@ -162,7 +156,7 @@ impl epi::App for Application {
                             }
                         }
                     }
-                    if system.save_file_dialog.is_some() && ui.button("Save As...").clicked() {
+                    if system.has_save_file_dialog() && ui.button("Save As...").clicked() {
                         match system.save_file_dialog("pixelpen") {
                             Ok(Some(filename)) => {
                                 match storage::save(doc, std::path::Path::new(&filename)) {
@@ -616,6 +610,7 @@ fn mode_instructions(mode: &Mode) -> &str {
 
 impl Application {
     pub fn with_doc(doc: Document) -> Self {
+        let system = Box::new(system::DummySystemFunctions {});
         Application {
             ui_state: UiState {
                 mode: Mode::PixelPaint,
@@ -627,7 +622,7 @@ impl Application {
             },
             doc,
             image_texture: None,
-            system: Default::default(),
+            system,
         }
     }
 }

@@ -39,11 +39,8 @@ pub fn main() -> Result<Option<Application>, i32> {
         }
         Ok(true) => Ok(None),
         Ok(false) => {
-            if let Some(doc) = doc {
-                Ok(Some(Application::with_doc(doc)))
-            } else {
-                Ok(Some(Application::default()))
-            }
+            let doc = doc.unwrap_or_else(Document::default);
+            Ok(Some(Application::with_doc(doc)))
         }
     }
 }

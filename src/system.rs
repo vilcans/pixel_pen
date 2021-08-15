@@ -1,34 +1,29 @@
 use crate::error::Error;
 use std::path::PathBuf;
 
-pub type OpenFileDialog = fn() -> Result<Option<PathBuf>, Error>;
-pub type SaveFileDialog = fn(default_extension: &str) -> Result<Option<PathBuf>, Error>;
-pub type ErrorDisplay = fn(&str);
-
-pub struct SystemFunctions {
-    pub open_file_dialog: Option<Box<OpenFileDialog>>,
-    pub save_file_dialog: Option<Box<SaveFileDialog>>,
-    pub show_error: Box<ErrorDisplay>,
-}
-
-impl Default for SystemFunctions {
-    fn default() -> Self {
-        Self {
-            open_file_dialog: None,
-            save_file_dialog: None,
-            show_error: Box::new(|message| eprintln!("{}\n", message)),
-        }
+pub trait SystemFunctions {
+    fn has_open_file_dialog(&self) -> bool;
+    fn has_save_file_dialog(&self) -> bool;
+    fn open_file_dialog(&mut self) -> Result<Option<PathBuf>, Error>;
+    fn save_file_dialog(&mut self, default_extension: &str) -> Result<Option<PathBuf>, Error>;
+    fn show_error(&self, message: &str) {
+        eprintln!("{}\n", message);
     }
 }
 
-impl SystemFunctions {
-    pub fn open_file_dialog(&self) -> Result<Option<PathBuf>, Error> {
-        (self.open_file_dialog.as_ref().expect("open_file_dialog"))()
+pub struct DummySystemFunctions;
+
+impl SystemFunctions for DummySystemFunctions {
+    fn has_open_file_dialog(&self) -> bool {
+        false
     }
-    pub fn save_file_dialog(&self, default_extension: &str) -> Result<Option<PathBuf>, Error> {
-        (self.save_file_dialog.as_ref().expect("save_file_dialog"))(default_extension)
+    fn has_save_file_dialog(&self) -> bool {
+        false
     }
-    pub fn show_error(&self, message: &str) {
-        (&self.show_error)(message)
+    fn open_file_dialog(&mut self) -> Result<Option<PathBuf>, Error> {
+        panic!("No open_file_dialog");
+    }
+    fn save_file_dialog(&mut self, _default_extension: &str) -> Result<Option<PathBuf>, Error> {
+        panic!("No save_file_dialog");
     }
 }
