@@ -25,7 +25,7 @@ fn main() {
 mod native {
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
-    use pixel_pen::system::SystemFunctions;
+    use pixel_pen::system::{OpenFileOptions, SystemFunctions};
     use std::path::PathBuf;
 
     pub struct NativeSystemFunctions {}
@@ -45,13 +45,20 @@ mod native {
             true
         }
 
-        fn open_file_dialog(&mut self) -> Result<Option<PathBuf>, Error> {
-            let path = FileDialog::new()
-                //.set_location("~/Desktop")
-                .add_filter("Pixel Pen Image", &["pixelpen"])
-                .add_filter("Turbo Rascal FLUFF", &["flf"])
-                .add_filter("PNG Image", &["png"])
-                .add_filter("JPEG Image", &["jpg", "jpeg"])
+        fn open_file_dialog(&mut self, options: OpenFileOptions) -> Result<Option<PathBuf>, Error> {
+            let mut dialog = FileDialog::new();
+            if options.include_native {
+                dialog = dialog
+                    .add_filter("Pixel Pen Image", &["pixelpen"])
+                    .add_filter("Turbo Rascal FLUFF", &["flf"]);
+            }
+            if options.include_images {
+                dialog = dialog.add_filter(
+                    "Image",
+                    &["png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"],
+                );
+            }
+            let path = dialog
                 .show_open_single_file()
                 .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
             Ok(path)

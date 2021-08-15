@@ -6,7 +6,7 @@ use crate::{
     import::{self, Import},
     mutation_monitor::MutationMonitor,
     scaling, storage,
-    system::{self, SystemFunctions},
+    system::{self, OpenFileOptions, SystemFunctions},
     ui,
     vic::{self, GlobalColors, VicImage},
     widgets,
@@ -120,7 +120,7 @@ impl epi::App for Application {
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
                     if system.has_open_file_dialog() && ui.button("Open...").clicked() {
-                        match system.open_file_dialog() {
+                        match system.open_file_dialog(OpenFileOptions::for_open()) {
                             Ok(Some(filename)) => {
                                 match storage::load_any_file(std::path::Path::new(&filename)) {
                                     Ok(doc) => {
@@ -138,12 +138,18 @@ impl epi::App for Application {
                         }
                     }
                     if system.has_open_file_dialog() && ui.button("Import...").clicked() {
-                        match system.open_file_dialog() {
+                        match system.open_file_dialog(OpenFileOptions::for_import()) {
                             Ok(Some(filename)) => {
                                 // TODO: get rid of unwrap, use PathBuf instead of String for file names
                                 let filename = filename.into_os_string().into_string().unwrap();
                                 match Import::load(&filename) {
-                                    Ok(i) => ui_state.mode = Mode::Import(i),
+                                    Ok(mut i) => {
+                                        i.settings.width =
+                                            i.settings.width.min(doc.image.pixel_size().0 as u32);
+                                        i.settings.height =
+                                            i.settings.height.min(doc.image.pixel_size().1 as u32);
+                                        ui_state.mode = Mode::Import(i);
+                                    }
                                     Err(e) => system.show_error(&format!(
                                         "Could not import file {}: {:?}",
                                         filename, e
