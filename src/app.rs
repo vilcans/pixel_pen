@@ -116,7 +116,7 @@ impl epi::App for Application {
         for e in ctx.input().events.iter() {
             if !ctx.wants_keyboard_input() {
                 if let egui::Event::Text(t) = e {
-                    user_actions.update_from_text(&t)
+                    user_actions.update_from_text(t)
                 }
             }
         }
@@ -165,7 +165,7 @@ impl epi::App for Application {
                     if system.save_file_dialog.is_some() && ui.button("Save As...").clicked() {
                         match system.save_file_dialog("pixelpen") {
                             Ok(Some(filename)) => {
-                                match storage::save(&doc, std::path::Path::new(&filename)) {
+                                match storage::save(doc, std::path::Path::new(&filename)) {
                                     Ok(()) => {}
                                     Err(e) => {
                                         system.show_error(&format!("Failed to save: {:?}", e));
@@ -591,7 +591,7 @@ fn update_texture(
 
         let texture_id = tex_allocator.alloc_srgba_premultiplied(
             (texture_width, texture_height),
-            &pixels.as_contiguous_buf().0,
+            pixels.as_contiguous_buf().0,
         );
         *image_texture = Some(Texture {
             id: texture_id,

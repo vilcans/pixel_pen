@@ -94,7 +94,7 @@ impl Serialize for VicImage {
     where
         S: serde::Serializer,
     {
-        let doc = VicImageFile::from_image(&self);
+        let doc = VicImageFile::from_image(self);
         doc.serialize(serializer)
     }
 }

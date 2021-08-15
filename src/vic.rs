@@ -373,9 +373,9 @@ impl VicImage {
                     (clamped_top - top) as u32,
                 )
                 .unwrap();
-            let colors = optimized_image(&char_image, &global_colors);
+            let colors = optimized_image(&char_image, global_colors);
             self.video[(c as usize, r as usize)] =
-                Char::highres_from_colors(colors.as_ref(), &global_colors)
+                Char::highres_from_colors(colors.as_ref(), global_colors)
         }
     }
 
