@@ -63,10 +63,14 @@ On Linux you need to install some dependencies to build:
 
 ### Testing locally
 
-`cargo run --release --features imagequant`
+To build for release and run:
 
-The `imagequant` feature enables the [imagequant](https://crates.io/crates/imagequant) crate, which Pixel Pen uses to convert images to the limited palette of the Vic-20.
-If `imagequant` doesn't compile (it's a wrapper for a C++ library), or to avoid the compilation time, you can disable that feature and get a much simpler conversion.
+    cargo run --release
+
+The `imagequant` feature is enabled by default and enables the [imagequant](https://crates.io/crates/imagequant) crate, which Pixel Pen uses to convert images to the limited palette of the Vic-20.
+If `imagequant` doesn't compile (it's a wrapper for a C++ library), or to avoid the compilation time, you can disable that feature and get a much simpler conversion with the command:
+
+    cargo run --release --no-default-features
 
 ### Compiling for the web
 
