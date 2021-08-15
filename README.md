@@ -4,7 +4,8 @@
 
 This is still early in development.
 
-You can load images in typical image file formats, but make sure they are low resolution.
+You can load images in typical image file formats, which Pixel Pen will convert to Vic-20 format.
+If you use the "Open" menu to open an image file, make sure it's not very high resolution. You can use the Import menu instead to load an image and scale it down at the same time.
 
 It's also possible to load some of the files using the FLUFF64 file format (file extension: `flf`) used by [Turbo Rascal](https://lemonspawn.com/turbo-rascal-syntax-error-expected-but-begin/) (TRSE),
 but that was only to get some images to test with at the start of the project. It's not a high priority to support all the formats of TRSE.
