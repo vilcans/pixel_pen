@@ -1,6 +1,6 @@
 use bimap::BiMap;
 use eframe::egui::Color32;
-use image::{GenericImage, GenericImageView, RgbaImage};
+use image::{imageops::FilterType, GenericImage, GenericImageView, RgbaImage};
 use imgref::{ImgRef, ImgRefMut, ImgVec};
 use itertools::Itertools;
 use rgb::RGBA;
@@ -99,6 +99,12 @@ impl Iterator for GlobalColorsIntoIterator {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+pub enum ColorFormat {
+    HighRes,
+    Multicolor,
+}
+
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
     bits: [u8; 8],
@@ -112,7 +118,7 @@ impl Char {
     pub const EMPTY_BITMAP: [u8; Self::HEIGHT] = [0u8; Self::HEIGHT];
 
     /// Create a new multicolor character
-    pub fn new(bits: [u8; 8], color: u8) -> Self {
+    pub fn new(bits: [u8; Self::HEIGHT], color: u8) -> Self {
         assert!(ALLOWED_CHAR_COLORS.contains(&color));
         Self {
             bits,
@@ -122,7 +128,7 @@ impl Char {
     }
 
     /// Create a new high resolution character
-    pub fn new_highres(bits: [u8; 8], color: u8) -> Self {
+    pub fn new_highres(bits: [u8; Self::HEIGHT], color: u8) -> Self {
         assert!(ALLOWED_CHAR_COLORS.contains(&color));
         Self {
             bits,
@@ -156,6 +162,38 @@ impl Char {
         }
 
         Self::new_highres(bitmap, cell_color)
+    }
+
+    pub fn multicolor_from_colors(colors: ImgRef<'_, u8>, global_colors: &GlobalColors) -> Self {
+        assert_eq!(colors.width(), Self::WIDTH / 2);
+        assert_eq!(colors.height(), Self::HEIGHT);
+
+        let mut cell_color = 1u8; // the final color of the cell
+        let bg_color = global_colors[GlobalColors::BACKGROUND] as u8;
+        let aux_color = global_colors[GlobalColors::AUX] as u8;
+        let border_color = global_colors[GlobalColors::BORDER] as u8;
+        let mut bitmap = [0u8; Self::HEIGHT];
+
+        for (pixel_row, bits) in colors.rows().zip(bitmap.iter_mut()) {
+            *bits = pixel_row
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(x, pixel_color)| {
+                    if pixel_color == bg_color {
+                        0
+                    } else if pixel_color == border_color {
+                        0x40u8 >> (x * 2)
+                    } else if pixel_color == aux_color {
+                        0xc0u8 >> (x * 2)
+                    } else {
+                        cell_color = pixel_color; // Use the last found color as the color for the cell
+                        0x80u8 >> (x * 2)
+                    }
+                })
+                .sum();
+        }
+        Self::new(bitmap, cell_color)
     }
 
     /// Return the 4 bit value as stored in color RAM.
@@ -333,12 +371,18 @@ impl VicImage {
         let columns = (source_image.width() as usize + Char::WIDTH - 1) / Char::WIDTH;
         let rows = (source_image.height() as usize + Char::HEIGHT - 1) / Char::HEIGHT;
         let mut image = VicImage::new(columns, rows);
-        image.paste_image(source_image, 0, 0);
+        image.paste_image(source_image, 0, 0, ColorFormat::Multicolor);
         Ok(image)
     }
 
     /// Paste a true color image into this image.
-    pub fn paste_image(&mut self, source: &RgbaImage, target_x: i32, target_y: i32) {
+    pub fn paste_image(
+        &mut self,
+        source: &RgbaImage,
+        target_x: i32,
+        target_y: i32,
+        format: ColorFormat,
+    ) {
         const CELL_W: i32 = Char::WIDTH as i32;
         const CELL_H: i32 = Char::HEIGHT as i32;
         let start_column = (target_x / CELL_W as i32).max(0);
@@ -373,9 +417,23 @@ impl VicImage {
                     (clamped_top - top) as u32,
                 )
                 .unwrap();
-            let colors = optimized_image(&char_image, global_colors);
-            self.video[(c as usize, r as usize)] =
-                Char::highres_from_colors(colors.as_ref(), global_colors)
+
+            self.video[(c as usize, r as usize)] = match format {
+                ColorFormat::HighRes => {
+                    let colors = optimized_image_highres(&char_image, global_colors);
+                    Char::highres_from_colors(colors.as_ref(), global_colors)
+                }
+                ColorFormat::Multicolor => {
+                    let half_width = image::imageops::resize(
+                        &char_image,
+                        Char::WIDTH as u32 / 2,
+                        Char::HEIGHT as u32,
+                        FilterType::Triangle,
+                    );
+                    let colors = optimized_image_multicolor(&half_width, global_colors);
+                    Char::multicolor_from_colors(colors.as_ref(), global_colors)
+                }
+            }
         }
     }
 
@@ -578,15 +636,35 @@ where
     PALETTE[index.into()].1
 }
 
-/// Generates an optimized image using the hardware palette colors.
+/// Generates an optimized highres image using the given hardware palette colors.
 /// Tries different colors and finds the one that gives the least quantization error.
 /// Returns the resulting color numbers.
-fn optimized_image(original: &RgbaImage, global_colors: &GlobalColors) -> ImgVec<u8> {
-    // These colors will be used in each attempt.
+fn optimized_image_highres(original: &RgbaImage, global_colors: &GlobalColors) -> ImgVec<u8> {
     let fixed_colors = [global_colors[GlobalColors::BACKGROUND]];
+    optimized_image(original, &fixed_colors)
+}
 
+/// Generates an optimized multicolor image using the given hardware palette colors.
+/// Tries different colors and finds the one that gives the least quantization error.
+/// Returns the resulting color numbers.
+fn optimized_image_multicolor(original: &RgbaImage, global_colors: &GlobalColors) -> ImgVec<u8> {
+    let fixed_colors = [
+        global_colors[GlobalColors::BACKGROUND],
+        global_colors[GlobalColors::BORDER],
+        global_colors[GlobalColors::AUX],
+    ];
+    optimized_image(original, &fixed_colors)
+}
+
+/// Generate an image by attempting different color settings and finding the one that gives the least error.
+/// Tries different character colors and finds the one that gives the least quantization error.
+/// The colors in `fixed_colors` will be used in every attempt, in addition to the varying character color.
+fn optimized_image(
+    original: &image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+    fixed_colors: &[u8],
+) -> imgref::Img<Vec<u8>> {
     let (pixels, colors, _error) = ALLOWED_CHAR_COLORS
-        .filter(|attempted_color| *attempted_color != global_colors[GlobalColors::BACKGROUND])
+        .filter(|attempted_color| !fixed_colors.contains(attempted_color))
         .map(|attempted_color| {
             // Generate a list of the color combinations to try
             let mut colors = Vec::with_capacity(fixed_colors.len() + 1);

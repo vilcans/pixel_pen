@@ -1,6 +1,7 @@
 use crate::coords::PixelTransform;
 use crate::coords::Point;
 use crate::error::Error;
+use crate::vic::ColorFormat;
 use crate::Document;
 use eframe::egui;
 use eframe::egui::Color32;
@@ -37,6 +38,8 @@ pub struct ImportSettings {
     #[serde(with = "FilterTypeForSerialization")]
     pub filter: FilterType,
 
+    pub format: ColorFormat,
+
     // Placement in target image's pixel coordinates
     pub left: i32,
     pub top: i32,
@@ -70,6 +73,7 @@ impl Import {
             settings: ImportSettings {
                 filename: Some(filename.to_string()),
                 filter: FilterType::Gaussian,
+                format: ColorFormat::Multicolor,
                 left: 0,
                 top: 0,
                 width: image.dimensions().0,
@@ -189,13 +193,37 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
                 );
             });
         ui.end_row();
+
+        ui.label("Format");
+        ComboBox::from_id_source("import_color_format")
+            .selected_text(match import.settings.format {
+                ColorFormat::HighRes => "High Resolution",
+                ColorFormat::Multicolor => "Multicolor",
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut import.settings.format,
+                    ColorFormat::Multicolor,
+                    "Multicolor",
+                );
+                ui.selectable_value(
+                    &mut import.settings.format,
+                    ColorFormat::HighRes,
+                    "High Resolution",
+                );
+            });
+        ui.end_row();
     });
     ui.separator();
     ui.horizontal(|ui| {
         if ui.button("Import").clicked() {
             let scaled = import.scale_image();
-            doc.image
-                .paste_image(&scaled, import.settings.left, import.settings.top);
+            doc.image.paste_image(
+                &scaled,
+                import.settings.left,
+                import.settings.top,
+                import.settings.format,
+            );
         }
         if ui.button("Close").clicked() {
             keep_open = false;
