@@ -668,7 +668,7 @@ fn optimized_image(
         .map(|attempted_color| {
             // Generate a list of the color combinations to try
             let mut colors = Vec::with_capacity(fixed_colors.len() + 1);
-            colors.extend_from_slice(&fixed_colors);
+            colors.extend_from_slice(fixed_colors);
             colors.push(attempted_color);
             // Generate RGBA palette from those colors.
             let palette = colors
