@@ -86,6 +86,13 @@ pub struct Application {
     pub system: Box<dyn SystemFunctions>,
 }
 
+impl Default for Application {
+    fn default() -> Self {
+        let doc = Document::default();
+        Self::with_doc(doc)
+    }
+}
+
 impl epi::App for Application {
     fn name(&self) -> &str {
         "Pixel Pen"
