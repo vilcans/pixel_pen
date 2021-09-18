@@ -44,8 +44,8 @@ Oh, and there's a command-line interface! Run `pixel_pen --help` to get the poss
         -V, --version    Prints version information
 
     OPTIONS:
-            --export-file <export-file>    Save the image to the given file and quit
-            --import <import-file>         Open the given file in import mode
+            --export <export-file>    Save the image to the given file and quit
+            --import <import-file>    Open the given file in import mode
 
     ARGS:
         <filename>    File to load

@@ -14,7 +14,7 @@ struct Opts {
     #[structopt(parse(from_os_str))]
     filename: Option<PathBuf>,
     /// Save the image to the given file and quit.
-    #[structopt(long = "--export-file", requires = "filename")]
+    #[structopt(long = "--export", requires = "filename")]
     export_file: Option<PathBuf>,
 }
 
