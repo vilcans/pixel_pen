@@ -1,3 +1,6 @@
+use std::path::Path;
+use std::path::PathBuf;
+
 use crate::coords::PixelTransform;
 use crate::coords::Point;
 use crate::error::Error;
@@ -33,7 +36,7 @@ enum FilterTypeForSerialization {
 #[serde(rename_all = "kebab-case")]
 pub struct ImportSettings {
     #[serde(default)]
-    pub filename: Option<String>,
+    pub filename: Option<PathBuf>,
 
     #[serde(with = "FilterTypeForSerialization")]
     pub filter: FilterType,
@@ -55,7 +58,7 @@ pub struct Import {
 }
 
 impl Import {
-    pub fn load(filename: &str) -> Result<Import, Error> {
+    pub fn load(filename: &Path) -> Result<Import, Error> {
         let image = match image::open(filename) {
             Ok(image) => image,
             Err(e) => {
@@ -64,14 +67,14 @@ impl Import {
         };
         println!(
             "Import image {}: dimensions {:?}, colors {:?}",
-            filename,
+            filename.display(),
             image.dimensions(),
             image.color()
         );
 
         Ok(Import {
             settings: ImportSettings {
-                filename: Some(filename.to_string()),
+                filename: Some(filename.to_owned()),
                 filter: FilterType::Gaussian,
                 format: ColorFormat::Multicolor,
                 left: 0,
@@ -131,6 +134,7 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
                 .settings
                 .filename
                 .clone()
+                .map(|s| s.to_string_lossy().to_string())
                 .unwrap_or_else(|| UNKNOWN_SOURCE_TEXT.to_string()),
             source_width,
             source_height

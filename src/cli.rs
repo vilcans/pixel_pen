@@ -7,6 +7,9 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(name = "Pixel Pen", about = "Actual 8 bit graphics editor")]
 struct Opts {
+    /// Open the given file in import mode
+    #[structopt(long = "--import")]
+    import_file: Option<PathBuf>,
     /// File to load
     #[structopt(parse(from_os_str))]
     filename: Option<PathBuf>,
@@ -40,7 +43,18 @@ pub fn main() -> Result<Option<Application>, i32> {
         Ok(true) => Ok(None),
         Ok(false) => {
             let doc = doc.unwrap_or_else(Document::default);
-            Ok(Some(Application::with_doc(doc)))
+            let mut app = Application::with_doc(doc);
+            if let Some(filename) = opts.import_file {
+                match app.start_import_mode(&filename) {
+                    Ok(_) => Ok(Some(app)),
+                    Err(e) => {
+                        eprintln!("Failed to open {:?} for import: {}", filename, e);
+                        Err(1)
+                    }
+                }
+            } else {
+                Ok(Some(app))
+            }
         }
     }
 }

@@ -1,8 +1,9 @@
-use std::time::Instant;
+use std::{path::Path, time::Instant};
 
 use crate::{
     coords::{PixelTransform, Point},
     document::Document,
+    error::Error,
     import::{self, Import},
     mutation_monitor::MutationMonitor,
     scaling, storage,
@@ -147,19 +148,12 @@ impl epi::App for Application {
                     if system.has_open_file_dialog() && ui.button("Import...").clicked() {
                         match system.open_file_dialog(OpenFileOptions::for_import()) {
                             Ok(Some(filename)) => {
-                                // TODO: get rid of unwrap, use PathBuf instead of String for file names
-                                let filename = filename.into_os_string().into_string().unwrap();
-                                match Import::load(&filename) {
-                                    Ok(mut i) => {
-                                        i.settings.width =
-                                            i.settings.width.min(doc.image.pixel_size().0 as u32);
-                                        i.settings.height =
-                                            i.settings.height.min(doc.image.pixel_size().1 as u32);
-                                        ui_state.mode = Mode::Import(i);
-                                    }
+                                match start_import_mode(&filename, doc, ui_state) {
+                                    Ok(()) => {}
                                     Err(e) => system.show_error(&format!(
                                         "Could not import file {}: {:?}",
-                                        filename, e
+                                        filename.display(),
+                                        e
                                     )),
                                 }
                             }
@@ -410,6 +404,18 @@ impl epi::App for Application {
     }
 }
 
+fn start_import_mode(
+    filename: &Path,
+    doc: &mut Document,
+    ui_state: &mut UiState,
+) -> Result<(), Error> {
+    let mut i = Import::load(filename)?;
+    i.settings.width = i.settings.width.min(doc.image.pixel_size().0 as u32);
+    i.settings.height = i.settings.height.min(doc.image.pixel_size().1 as u32);
+    ui_state.mode = Mode::Import(i);
+    Ok(())
+}
+
 fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransform) {
     let (width, height) = image.pixel_size();
     let stroke = Stroke {
@@ -637,5 +643,9 @@ impl Application {
             image_texture: None,
             system,
         }
+    }
+
+    pub fn start_import_mode(&mut self, filename: &Path) -> Result<(), Error> {
+        start_import_mode(filename, &mut self.doc, &mut self.ui_state)
     }
 }
