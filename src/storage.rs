@@ -32,7 +32,8 @@ pub fn load_any_file(filename: &Path) -> Result<Document, Error> {
 pub fn load_own(filename: &Path) -> Result<Document, Error> {
     let file = File::open(filename)?;
     let reader = BufReader::new(file);
-    let doc = serde_json::from_reader(reader)?;
+    let mut doc: Document = serde_json::from_reader(reader)?;
+    doc.filename = Some(filename.to_owned());
     Ok(doc)
 }
 

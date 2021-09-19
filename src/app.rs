@@ -166,7 +166,9 @@ impl epi::App for Application {
                     if system.has_save_file_dialog() && ui.button("Save As...").clicked() {
                         match system.save_file_dialog("pixelpen") {
                             Ok(Some(filename)) => match storage::save(doc, &filename) {
-                                Ok(()) => {}
+                                Ok(()) => {
+                                    doc.filename = Some(filename);
+                                }
                                 Err(e) => {
                                     system.show_error(&format!("Failed to save: {:?}", e));
                                 }

@@ -1,6 +1,8 @@
 //! Data for the "document" the user is working on.
 //! The document is what is saved to file.
 
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{mutation_monitor::MutationMonitor, vic::VicImage};
@@ -9,6 +11,8 @@ use crate::{mutation_monitor::MutationMonitor, vic::VicImage};
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Document {
+    #[serde(skip)]
+    pub filename: Option<PathBuf>,
     pub paint_color: usize,
     pub image: MutationMonitor<VicImage>,
 }
@@ -26,6 +30,7 @@ impl Default for Document {
     fn default() -> Self {
         let image = VicImage::default();
         Self {
+            filename: None,
             paint_color: 1,
             image: MutationMonitor::new_dirty(image),
         }
