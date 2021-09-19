@@ -8,6 +8,7 @@ use super::{Char, GlobalColors, VicImage};
 
 /// Image for serialization to or deserialization from file.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct VicImageFile {
     columns: usize,
     rows: usize,
