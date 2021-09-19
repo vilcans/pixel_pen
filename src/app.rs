@@ -165,14 +165,12 @@ impl epi::App for Application {
                     }
                     if system.has_save_file_dialog() && ui.button("Save As...").clicked() {
                         match system.save_file_dialog("pixelpen") {
-                            Ok(Some(filename)) => {
-                                match storage::save(doc, std::path::Path::new(&filename)) {
-                                    Ok(()) => {}
-                                    Err(e) => {
-                                        system.show_error(&format!("Failed to save: {:?}", e));
-                                    }
+                            Ok(Some(filename)) => match storage::save(doc, &filename) {
+                                Ok(()) => {}
+                                Err(e) => {
+                                    system.show_error(&format!("Failed to save: {:?}", e));
                                 }
-                            }
+                            },
                             Ok(None) => {}
                             Err(e) => {
                                 system.show_error(&format!("Could not get file name: {:?}", e));
