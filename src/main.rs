@@ -8,12 +8,16 @@ mod cli;
 // When compiling natively:
 #[cfg(not(target_arch = "wasm32"))]
 fn main() {
+    use eframe::egui::Vec2;
     use native::NativeSystemFunctions;
 
     match cli::main() {
         Ok(Some(mut app)) => {
             app.system = Box::new(NativeSystemFunctions::new());
-            let options = eframe::NativeOptions::default();
+            let options = eframe::NativeOptions {
+                initial_window_size: Some(Vec2::new(1280.0, 920.0)),
+                ..Default::default()
+            };
             eframe::run_native(Box::new(app), options); // never returns
         }
         Ok(None) => {}
