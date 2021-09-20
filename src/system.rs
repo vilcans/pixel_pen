@@ -1,5 +1,5 @@
 use crate::error::Error;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub struct OpenFileOptions {
     pub include_native: bool,
@@ -24,7 +24,11 @@ pub trait SystemFunctions {
     fn has_open_file_dialog(&self) -> bool;
     fn has_save_file_dialog(&self) -> bool;
     fn open_file_dialog(&mut self, options: OpenFileOptions) -> Result<Option<PathBuf>, Error>;
-    fn save_file_dialog(&mut self, default_extension: &str) -> Result<Option<PathBuf>, Error>;
+    fn save_file_dialog(
+        &mut self,
+        default: Option<&Path>,
+        default_extension: &str,
+    ) -> Result<Option<PathBuf>, Error>;
     fn show_error(&self, message: &str) {
         eprintln!("{}\n", message);
     }
@@ -42,7 +46,11 @@ impl SystemFunctions for DummySystemFunctions {
     fn open_file_dialog(&mut self, _options: OpenFileOptions) -> Result<Option<PathBuf>, Error> {
         panic!("No open_file_dialog");
     }
-    fn save_file_dialog(&mut self, _default_extension: &str) -> Result<Option<PathBuf>, Error> {
+    fn save_file_dialog(
+        &mut self,
+        _default: Option<&Path>,
+        _default_extension: &str,
+    ) -> Result<Option<PathBuf>, Error> {
         panic!("No save_file_dialog");
     }
 }

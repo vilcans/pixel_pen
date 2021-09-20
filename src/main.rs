@@ -33,7 +33,7 @@ mod native {
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
     use pixel_pen::system::{OpenFileOptions, SystemFunctions};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     const ICON_IMAGE: &[u8] =
         include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icon.png"));
@@ -74,10 +74,19 @@ mod native {
             Ok(path)
         }
 
-        fn save_file_dialog(&mut self, default_extension: &str) -> Result<Option<PathBuf>, Error> {
-            let path = FileDialog::new()
-                //.set_location("~/Desktop")
-                .add_filter("Pixel Pen Image", &["pixelpen"])
+        fn save_file_dialog(
+            &mut self,
+            default: Option<&Path>,
+            default_extension: &str,
+        ) -> Result<Option<PathBuf>, Error> {
+            let location = default.and_then(Path::parent);
+
+            let mut dialog = FileDialog::new();
+            dialog = dialog.add_filter("Pixel Pen Image", &["pixelpen"]);
+            if let Some(location) = location {
+                dialog = dialog.set_location(location);
+            }
+            let path = dialog
                 .show_save_single_file()
                 .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
 

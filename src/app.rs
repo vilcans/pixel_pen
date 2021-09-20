@@ -418,7 +418,7 @@ impl epi::App for Application {
 
 /// Ask for filename and save the document.
 fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
-    match system.save_file_dialog("pixelpen") {
+    match system.save_file_dialog(doc.filename.as_deref(), "pixelpen") {
         Ok(Some(filename)) => save(doc, &filename, system),
         Ok(None) => {}
         Err(e) => {
