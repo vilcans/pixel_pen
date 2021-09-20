@@ -15,6 +15,7 @@ fn main() {
         Ok(Some(mut app)) => {
             app.system = Box::new(NativeSystemFunctions::new());
             let options = eframe::NativeOptions {
+                icon_data: Some(native::load_icon()),
                 initial_window_size: Some(Vec2::new(1280.0, 920.0)),
                 ..Default::default()
             };
@@ -27,10 +28,15 @@ fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
+    use eframe::epi::IconData;
+    use image::{GenericImageView, ImageFormat};
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
     use pixel_pen::system::{OpenFileOptions, SystemFunctions};
     use std::path::PathBuf;
+
+    const ICON_IMAGE: &[u8] =
+        include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icon.png"));
 
     pub struct NativeSystemFunctions {}
 
@@ -95,6 +101,16 @@ mod native {
                 }
                 Ok(()) => {}
             }
+        }
+    }
+
+    pub fn load_icon() -> IconData {
+        let image = image::load_from_memory_with_format(&ICON_IMAGE, ImageFormat::Png).unwrap();
+        let pixels = image.to_rgba8().to_vec();
+        IconData {
+            rgba: pixels,
+            width: image.width(),
+            height: image.height(),
         }
     }
 }
