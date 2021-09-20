@@ -33,6 +33,7 @@ mod native {
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
     use pixel_pen::system::{OpenFileOptions, SystemFunctions};
+    use std::ffi::OsStr;
     use std::path::{Path, PathBuf};
 
     const ICON_IMAGE: &[u8] =
@@ -79,12 +80,19 @@ mod native {
             default: Option<&Path>,
             default_extension: &str,
         ) -> Result<Option<PathBuf>, Error> {
-            let location = default.and_then(Path::parent);
+            let (location, filename) = default
+                .map(|path| (path.parent(), path.file_name()))
+                .unwrap_or((None, None));
 
             let mut dialog = FileDialog::new();
             dialog = dialog.add_filter("Pixel Pen Image", &["pixelpen"]);
             if let Some(location) = location {
                 dialog = dialog.set_location(location);
+            }
+            let temp_filename;
+            if let Some(filename) = filename.map(OsStr::to_string_lossy) {
+                temp_filename = (*filename).to_string();
+                dialog = dialog.set_filename(&temp_filename);
             }
             let path = dialog
                 .show_save_single_file()
