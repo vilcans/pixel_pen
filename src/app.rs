@@ -163,22 +163,34 @@ impl epi::App for Application {
                             }
                         }
                     }
-                    if system.has_save_file_dialog() && ui.button("Save As...").clicked() {
-                        match system.save_file_dialog("pixelpen") {
-                            Ok(Some(filename)) => match storage::save(doc, &filename) {
-                                Ok(()) => {
-                                    doc.filename = Some(filename);
+                    if system.has_save_file_dialog() {
+                        ui.separator();
+                        match doc.filename.clone() {
+                            Some(filename) => {
+                                if ui
+                                    .button(format!(
+                                        "Save {}",
+                                        filename
+                                            .file_name()
+                                            .map(|s| s.to_string_lossy())
+                                            .unwrap_or_default()
+                                    ))
+                                    .clicked()
+                                {
+                                    save(doc, &filename, system)
                                 }
-                                Err(e) => {
-                                    system.show_error(&format!("Failed to save: {:?}", e));
+                            }
+                            None => {
+                                if ui.button("Save").clicked() {
+                                    save_as(doc, system)
                                 }
-                            },
-                            Ok(None) => {}
-                            Err(e) => {
-                                system.show_error(&format!("Could not get file name: {:?}", e));
                             }
                         }
+                        if ui.button("Save As...").clicked() {
+                            save_as(doc, system);
+                        }
                     }
+                    ui.separator();
                     if ui.button("Quit").clicked() {
                         frame.quit();
                     }
@@ -400,6 +412,30 @@ impl epi::App for Application {
 
         if let Some(icon) = cursor_icon {
             ctx.output().cursor_icon = icon;
+        }
+    }
+}
+
+/// Ask for filename and save the document.
+fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
+    match system.save_file_dialog("pixelpen") {
+        Ok(Some(filename)) => save(doc, &filename, system),
+        Ok(None) => {}
+        Err(e) => {
+            system.show_error(&format!("Could not get file name: {:?}", e));
+        }
+    }
+}
+
+/// Save the document as a given filename.
+fn save(doc: &mut Document, filename: &Path, system: &mut Box<dyn SystemFunctions>) {
+    println!("Saving as {}", filename.display());
+    match storage::save(doc, filename) {
+        Ok(()) => {
+            doc.filename = Some(filename.to_owned());
+        }
+        Err(e) => {
+            system.show_error(&format!("Failed to save: {:?}", e));
         }
     }
 }
