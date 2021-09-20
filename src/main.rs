@@ -105,7 +105,7 @@ mod native {
     }
 
     pub fn load_icon() -> IconData {
-        let image = image::load_from_memory_with_format(&ICON_IMAGE, ImageFormat::Png).unwrap();
+        let image = image::load_from_memory_with_format(ICON_IMAGE, ImageFormat::Png).unwrap();
         let pixels = image.to_rgba8().to_vec();
         IconData {
             rgba: pixels,
