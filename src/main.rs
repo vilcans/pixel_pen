@@ -28,6 +28,7 @@ fn main() {
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
+    use directories::UserDirs;
     use eframe::epi::IconData;
     use image::{GenericImageView, ImageFormat};
     use native_dialog::{FileDialog, MessageDialog, MessageType};
@@ -81,13 +82,22 @@ mod native {
             default_extension: &str,
         ) -> Result<Option<PathBuf>, Error> {
             let (location, filename) = default
-                .map(|path| (path.parent(), path.file_name()))
-                .unwrap_or((None, None));
+                .map(|path| (path.parent().map(Path::to_path_buf), path.file_name()))
+                .unwrap_or_else(|| {
+                    if let Some(user_dirs) = UserDirs::new() {
+                        let dir = user_dirs.document_dir().map(|d| d.to_owned());
+                        (dir, None)
+                    } else {
+                        (None, None)
+                    }
+                });
 
             let mut dialog = FileDialog::new();
+            let temp_location;
             dialog = dialog.add_filter("Pixel Pen Image", &["pixelpen"]);
             if let Some(location) = location {
-                dialog = dialog.set_location(location);
+                temp_location = location;
+                dialog = dialog.set_location(&temp_location);
             }
             let temp_filename;
             if let Some(filename) = filename.map(OsStr::to_string_lossy) {
