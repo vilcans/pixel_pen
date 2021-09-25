@@ -4,7 +4,7 @@ use crate::{
     coords::{PixelTransform, Point},
     document::Document,
     error::Error,
-    import::{self, Import},
+    import::{self, Import, ImportSettings},
     mutation_monitor::MutationMonitor,
     scaling, storage,
     system::{self, OpenFileOptions, SystemFunctions},
@@ -128,7 +128,9 @@ impl epi::App for Application {
             egui::menu::bar(ui, |ui| {
                 egui::menu::menu(ui, "File", |ui| {
                     if system.has_open_file_dialog() && ui.button("Open...").clicked() {
-                        match system.open_file_dialog(OpenFileOptions::for_open()) {
+                        match system
+                            .open_file_dialog(OpenFileOptions::for_open(doc.filename.as_deref()))
+                        {
                             Ok(Some(filename)) => {
                                 match storage::load_any_file(std::path::Path::new(&filename)) {
                                     Ok(doc) => {
@@ -146,7 +148,15 @@ impl epi::App for Application {
                         }
                     }
                     if system.has_open_file_dialog() && ui.button("Import...").clicked() {
-                        match system.open_file_dialog(OpenFileOptions::for_import()) {
+                        match system.open_file_dialog(OpenFileOptions::for_import(match &ui_state
+                            .mode
+                        {
+                            Mode::Import(Import {
+                                settings: ImportSettings { filename, .. },
+                                ..
+                            }) => filename.as_deref(),
+                            _ => None,
+                        })) {
                             Ok(Some(filename)) => {
                                 match start_import_mode(&filename, doc, ui_state) {
                                     Ok(()) => {}

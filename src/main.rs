@@ -34,17 +34,46 @@ mod native {
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
     use pixel_pen::system::{OpenFileOptions, SystemFunctions};
-    use std::ffi::OsStr;
+    use std::ffi::{OsStr, OsString};
     use std::path::{Path, PathBuf};
 
     const ICON_IMAGE: &[u8] =
         include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icon.png"));
 
-    pub struct NativeSystemFunctions {}
+    pub struct NativeSystemFunctions {
+        location: PathBuf,
+        filename: String,
+    }
 
     impl NativeSystemFunctions {
         pub fn new() -> Self {
-            Self {}
+            Self {
+                location: PathBuf::default(),
+                filename: String::default(),
+            }
+        }
+
+        fn create_file_dialog(&mut self, initial_path: Option<&Path>) -> FileDialog<'_> {
+            let dialog = FileDialog::new();
+            let (location, filename) = directory_and_file_or_default(initial_path);
+            self.set_default(dialog, location, filename)
+        }
+
+        fn set_default<'a>(
+            &'a mut self,
+            mut dialog: FileDialog<'a>,
+            location: Option<PathBuf>,
+            filename: Option<OsString>,
+        ) -> FileDialog<'a> {
+            if let Some(location) = location {
+                self.location = location;
+                dialog = dialog.set_location(&self.location);
+            }
+            if let Some(filename) = filename {
+                self.filename = filename.to_string_lossy().to_string();
+                dialog = dialog.set_filename(&self.filename);
+            }
+            dialog
         }
     }
 
@@ -57,8 +86,11 @@ mod native {
             true
         }
 
-        fn open_file_dialog(&mut self, options: OpenFileOptions) -> Result<Option<PathBuf>, Error> {
-            let mut dialog = FileDialog::new();
+        fn open_file_dialog(
+            &mut self,
+            options: OpenFileOptions<'_>,
+        ) -> Result<Option<PathBuf>, Error> {
+            let mut dialog = self.create_file_dialog(options.initial_path.as_deref());
             if options.include_native {
                 dialog = dialog
                     .add_filter("Pixel Pen Image", &["pixelpen"])
@@ -78,32 +110,13 @@ mod native {
 
         fn save_file_dialog(
             &mut self,
-            default: Option<&Path>,
+            initial_path: Option<&Path>,
             default_extension: &str,
         ) -> Result<Option<PathBuf>, Error> {
-            let (location, filename) = default
-                .map(|path| (path.parent().map(Path::to_path_buf), path.file_name()))
-                .unwrap_or_else(|| {
-                    if let Some(user_dirs) = UserDirs::new() {
-                        let dir = user_dirs.document_dir().map(|d| d.to_owned());
-                        (dir, None)
-                    } else {
-                        (None, None)
-                    }
-                });
+            let dialog = self
+                .create_file_dialog(initial_path)
+                .add_filter("Pixel Pen Image", &["pixelpen"]);
 
-            let mut dialog = FileDialog::new();
-            let temp_location;
-            dialog = dialog.add_filter("Pixel Pen Image", &["pixelpen"]);
-            if let Some(location) = location {
-                temp_location = location;
-                dialog = dialog.set_location(&temp_location);
-            }
-            let temp_filename;
-            if let Some(filename) = filename.map(OsStr::to_string_lossy) {
-                temp_filename = (*filename).to_string();
-                dialog = dialog.set_filename(&temp_filename);
-            }
             let path = dialog
                 .show_save_single_file()
                 .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
@@ -129,6 +142,29 @@ mod native {
                 Ok(()) => {}
             }
         }
+    }
+
+    /// Get directory and filename from the path `default`,
+    /// or the user's Documents folder if `default` is `None`.
+    fn directory_and_file_or_default(
+        default: Option<&Path>,
+    ) -> (Option<PathBuf>, Option<OsString>) {
+        let (location, filename) = default
+            .map(|path| {
+                (
+                    path.parent().map(Path::to_path_buf),
+                    path.file_name().map(OsStr::to_os_string),
+                )
+            })
+            .unwrap_or_else(|| {
+                if let Some(user_dirs) = UserDirs::new() {
+                    let dir = user_dirs.document_dir().map(|d| d.to_owned());
+                    (dir, None)
+                } else {
+                    (None, None)
+                }
+            });
+        (location, filename)
     }
 
     pub fn load_icon() -> IconData {
