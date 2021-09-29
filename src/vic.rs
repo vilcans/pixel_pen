@@ -552,7 +552,9 @@ impl VicImage {
 
     /// Width of one pixel compared to its height.
     pub fn pixel_aspect_ratio(&self) -> f32 {
-        2.0
+        // I measured the 176x184 pixels of the Vic-20 screen,
+        // which was 573x362 mm on my TV, giving this ratio:
+        1.654822
     }
 
     pub fn update(&mut self) {
