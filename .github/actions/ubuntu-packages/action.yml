@@ -1,5 +1,7 @@
 runs:
     using: "composite"
     steps:
+        - run: sudo apt-get -y update
+          shell: bash
         - run: sudo apt-get -y install libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libgtk-3-dev
           shell: bash
