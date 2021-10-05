@@ -4,6 +4,25 @@ use rgb::RGBA8;
 #[derive(Clone, Copy)]
 pub struct TrueColor(image::Rgba<u8>);
 
+impl TrueColor {
+    /// Get amount of red (0-255)
+    pub fn r(&self) -> u8 {
+        self.0[0]
+    }
+    /// Get amount of green (0-255)
+    pub fn g(&self) -> u8 {
+        self.0[1]
+    }
+    /// Get amount of blue (0-255)
+    pub fn b(&self) -> u8 {
+        self.0[2]
+    }
+    /// Get amount of alpha (0-255)
+    pub fn a(&self) -> u8 {
+        self.0[3]
+    }
+}
+
 impl Default for TrueColor {
     fn default() -> Self {
         Self(image::Rgba::<u8>([0u8, 0, 0, 0]))
@@ -69,15 +88,15 @@ pub fn color32_from_image(color: image::Rgba<u8>) -> Color32 {
 /// Returns the index of the best palette entry and the amount of error compared to the color.
 #[allow(dead_code)]
 pub fn closest_palette_entry<'a>(
-    color: RGBA8,
-    palette: impl Iterator<Item = &'a RGBA8>,
+    color: TrueColor,
+    palette: impl Iterator<Item = &'a TrueColor>,
 ) -> (usize, i32) {
     palette
         .enumerate()
         .map(|(palette_index, candidate)| {
-            let dr = candidate.r as i32 - color.r as i32;
-            let dg = candidate.g as i32 - color.g as i32;
-            let db = candidate.b as i32 - color.b as i32;
+            let dr = candidate.r() as i32 - color.r() as i32;
+            let dg = candidate.g() as i32 - color.g() as i32;
+            let db = candidate.b() as i32 - color.b() as i32;
             let error = dr * dr + dg * dg + db * db;
             (palette_index, error)
         })
