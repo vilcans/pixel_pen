@@ -1,0 +1,8 @@
+disable-publish = true
+allow-branch = ["master", "main"]
+disable-push = true
+
+[[pre-release-replacements]]
+file = "README.md"
+search = "Current version: .*"
+replace = "Current version: {{version}} ({{date}})"
