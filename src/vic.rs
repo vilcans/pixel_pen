@@ -670,6 +670,7 @@ fn optimized_image(
     )
 }
 
+#[allow(clippy::enum_variant_names)] // All variants have the same prefix (Disallowed)
 #[derive(Error, Debug)]
 pub enum DisallowedEdit {
     #[error("High resolution characters can be painted with color 0-7, or background")]
