@@ -9,6 +9,7 @@ use std::{
     collections::HashMap,
     ops::{Index, IndexMut, RangeInclusive},
 };
+use thiserror::Error;
 
 use crate::{coords::Point, error::Error, image_operations};
 
@@ -245,38 +246,51 @@ impl Char {
         }
     }
 
-    fn set_pixel(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
+    fn set_pixel(
+        &mut self,
+        x: i32,
+        y: i32,
+        color: u8,
+        colors: &GlobalColors,
+    ) -> Result<bool, DisallowedEdit> {
         debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
         debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
+        let old_bits = self.bits[y as usize];
+        let new_bits;
+        let mut new_color = self.color;
         if self.multicolor {
-            self.set_pixel_multicolor(x, y, color, colors)
-        } else {
-            self.set_pixel_hires(x, y, color, colors)
-        }
-    }
-
-    fn set_pixel_hires(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
-        let bit = 0x80u8 >> x;
-        if color == colors[GlobalColors::BACKGROUND] {
-            self.bits[y as usize] &= !bit;
-        } else {
-            self.bits[y as usize] |= bit;
-            self.color = color;
-        }
-    }
-
-    fn set_pixel_multicolor(&mut self, x: i32, y: i32, color: u8, colors: &GlobalColors) {
-        let x = x & !1;
-        let mask = 0xc0u8 >> x;
-        let old = &self.bits[y as usize];
-        self.bits[y as usize] = match () {
-            _ if color == colors[GlobalColors::BACKGROUND] => old & !mask,
-            _ if color == colors[GlobalColors::BORDER] => (old & !mask) | (mask & 0b01010101),
-            _ if color == colors[GlobalColors::AUX] => old | mask,
-            _ => {
-                self.color = color;
-                (old & !mask) | (mask & 0b10101010)
+            let mask = 0xc0u8 >> (x & !1);
+            match () {
+                _ if color == colors[GlobalColors::BACKGROUND] => {
+                    new_bits = old_bits & !mask;
+                }
+                _ if color == colors[GlobalColors::BORDER] => {
+                    new_bits = (old_bits & !mask) | (mask & 0b01010101)
+                }
+                _ if color == colors[GlobalColors::AUX] => new_bits = old_bits | mask,
+                _ if ALLOWED_CHAR_COLORS.contains(&color) => {
+                    new_bits = (old_bits & !mask) | (mask & 0b10101010);
+                    new_color = color;
+                }
+                _ => return Err(DisallowedEdit::DisallowedMulticolorColor),
             }
+        } else {
+            let bit = 0x80u8 >> x;
+            if color == colors[GlobalColors::BACKGROUND] {
+                new_bits = old_bits & !bit;
+            } else if ALLOWED_CHAR_COLORS.contains(&color) {
+                new_bits = old_bits | bit;
+                new_color = color;
+            } else {
+                return Err(DisallowedEdit::DisallowedHiresColor);
+            }
+        }
+        if new_bits != old_bits || new_color != self.color {
+            self.bits[y as usize] = new_bits;
+            self.color = color;
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 }
@@ -443,27 +457,29 @@ impl VicImage {
     }
 
     /// Set a pixel at the given coordinates to a given color.
-    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) -> bool {
+    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) -> Result<bool, DisallowedEdit> {
         if let Some((column, row, cx, cy)) = self.char_coordinates(x, y) {
-            self.video[(column, row)].set_pixel(cx, cy, color, &self.colors);
-            true
+            self.video[(column, row)].set_pixel(cx, cy, color, &self.colors)
         } else {
-            false
+            Ok(false)
         }
     }
 
     /// Change the character color at given pixel coordinates
-    pub fn set_color(&mut self, x: i32, y: i32, color: u8) -> bool {
+    pub fn set_color(&mut self, x: i32, y: i32, color: u8) -> Result<bool, DisallowedEdit> {
         if let Some((column, row, _cx, _cy)) = self.char_coordinates(x, y) {
+            if !ALLOWED_CHAR_COLORS.contains(&color) {
+                return Err(DisallowedEdit::DisallowedCharacterColor);
+            }
             let cell = &mut self.video[(column, row)];
             if cell.color == color {
-                false
+                Ok(false)
             } else {
                 cell.color = color;
-                true
+                Ok(true)
             }
         } else {
-            false
+            Ok(false)
         }
     }
 
@@ -489,38 +505,6 @@ impl VicImage {
     /// Get at which pixel coordinates to dispay grid lines
     pub fn horizontal_grid_lines(&self) -> impl Iterator<Item = i32> {
         (0..=self.rows).map(|r| (r * Char::HEIGHT) as i32)
-    }
-
-    /// Check if it's possible to paint with the given color.
-    /// If it's not possible to paint with the given color at that point,
-    /// returns a message describing why. If painting is allowed, returns None.
-    pub fn check_allowed_paint(&self, color: usize, pos: Point) -> Option<String> {
-        let color = color as u8;
-        match self.char_coordinates(pos.x, pos.y) {
-            Some((column, row, _, _)) => {
-                if self.video[(column, row)].multicolor {
-                    if ALLOWED_CHAR_COLORS.contains(&color)
-                        || color == self.colors[GlobalColors::BACKGROUND]
-                        || color == self.colors[GlobalColors::BORDER]
-                        || color == self.colors[GlobalColors::AUX]
-                    {
-                        None
-                    } else {
-                        Some("Multicolor characters can be painted with color 0-7, background, border, or aux".to_string())
-                    }
-                } else if ALLOWED_CHAR_COLORS.contains(&color)
-                    || color == self.colors[GlobalColors::BACKGROUND]
-                {
-                    None
-                } else {
-                    Some(
-                        "High resolution characters can be painted with color 0-7, or background"
-                            .to_string(),
-                    )
-                }
-            }
-            None => None,
-        }
     }
 
     /// General information about the image
@@ -688,4 +672,14 @@ fn optimized_image(
         original.width() as usize,
         original.height() as usize,
     )
+}
+
+#[derive(Error, Debug)]
+pub enum DisallowedEdit {
+    #[error("High resolution characters can be painted with color 0-7, or background")]
+    DisallowedHiresColor,
+    #[error("Multicolor characters can be painted with color 0-7, background, border, or aux")]
+    DisallowedMulticolorColor,
+    #[error("Character color must be between 0 and 7")]
+    DisallowedCharacterColor,
 }

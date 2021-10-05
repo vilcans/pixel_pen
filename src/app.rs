@@ -526,23 +526,20 @@ fn update_in_paint_mode(
         None
     };
     if let Some(color) = color {
-        let disallowed_message = doc.image.check_allowed_paint(color, hover_pos);
-        if let Some(message) = disallowed_message {
-            ui_state.show_warning(message);
-        } else {
-            let Point { x, y } = hover_pos;
-            let was_dirty = doc.image.dirty;
-            let changed = match ui_state.mode {
-                Mode::PixelPaint => doc.image.set_pixel(x, y, color as u8),
-                Mode::ColorPaint => doc.image.set_color(x, y, color as u8),
-                _ => panic!(
-                    "update_in paint_mode with invalid mode: {:?}",
-                    ui_state.mode
-                ),
-            };
-            if !changed {
-                doc.image.dirty = was_dirty;
-            }
+        let Point { x, y } = hover_pos;
+        let was_dirty = doc.image.dirty;
+        let result = match ui_state.mode {
+            Mode::PixelPaint => doc.image.set_pixel(x, y, color as u8),
+            Mode::ColorPaint => doc.image.set_color(x, y, color as u8),
+            _ => panic!(
+                "update_in paint_mode with invalid mode: {:?}",
+                ui_state.mode
+            ),
+        };
+        match result {
+            Ok(true) => (),
+            Ok(false) => doc.image.dirty = was_dirty,
+            Err(e) => ui_state.show_warning(e.to_string()),
         }
     }
 }
