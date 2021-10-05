@@ -1,9 +1,9 @@
+use crate::colors::TrueColor;
 use image::RgbaImage;
-use rgb::RGBA8;
 
 /// Returns (pixels, palette, error).
 #[cfg(feature = "imagequant")]
-pub fn palettize(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
+pub fn palettize(image: &RgbaImage, palette: &[TrueColor]) -> (Vec<u8>, f64) {
     use rgb::AsPixels;
 
     let mut liq = imagequant::new();
@@ -20,8 +20,8 @@ pub fn palettize(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
             0.0,
         )
         .unwrap();
-    for &palette_entry in palette {
-        img.add_fixed_color(palette_entry);
+    for palette_entry in palette {
+        img.add_fixed_color(palette_entry.clone().into());
     }
 
     let mut res = match liq.quantize(&img) {
@@ -33,8 +33,8 @@ pub fn palettize(image: &RgbaImage, palette: &[RGBA8]) -> (Vec<u8>, f64) {
     res.set_dithering_level(1.0);
 
     // You can reuse the result to generate several images with the same palette
-    let (final_palette, final_pixels) = res.remapped(&mut img).unwrap();
-    debug_assert_eq!(final_palette, palette);
+    let (_final_palette, final_pixels) = res.remapped(&mut img).unwrap();
+    //debug_assert_eq!(final_palette, palette);
     (final_pixels, res.quantization_error().unwrap())
 }
 

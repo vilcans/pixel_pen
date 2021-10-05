@@ -1,12 +1,13 @@
 use std::{path::Path, time::Instant};
 
 use crate::{
+    colors,
     coords::{PixelTransform, Point},
     document::Document,
     error::Error,
     import::{self, Import, ImportSettings},
     mutation_monitor::MutationMonitor,
-    scaling, storage,
+    storage,
     system::{self, OpenFileOptions, SystemFunctions},
     ui,
     vic::{self, GlobalColors, VicImage},
@@ -19,7 +20,7 @@ use eframe::{
     },
     epi::{self, TextureAllocator},
 };
-use imgref::ImgVec;
+use image::{imageops::FilterType, Pixel};
 use itertools::Itertools;
 
 // Don't scale the texture more than this to avoid huge textures when zooming.
@@ -560,7 +561,7 @@ fn render_palette(
             ui::palette::palette_patch(
                 ui.painter(),
                 &patch_rect,
-                color,
+                color.into(),
                 color_index == image.colors[GlobalColors::BACKGROUND] as usize,
                 color_index == image.colors[GlobalColors::BORDER] as usize,
                 color_index == image.colors[GlobalColors::AUX] as usize,
@@ -637,18 +638,19 @@ fn update_texture(
     let texture = if let Some(texture) = image_texture {
         texture.id
     } else {
-        let mut unscaled_pixels = ImgVec::new(
-            vec![Color32::BLACK; source_width * source_height],
-            source_width,
-            source_height,
+        let unscaled_image = image.render();
+        let scaled_image = image::imageops::resize(
+            &unscaled_image,
+            unscaled_image.width() * scale_x,
+            unscaled_image.height() * scale_y,
+            FilterType::Nearest,
         );
-        image.render(unscaled_pixels.as_mut());
-        let mut pixels = scaling::scale_image(unscaled_pixels.as_ref(), scale_x, scale_y);
-
-        let texture_id = tex_allocator.alloc_srgba_premultiplied(
-            (texture_width, texture_height),
-            pixels.as_contiguous_buf().0,
-        );
+        let pixels: Vec<Color32> = scaled_image
+            .pixels()
+            .map(|p| colors::color32_from_image(p.to_rgba()))
+            .collect();
+        let texture_id =
+            tex_allocator.alloc_srgba_premultiplied((texture_width, texture_height), &pixels);
         *image_texture = Some(Texture {
             id: texture_id,
             width: texture_width,

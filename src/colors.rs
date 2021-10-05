@@ -1,6 +1,50 @@
 use eframe::egui::Color32;
 use rgb::RGBA8;
 
+#[derive(Clone, Copy)]
+pub struct TrueColor(image::Rgba<u8>);
+
+impl Default for TrueColor {
+    fn default() -> Self {
+        Self(image::Rgba::<u8>([0u8, 0, 0, 0]))
+    }
+}
+
+impl Into<image::Rgba<u8>> for TrueColor {
+    fn into(self) -> image::Rgba<u8> {
+        self.0
+    }
+}
+
+impl From<image::Rgba<u8>> for TrueColor {
+    fn from(p: image::Rgba<u8>) -> Self {
+        Self(p)
+    }
+}
+
+impl Into<Color32> for TrueColor {
+    fn into(self) -> Color32 {
+        Color32::from_rgba_unmultiplied(self.0[0], self.0[1], self.0[2], self.0[3])
+    }
+}
+
+impl Into<rgb::RGBA8> for TrueColor {
+    fn into(self) -> rgb::RGBA8 {
+        RGBA8::new(self.0[0], self.0[1], self.0[2], self.0[3])
+    }
+}
+
+impl TrueColor {
+    pub const fn from_u32(rgb: u32) -> Self {
+        Self(image::Rgba([
+            (rgb >> 16) as u8,
+            (rgb >> 8) as u8,
+            rgb as u8,
+            0xff,
+        ]))
+    }
+}
+
 /// Convert from [`eframe::egui::Color32`] to [`rgb::RGBA8`].
 #[allow(dead_code)]
 pub fn rgba_from_color32(color: Color32) -> RGBA8 {

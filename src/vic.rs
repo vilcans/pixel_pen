@@ -1,9 +1,7 @@
 use bimap::BiMap;
-use eframe::egui::Color32;
 use image::{imageops::FilterType, GenericImage, GenericImageView, RgbaImage};
-use imgref::{ImgRef, ImgRefMut, ImgVec};
+use imgref::{ImgRef, ImgVec};
 use itertools::Itertools;
-use rgb::RGBA;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -11,7 +9,7 @@ use std::{
 };
 use thiserror::Error;
 
-use crate::{coords::Point, error::Error, image_operations};
+use crate::{colors::TrueColor, coords::Point, error::Error, image_operations};
 
 mod serialization;
 
@@ -202,34 +200,36 @@ impl Char {
         self.color + if self.multicolor { 8 } else { 0 }
     }
 
-    fn render_to(&self, pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
-        debug_assert_eq!(Self::WIDTH, pixels.width());
-        debug_assert_eq!(Self::HEIGHT, pixels.height());
+    fn render(&self, colors: &GlobalColors) -> [TrueColor; Self::WIDTH * Self::HEIGHT] {
         if self.multicolor {
-            self.render_multicolor(pixels, colors);
+            self.render_multicolor(colors)
         } else {
-            self.render_hires(pixels, colors);
+            self.render_hires(colors)
         }
     }
 
     /// Render high resolution character (not multicolor).
-    fn render_hires(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
-        for (bits, pixel_row) in self.bits.iter().zip(pixels.rows_mut()) {
-            for (b, p) in pixel_row.iter_mut().enumerate() {
+    fn render_hires(&self, colors: &GlobalColors) -> [TrueColor; Self::WIDTH * Self::HEIGHT] {
+        let mut pixels = [TrueColor::default(); Self::WIDTH * Self::HEIGHT];
+        let mut pixel_iter = pixels.iter_mut();
+        for bits in self.bits.iter() {
+            for b in 0..Self::WIDTH {
                 let index = if (bits & (0x80 >> b)) == 0 {
                     colors[GlobalColors::BACKGROUND]
                 } else {
                     self.color
                 };
-                *p = palette_color(index);
+                *pixel_iter.next().unwrap() = palette_color(index);
             }
         }
+        pixels
     }
 
     /// Render multicolor character (low resolution).
-    fn render_multicolor(&self, mut pixels: ImgRefMut<'_, Color32>, colors: &GlobalColors) {
-        for (bits, pixel_row) in self.bits.iter().zip(pixels.rows_mut()) {
-            let mut pixels = pixel_row.iter_mut();
+    fn render_multicolor(&self, colors: &GlobalColors) -> [TrueColor; Self::WIDTH * Self::HEIGHT] {
+        let mut pixels = [TrueColor::default(); Self::WIDTH * Self::HEIGHT];
+        let mut pixel_iter = pixels.iter_mut();
+        for bits in self.bits.iter() {
             for b in (0..8).step_by(2) {
                 let v = (bits >> (6 - b)) & 0b11;
                 let index = match v {
@@ -240,10 +240,11 @@ impl Char {
                     _ => unreachable!(),
                 };
                 let color = palette_color(index);
-                *pixels.next().unwrap() = color;
-                *pixels.next().unwrap() = color;
+                *pixel_iter.next().unwrap() = color;
+                *pixel_iter.next().unwrap() = color;
             }
         }
+        pixels
     }
 
     fn set_pixel(
@@ -559,24 +560,29 @@ impl VicImage {
         map
     }
 
-    pub fn border(&self) -> Color32 {
+    pub fn border(&self) -> TrueColor {
         let i = self.colors[GlobalColors::BORDER];
         palette_color(i)
     }
 
     /// Render true color pixels for this image.
-    pub fn render(&mut self, mut pixels: ImgRefMut<'_, Color32>) {
-        assert_eq!(self.pixel_size(), (pixels.width(), pixels.height()));
+    pub fn render(&self) -> RgbaImage {
+        let (source_width, source_height) = self.pixel_size();
+        let mut image = RgbaImage::new(source_width as u32, source_height as u32);
         for (row, chars) in self.video.rows().enumerate() {
             for (column, char) in chars.iter().enumerate() {
-                let left = column * Char::WIDTH;
-                let top = row * Char::HEIGHT;
-                char.render_to(
-                    pixels.sub_image_mut(left, top, Char::WIDTH, Char::HEIGHT),
-                    &self.colors,
-                );
+                let char_pixels = char.render(&self.colors);
+                let left = column as u32 * Char::WIDTH as u32;
+                let top = row as u32 * Char::HEIGHT as u32;
+                for ((y, x), s) in ((0..Char::HEIGHT as u32)
+                    .cartesian_product(0..Char::WIDTH as u32))
+                .zip(char_pixels.iter())
+                {
+                    image.put_pixel(x + left, y + top, (*s).into());
+                }
             }
         }
+        image
     }
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
@@ -595,22 +601,12 @@ impl VicImage {
 
 /// Get a color from the palette.
 /// `index` must be in the range `0..PALETTE_SIZE`.
-pub fn palette_color<T>(index: T) -> Color32
+pub fn palette_color<T>(index: T) -> TrueColor
 where
     T: Into<usize>,
 {
     let rgb = PALETTE[index.into()].0;
-    Color32::from_rgb((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
-}
-
-/// Get a color from the palette.
-/// `index` must be in the range `0..PALETTE_SIZE`.
-pub fn palette_color_rgba<T>(index: T) -> RGBA<u8>
-where
-    T: Into<usize>,
-{
-    let rgb = PALETTE[index.into()].0;
-    RGBA::new((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8, 0xff)
+    TrueColor::from_u32(rgb)
 }
 
 /// Get the name of a color from the palette.
@@ -659,7 +655,7 @@ fn optimized_image(
             // Generate RGBA palette from those colors.
             let palette = colors
                 .iter()
-                .map(|&c| palette_color_rgba(c as usize))
+                .map(|&c| palette_color(c as usize))
                 .collect::<Vec<_>>();
             let (pixels, error) = image_operations::palettize(original, &palette);
             (pixels, colors, error)

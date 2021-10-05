@@ -11,7 +11,6 @@ mod image_io;
 mod image_operations;
 mod import;
 mod mutation_monitor;
-mod scaling;
 pub mod storage;
 pub mod system;
 mod ui;
