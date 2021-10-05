@@ -1,7 +1,7 @@
 use std::{path::Path, time::Instant};
 
 use crate::{
-    colors,
+    colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
     error::Error,
@@ -20,7 +20,7 @@ use eframe::{
     },
     epi::{self, TextureAllocator},
 };
-use image::{imageops::FilterType, Pixel};
+use image::imageops::FilterType;
 use itertools::Itertools;
 
 // Don't scale the texture more than this to avoid huge textures when zooming.
@@ -647,7 +647,7 @@ fn update_texture(
         );
         let pixels: Vec<Color32> = scaled_image
             .pixels()
-            .map(|p| colors::color32_from_image(p.to_rgba()))
+            .map(|p| (<image::Rgba<u8> as Into<TrueColor>>::into(*p)).into())
             .collect();
         let texture_id =
             tex_allocator.alloc_srgba_premultiplied((texture_width, texture_height), &pixels);
