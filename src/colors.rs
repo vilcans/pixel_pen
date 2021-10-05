@@ -10,9 +10,9 @@ impl Default for TrueColor {
     }
 }
 
-impl Into<image::Rgba<u8>> for TrueColor {
-    fn into(self) -> image::Rgba<u8> {
-        self.0
+impl From<TrueColor> for image::Rgba<u8> {
+    fn from(c: TrueColor) -> Self {
+        c.0
     }
 }
 
@@ -22,15 +22,17 @@ impl From<image::Rgba<u8>> for TrueColor {
     }
 }
 
-impl Into<Color32> for TrueColor {
-    fn into(self) -> Color32 {
-        Color32::from_rgba_unmultiplied(self.0[0], self.0[1], self.0[2], self.0[3])
+impl From<TrueColor> for Color32 {
+    fn from(c: TrueColor) -> Self {
+        let c = c.0;
+        Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3])
     }
 }
 
-impl Into<rgb::RGBA8> for TrueColor {
-    fn into(self) -> rgb::RGBA8 {
-        RGBA8::new(self.0[0], self.0[1], self.0[2], self.0[3])
+impl From<TrueColor> for rgb::RGBA8 {
+    fn from(c: TrueColor) -> rgb::RGBA8 {
+        let c = c.0;
+        RGBA8::new(c[0], c[1], c[2], c[3])
     }
 }
 
