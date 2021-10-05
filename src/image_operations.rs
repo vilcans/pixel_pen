@@ -21,7 +21,7 @@ pub fn palettize(image: &RgbaImage, palette: &[TrueColor]) -> (Vec<u8>, f64) {
         )
         .unwrap();
     for palette_entry in palette {
-        img.add_fixed_color(palette_entry.clone().into());
+        img.add_fixed_color((*palette_entry).into());
     }
 
     let mut res = match liq.quantize(&img) {
