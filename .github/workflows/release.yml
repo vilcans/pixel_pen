@@ -19,8 +19,8 @@ jobs:
           - target: x86_64-apple-darwin
             archive: zip
     steps:
-      - uses: ./.github/actions/ubuntu-packages
       - uses: actions/checkout@master
+      - uses: ./.github/actions/ubuntu-packages
       - name: Compile and release
         uses: rust-build/rust-build.action@latest
         env:
