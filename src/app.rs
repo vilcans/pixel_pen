@@ -200,6 +200,9 @@ impl epi::App for Application {
                         if ui.button("Save As...").clicked() {
                             save_as(doc, system);
                         }
+                        if ui.button("Export...").clicked() {
+                            export(doc, system);
+                        }
                     }
                     ui.separator();
                     if ui.button("Quit").clicked() {
@@ -431,6 +434,22 @@ impl epi::App for Application {
 fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
     match system.save_file_dialog(SaveFileOptions::for_save(doc.filename.as_deref())) {
         Ok(Some(filename)) => save(doc, &filename, system),
+        Ok(None) => {}
+        Err(e) => {
+            system.show_error(&format!("Could not get file name: {:?}", e));
+        }
+    }
+}
+
+/// Ask for filename and export the document.
+fn export(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
+    match system.save_file_dialog(SaveFileOptions::for_export(doc.filename.as_deref())) {
+        Ok(Some(filename)) => {
+            let image = doc.image.render();
+            if let Err(e) = image.save(&filename) {
+                system.show_error(&format!("Failed to save image: {}", e));
+            }
+        }
         Ok(None) => {}
         Err(e) => {
             system.show_error(&format!("Could not get file name: {:?}", e));
