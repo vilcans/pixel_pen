@@ -288,7 +288,7 @@ impl Char {
         }
         if new_bits != old_bits || new_color != self.color {
             self.bits[y as usize] = new_bits;
-            self.color = color;
+            self.color = new_color;
             Ok(true)
         } else {
             Ok(false)
