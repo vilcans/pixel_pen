@@ -2,7 +2,7 @@
 
 *Graphics editor for pictures compatible with Vic-20 hardware.*
 
-Current version: 0.2.1 (2021-10-05)
+Current version: 0.2.2 (2021-10-07)
 
 This is still early in development.
 
