@@ -16,13 +16,15 @@ jobs:
         include:
           - target: x86_64-pc-windows-gnu
             archive: zip
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz
-          - target: x86_64-apple-darwin
-            archive: zip
+          # Does not work as actions/ubuntu-packages changes the host, not the Docker container that builds
+          #- target: x86_64-unknown-linux-musl
+          #  archive: tar.gz
+          # Fails: Command "cc" "-O2" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-arch" "x86_64" "-msse" "-std=c99" "-DNDEBUG=1" "-DUSE_SSE=1" "-o" "/github/workspace/./target/x86_64-apple-darwin/release/build/imagequant-sys-b3fdf1084feca397/out/libimagequant.o" "-c" "libimagequant.c" with args "cc" did not execute successfully (status code exit status: 1).
+          #- target: x86_64-apple-darwin
+          #  archive: zip
     steps:
       - uses: actions/checkout@master
-      - uses: ./.github/actions/ubuntu-packages
+      #- uses: ./.github/actions/ubuntu-packages  # Has no effect, as builds are done in container
       - name: Compile and release
         uses: rust-build/rust-build.action@latest
         env:
