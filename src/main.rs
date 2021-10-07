@@ -33,7 +33,7 @@ mod native {
     use image::{GenericImageView, ImageFormat};
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
-    use pixel_pen::system::{OpenFileOptions, SystemFunctions};
+    use pixel_pen::system::{OpenFileOptions, SaveFileOptions, SystemFunctions};
     use std::ffi::{OsStr, OsString};
     use std::path::{Path, PathBuf};
 
@@ -53,10 +53,27 @@ mod native {
             }
         }
 
-        fn create_file_dialog(&mut self, initial_path: Option<&Path>) -> FileDialog<'_> {
+        fn create_file_dialog(
+            &mut self,
+            initial_path: Option<&Path>,
+            include_native: bool,
+            include_images: bool,
+        ) -> FileDialog<'_> {
             let dialog = FileDialog::new();
             let (location, filename) = directory_and_file_or_default(initial_path);
-            self.set_default(dialog, location, filename)
+            let mut dialog = self.set_default(dialog, location, filename);
+            if include_native {
+                dialog = dialog
+                    .add_filter("Pixel Pen Image", &["pixelpen"])
+                    .add_filter("Turbo Rascal FLUFF", &["flf"]);
+            }
+            if include_images {
+                dialog = dialog.add_filter(
+                    "Image",
+                    &["png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"],
+                );
+            }
+            dialog
         }
 
         fn set_default<'a>(
@@ -90,18 +107,11 @@ mod native {
             &mut self,
             options: OpenFileOptions<'_>,
         ) -> Result<Option<PathBuf>, Error> {
-            let mut dialog = self.create_file_dialog(options.initial_path.as_deref());
-            if options.include_native {
-                dialog = dialog
-                    .add_filter("Pixel Pen Image", &["pixelpen"])
-                    .add_filter("Turbo Rascal FLUFF", &["flf"]);
-            }
-            if options.include_images {
-                dialog = dialog.add_filter(
-                    "Image",
-                    &["png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"],
-                );
-            }
+            let dialog = self.create_file_dialog(
+                options.initial_path.as_deref(),
+                options.include_native,
+                options.include_images,
+            );
             let path = dialog
                 .show_open_single_file()
                 .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
@@ -110,20 +120,20 @@ mod native {
 
         fn save_file_dialog(
             &mut self,
-            initial_path: Option<&Path>,
-            default_extension: &str,
+            options: SaveFileOptions<'_>,
         ) -> Result<Option<PathBuf>, Error> {
-            let dialog = self
-                .create_file_dialog(initial_path)
-                .add_filter("Pixel Pen Image", &["pixelpen"]);
-
+            let dialog = self.create_file_dialog(
+                options.initial_path,
+                options.include_native,
+                options.include_images,
+            );
             let path = dialog
                 .show_save_single_file()
                 .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
 
             match path {
                 Some(filename) if filename.extension().is_none() => {
-                    Ok(Some(filename.with_extension(default_extension)))
+                    Ok(Some(filename.with_extension(options.default_extension)))
                 }
                 p => Ok(p),
             }

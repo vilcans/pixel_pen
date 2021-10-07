@@ -8,7 +8,7 @@ use crate::{
     import::{self, Import, ImportSettings},
     mutation_monitor::MutationMonitor,
     storage,
-    system::{self, OpenFileOptions, SystemFunctions},
+    system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     ui,
     vic::{self, GlobalColors, VicImage},
     widgets,
@@ -429,7 +429,7 @@ impl epi::App for Application {
 
 /// Ask for filename and save the document.
 fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
-    match system.save_file_dialog(doc.filename.as_deref(), "pixelpen") {
+    match system.save_file_dialog(SaveFileOptions::for_save(doc.filename.as_deref())) {
         Ok(Some(filename)) => save(doc, &filename, system),
         Ok(None) => {}
         Err(e) => {

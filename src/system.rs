@@ -23,15 +23,36 @@ impl<'a> OpenFileOptions<'a> {
     }
 }
 
+pub struct SaveFileOptions<'a> {
+    pub include_native: bool,
+    pub include_images: bool,
+    pub default_extension: String,
+    pub initial_path: Option<&'a Path>,
+}
+impl<'a> SaveFileOptions<'a> {
+    pub fn for_save(initial_path: Option<&'a Path>) -> Self {
+        Self {
+            include_native: true,
+            include_images: false,
+            default_extension: "pixelpen".to_string(),
+            initial_path,
+        }
+    }
+    pub fn for_export(initial_path: Option<&'a Path>) -> Self {
+        Self {
+            include_native: false,
+            include_images: true,
+            default_extension: "png".to_string(),
+            initial_path,
+        }
+    }
+}
+
 pub trait SystemFunctions {
     fn has_open_file_dialog(&self) -> bool;
     fn has_save_file_dialog(&self) -> bool;
     fn open_file_dialog(&mut self, options: OpenFileOptions<'_>) -> Result<Option<PathBuf>, Error>;
-    fn save_file_dialog(
-        &mut self,
-        default: Option<&Path>,
-        default_extension: &str,
-    ) -> Result<Option<PathBuf>, Error>;
+    fn save_file_dialog(&mut self, options: SaveFileOptions<'_>) -> Result<Option<PathBuf>, Error>;
     fn show_error(&self, message: &str) {
         eprintln!("{}\n", message);
     }
@@ -54,8 +75,7 @@ impl SystemFunctions for DummySystemFunctions {
     }
     fn save_file_dialog(
         &mut self,
-        _default: Option<&Path>,
-        _default_extension: &str,
+        _options: SaveFileOptions<'_>,
     ) -> Result<Option<PathBuf>, Error> {
         panic!("No save_file_dialog");
     }
