@@ -32,6 +32,12 @@ enum FilterTypeForSerialization {
     Lanczos3,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum PixelAspectRatio {
+    Square,
+    Target,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "kebab-case")]
 pub struct ImportSettings {
@@ -42,6 +48,9 @@ pub struct ImportSettings {
     pub filter: FilterType,
 
     pub format: ColorFormat,
+
+    /// Aspect ratio to assume for the source pixels
+    pub pixel_aspect_ratio: PixelAspectRatio,
 
     // Placement in target image's pixel coordinates
     pub left: i32,
@@ -77,6 +86,7 @@ impl Import {
                 filename: Some(filename.to_owned()),
                 filter: FilterType::Gaussian,
                 format: ColorFormat::Multicolor,
+                pixel_aspect_ratio: PixelAspectRatio::Square,
                 left: 0,
                 top: 0,
                 width: image.dimensions().0,
@@ -125,7 +135,6 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
         let target = &doc.image;
         let (source_width, source_height) = source.dimensions();
         let (target_width, target_height) = target.pixel_size();
-        let source_aspect_ratio = source.width() as f32 / source.height() as f32;
 
         ui.label("Source");
         ui.label(format!(
@@ -139,6 +148,24 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
             source_width,
             source_height
         ));
+        ui.end_row();
+
+        ui.add(Label::new("Pixel size"))
+            .on_hover_text("Assume an imported pixel is square or the same as the target platform");
+        ComboBox::from_id_source("import_pixel_size")
+            .selected_text(format!("{:?}", import.settings.pixel_aspect_ratio))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut import.settings.pixel_aspect_ratio,
+                    PixelAspectRatio::Square,
+                    "Square",
+                );
+                ui.selectable_value(
+                    &mut import.settings.pixel_aspect_ratio,
+                    PixelAspectRatio::Target,
+                    "Target",
+                );
+            });
         ui.end_row();
 
         ui.add(Label::new("Left"));
@@ -161,8 +188,16 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
         );
         ui.end_row();
 
-        import.settings.height = ((import.settings.width as f32 / source_aspect_ratio
-            * target.pixel_aspect_ratio())
+        import.settings.height = (match import.settings.pixel_aspect_ratio {
+            PixelAspectRatio::Square => {
+                import.settings.width as f32 / source_width as f32
+                    * source_height as f32
+                    * target.pixel_aspect_ratio()
+            }
+            PixelAspectRatio::Target => {
+                import.settings.width as f32 / source_width as f32 * source_height as f32
+            }
+        }
         .round() as u32)
             .max(1);
 
