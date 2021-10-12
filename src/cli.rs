@@ -14,8 +14,9 @@ struct Opts {
     #[structopt(parse(from_os_str))]
     filename: Option<PathBuf>,
     /// Save the image to the given file and quit.
-    #[structopt(long = "--export", requires = "filename")]
-    export_file: Option<PathBuf>,
+    /// File may be in pixelpen format or the image may be exported as a standard image file.
+    #[structopt(long = "--save")]
+    save_file: Option<PathBuf>,
 }
 
 /// Parses command-line arguments and prints any errors, returns Application ready to start.
@@ -63,8 +64,8 @@ pub fn main() -> Result<Option<Application>, i32> {
 /// Returns Ok(false) if the app should start the GUI.
 fn execute_commands(opts: &Opts, doc: Option<&Document>) -> Result<bool, Error> {
     let mut executed = false;
-    if let Some(filename) = &opts.export_file {
-        match storage::save(doc.unwrap(), filename) {
+    if let Some(filename) = &opts.save_file {
+        match storage::save_any_file(doc.unwrap(), filename) {
             Ok(()) => executed = true,
             Err(e) => {
                 eprintln!("Failed to save: {:?}", e);

@@ -33,6 +33,7 @@ mod native {
     use image::{GenericImageView, ImageFormat};
     use native_dialog::{FileDialog, MessageDialog, MessageType};
     use pixel_pen::error::Error;
+    use pixel_pen::storage;
     use pixel_pen::system::{OpenFileOptions, SaveFileOptions, SystemFunctions};
     use std::ffi::{OsStr, OsString};
     use std::path::{Path, PathBuf};
@@ -64,7 +65,7 @@ mod native {
             let mut dialog = self.set_default(dialog, location, filename);
             if include_native {
                 dialog = dialog
-                    .add_filter("Pixel Pen Image", &["pixelpen"])
+                    .add_filter("Pixel Pen Image", &[storage::NATIVE_EXTENSION])
                     .add_filter("Turbo Rascal FLUFF", &["flf"]);
             }
             if include_images {

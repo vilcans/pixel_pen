@@ -1,4 +1,4 @@
-use crate::error::Error;
+use crate::{error::Error, storage};
 use std::path::{Path, PathBuf};
 
 pub struct OpenFileOptions<'a> {
@@ -34,7 +34,7 @@ impl<'a> SaveFileOptions<'a> {
         Self {
             include_native: true,
             include_images: false,
-            default_extension: "pixelpen".to_string(),
+            default_extension: storage::NATIVE_EXTENSION.to_string(),
             initial_path,
         }
     }

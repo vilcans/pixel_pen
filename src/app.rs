@@ -442,11 +442,10 @@ fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
 }
 
 /// Ask for filename and export the document.
-fn export(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
+fn export(doc: &Document, system: &mut Box<dyn SystemFunctions>) {
     match system.save_file_dialog(SaveFileOptions::for_export(doc.filename.as_deref())) {
         Ok(Some(filename)) => {
-            let image = doc.image.render();
-            if let Err(e) = image.save(&filename) {
+            if let Err(e) = storage::save_any_file(doc, &filename) {
                 system.show_error(&format!("Failed to save image: {}", e));
             }
         }
