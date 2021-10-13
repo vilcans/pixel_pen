@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -36,6 +37,21 @@ enum FilterTypeForSerialization {
 pub enum PixelAspectRatio {
     Square,
     Target,
+    TargetHalfResolution,
+}
+
+impl Display for PixelAspectRatio {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                PixelAspectRatio::Square => "Square",
+                PixelAspectRatio::Target => "Target",
+                PixelAspectRatio::TargetHalfResolution => "Target low-res",
+            }
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -151,19 +167,24 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
         ui.end_row();
 
         ui.add(Label::new("Pixel size"))
-            .on_hover_text("Assume an imported pixel is square or the same as the target platform");
+            .on_hover_text("Aspect ratio of pixels in imported image");
         ComboBox::from_id_source("import_pixel_size")
-            .selected_text(format!("{:?}", import.settings.pixel_aspect_ratio))
+            .selected_text(format!("{}", import.settings.pixel_aspect_ratio))
             .show_ui(ui, |ui| {
                 ui.selectable_value(
                     &mut import.settings.pixel_aspect_ratio,
                     PixelAspectRatio::Square,
-                    "Square",
+                    format!("{}", PixelAspectRatio::Square),
                 );
                 ui.selectable_value(
                     &mut import.settings.pixel_aspect_ratio,
                     PixelAspectRatio::Target,
-                    "Target",
+                    format!("{}", PixelAspectRatio::Target),
+                );
+                ui.selectable_value(
+                    &mut import.settings.pixel_aspect_ratio,
+                    PixelAspectRatio::TargetHalfResolution,
+                    format!("{}", PixelAspectRatio::TargetHalfResolution),
                 );
             });
         ui.end_row();
@@ -196,6 +217,9 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
             }
             PixelAspectRatio::Target => {
                 import.settings.width as f32 / source_width as f32 * source_height as f32
+            }
+            PixelAspectRatio::TargetHalfResolution => {
+                import.settings.width as f32 / source_width as f32 * source_height as f32 / 2.0
             }
         }
         .round() as u32)
