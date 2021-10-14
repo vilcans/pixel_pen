@@ -10,7 +10,7 @@ use crate::{
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     ui,
-    vic::{self, GlobalColors, VicImage},
+    vic::{self, DrawMode, GlobalColors, VicImage},
     widgets,
 };
 use eframe::{
@@ -39,6 +39,8 @@ enum Mode {
     Import(Import),
     PixelPaint,
     ColorPaint,
+    MakeHiRes,
+    MakeMulticolor,
 }
 
 struct Texture {
@@ -270,6 +272,25 @@ impl epi::App for Application {
                     {
                         ui_state.mode = Mode::ColorPaint;
                     }
+                    // MakeHiRes
+                    if ui
+                        .selectable_label(matches!(ui_state.mode, Mode::MakeHiRes), "Make high-res")
+                        .on_hover_text("Set character cells to high-resolution mode")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::MakeHiRes;
+                    }
+                    // MakeMulticolor
+                    if ui
+                        .selectable_label(
+                            matches!(ui_state.mode, Mode::MakeMulticolor),
+                            "Make multicolor",
+                        )
+                        .on_hover_text("Set character cells to multicolor mode")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::MakeMulticolor;
+                    }
                 });
             });
         });
@@ -315,7 +336,10 @@ impl epi::App for Application {
             } else {
                 match ui_state.mode {
                     Mode::Import(_) => {}
-                    Mode::PixelPaint | Mode::ColorPaint => {
+                    Mode::PixelPaint
+                    | Mode::ColorPaint
+                    | Mode::MakeHiRes
+                    | Mode::MakeMulticolor => {
                         update_in_paint_mode(
                             hover_pos,
                             doc,
@@ -548,8 +572,10 @@ fn update_in_paint_mode(
         let Point { x, y } = hover_pos;
         let was_dirty = doc.image.dirty;
         let result = match ui_state.mode {
-            Mode::PixelPaint => doc.image.set_pixel(x, y, color as u8),
-            Mode::ColorPaint => doc.image.set_color(x, y, color as u8),
+            Mode::PixelPaint => doc.image.set_pixel(x, y, DrawMode::Pixel, color as u8),
+            Mode::ColorPaint => doc.image.set_pixel(x, y, DrawMode::Color, color as u8),
+            Mode::MakeHiRes => doc.image.set_pixel(x, y, DrawMode::HighRes, color as u8),
+            Mode::MakeMulticolor => doc.image.set_pixel(x, y, DrawMode::Multicolor, color as u8),
             _ => panic!(
                 "update_in paint_mode with invalid mode: {:?}",
                 ui_state.mode
@@ -687,6 +713,8 @@ fn mode_instructions(mode: &Mode) -> &str {
         Mode::ColorPaint => {
             "Click to change the color of the character cell. Right-click for background color."
         }
+        Mode::MakeHiRes => "Click to make the character cell high-resolution.",
+        Mode::MakeMulticolor => "Click to make the character cell multicolor.",
     }
 }
 

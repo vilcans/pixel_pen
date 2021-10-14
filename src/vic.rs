@@ -104,6 +104,13 @@ pub enum ColorFormat {
     Multicolor,
 }
 
+pub enum DrawMode {
+    Pixel,
+    Color,
+    HighRes,
+    Multicolor,
+}
+
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
     bits: [u8; 8],
@@ -294,6 +301,22 @@ impl Char {
             Ok(false)
         }
     }
+
+    fn make_high_res(&mut self) -> Result<bool, DisallowedEdit> {
+        if !self.multicolor {
+            return Ok(false);
+        }
+        self.multicolor = false;
+        Ok(true)
+    }
+
+    fn make_multicolor(&mut self) -> Result<bool, DisallowedEdit> {
+        if self.multicolor {
+            return Ok(false);
+        }
+        self.multicolor = true;
+        Ok(true)
+    }
 }
 
 impl Default for Char {
@@ -458,9 +481,21 @@ impl VicImage {
     }
 
     /// Set a pixel at the given coordinates to a given color.
-    pub fn set_pixel(&mut self, x: i32, y: i32, color: u8) -> Result<bool, DisallowedEdit> {
+    pub fn set_pixel(
+        &mut self,
+        x: i32,
+        y: i32,
+        mode: DrawMode,
+        color: u8,
+    ) -> Result<bool, DisallowedEdit> {
         if let Some((column, row, cx, cy)) = self.char_coordinates(x, y) {
-            self.video[(column, row)].set_pixel(cx, cy, color, &self.colors)
+            let cell = &mut self.video[(column, row)];
+            match mode {
+                DrawMode::Pixel => cell.set_pixel(cx, cy, color, &self.colors),
+                DrawMode::Color => self.set_color(x, y, color),
+                DrawMode::HighRes => cell.make_high_res(),
+                DrawMode::Multicolor => cell.make_multicolor(),
+            }
         } else {
             Ok(false)
         }
