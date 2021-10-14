@@ -1,6 +1,6 @@
-disable-publish = true
+publish = false
+push = false
 allow-branch = ["master", "main"]
-disable-push = true
 
 [[pre-release-replacements]]
 file = "README.md"
