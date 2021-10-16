@@ -572,10 +572,12 @@ fn update_in_paint_mode(
         let Point { x, y } = hover_pos;
         let was_dirty = doc.image.dirty;
         let result = match ui_state.mode {
-            Mode::PixelPaint => doc.image.set_pixel(x, y, DrawMode::Pixel, color as u8),
-            Mode::ColorPaint => doc.image.set_pixel(x, y, DrawMode::Color, color as u8),
-            Mode::MakeHiRes => doc.image.set_pixel(x, y, DrawMode::HighRes, color as u8),
-            Mode::MakeMulticolor => doc.image.set_pixel(x, y, DrawMode::Multicolor, color as u8),
+            Mode::PixelPaint => doc.image.set_pixel(x, y, &DrawMode::Pixel, color as u8),
+            Mode::ColorPaint => doc.image.set_pixel(x, y, &DrawMode::Color, color as u8),
+            Mode::MakeHiRes => doc.image.set_pixel(x, y, &DrawMode::HighRes, color as u8),
+            Mode::MakeMulticolor => doc
+                .image
+                .set_pixel(x, y, &DrawMode::Multicolor, color as u8),
             _ => panic!(
                 "update_in paint_mode with invalid mode: {:?}",
                 ui_state.mode
