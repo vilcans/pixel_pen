@@ -2,7 +2,10 @@ publish = false
 push = false
 allow-branch = ["master", "main"]
 
-[[pre-release-replacements]]
-file = "README.md"
-search = "Current version: .*"
-replace = "Current version: {{version}} ({{date}})"
+pre-release-replacements = [
+    {file="CHANGELOG.md", search="Unreleased", replace="{{version}}"},
+    {file="CHANGELOG.md", search="\\.\\.\\.HEAD", replace="...{{tag_name}}", exactly=1},
+    {file="CHANGELOG.md", search="ReleaseDate", replace="{{date}}"},
+    {file="CHANGELOG.md", search="<!-- next-header -->", replace="<!-- next-header -->\n\n## [Unreleased] - ReleaseDate", exactly=1},
+    {file="CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/vilcans/pixel_pen/compare/{{tag_name}}...HEAD", exactly=1},
+]

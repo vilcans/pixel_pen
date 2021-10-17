@@ -2,8 +2,6 @@
 
 *Graphics editor for pictures compatible with Vic-20 hardware.*
 
-Current version: 0.4.0 (2021-10-14)
-
 This is still early in development.
 
 You can load images in typical image file formats, which Pixel Pen will convert to Vic-20 format.
