@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+
+## [0.5.0] - 2021-10-17
 ### Added
 - "Make High-Res" and "Make Multicolor" paint modes
 - Python script for converting Pixel Pen format to binary Vic-20 format.
@@ -33,7 +35,8 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/vilcans/pixel_pen/compare/pixel_pen-v0.4.0...HEAD
+[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/vilcans/pixel_pen/compare/pixel_pen-v0.4.0...v0.5.0
 [0.4.0]: https://github.com/vilcans/pixel_pen/compare/v0.3.0...pixel_pen-v0.4.0
 [0.3.0]: https://github.com/vilcans/pixel_pen/compare/pixel_pen-v0.2.2...v0.3.0
 [0.2.2]: https://github.com/vilcans/pixel_pen/compare/pixel_pen-v0.2.1...pixel_pen-v0.2.2
