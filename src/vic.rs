@@ -490,11 +490,11 @@ impl VicImage {
     ) -> Result<bool, DisallowedEdit> {
         if let Some((column, row, cx, cy)) = self.char_coordinates(x, y) {
             let cell = &mut self.video[(column, row)];
-            match mode {
-                &DrawMode::Pixel => cell.set_pixel(cx, cy, color, &self.colors),
-                &DrawMode::Color => self.set_color(x, y, color),
-                &DrawMode::HighRes => cell.make_high_res(),
-                &DrawMode::Multicolor => cell.make_multicolor(),
+            match *mode {
+                DrawMode::Pixel => cell.set_pixel(cx, cy, color, &self.colors),
+                DrawMode::Color => self.set_color(x, y, color),
+                DrawMode::HighRes => cell.make_high_res(),
+                DrawMode::Multicolor => cell.make_multicolor(),
             }
         } else {
             Ok(false)
