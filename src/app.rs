@@ -118,6 +118,7 @@ impl epi::App for Application {
             history,
             ..
         } = self;
+        let undo_available = history.can_undo();
 
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
@@ -218,6 +219,7 @@ impl epi::App for Application {
                     }
                 });
                 egui::menu::menu(ui, "Edit", |ui| {
+                    ui.set_enabled(undo_available);
                     if ui.button("Undo").clicked() {
                         user_actions.undo = true;
                     }
@@ -454,7 +456,7 @@ impl epi::App for Application {
         if user_actions.toggle_grid {
             ui_state.grid = !ui_state.grid;
         }
-        if user_actions.undo {
+        if user_actions.undo && undo_available {
             history.undo(doc);
             doc.image.dirty = true;
         }
