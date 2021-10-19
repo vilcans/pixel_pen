@@ -56,6 +56,7 @@ pub trait SystemFunctions {
     fn show_error(&self, message: &str) {
         eprintln!("{}\n", message);
     }
+    fn request_confirmation(&self, prompt: &str) -> Result<bool, Error>;
 }
 
 pub struct DummySystemFunctions;
@@ -78,5 +79,8 @@ impl SystemFunctions for DummySystemFunctions {
         _options: SaveFileOptions<'_>,
     ) -> Result<Option<PathBuf>, Error> {
         panic!("No save_file_dialog");
+    }
+    fn request_confirmation(&self, _prompt: &str) -> Result<bool, Error> {
+        Ok(true)
     }
 }

@@ -27,8 +27,8 @@ pub enum Error {
     ImageError(#[from] image::ImageError),
     #[error("Unknown file format on file \"{0}\"")]
     UnknownFileFormat(std::path::PathBuf),
-    #[error("File dialog failed: {0}")]
-    FileDialogError(String),
+    #[error("Dialog failed: {0}")]
+    DialogError(String),
     #[error("No file name given")]
     NoFileName,
 }

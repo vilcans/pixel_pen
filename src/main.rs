@@ -115,7 +115,7 @@ mod native {
             );
             let path = dialog
                 .show_open_single_file()
-                .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
+                .map_err(|e| Error::DialogError(format!("File dialog failed: {0}", e)))?;
             Ok(path)
         }
 
@@ -130,7 +130,7 @@ mod native {
             );
             let path = dialog
                 .show_save_single_file()
-                .map_err(|e| Error::FileDialogError(format!("File dialog failed: {0}", e)))?;
+                .map_err(|e| Error::DialogError(format!("File dialog failed: {0}", e)))?;
 
             match path {
                 Some(filename) if filename.extension().is_none() => {
@@ -152,6 +152,15 @@ mod native {
                 }
                 Ok(()) => {}
             }
+        }
+
+        fn request_confirmation(&self, prompt: &str) -> Result<bool, Error> {
+            MessageDialog::new()
+                .set_type(MessageType::Warning)
+                .set_title("Confirm")
+                .set_text(prompt)
+                .show_confirm()
+                .map_err(|e| Error::DialogError(format!("Failed to show dialog: {0}", e)))
         }
     }
 
