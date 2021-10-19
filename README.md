@@ -36,7 +36,7 @@ On a Mac, substitute Ctrl for ⌘.
 
 Oh, and there's a command-line interface! Run `pixel_pen --help` to get the possible commands:
 
-    Pixel Pen 0.4.0
+    Pixel Pen 0.6.0
     Actual 8 bit graphics editor
 
     USAGE:
@@ -63,7 +63,7 @@ Or, to convert a `.png` file to `.pixelpen` format:
 
     pixel_pen file.png --save file.pixelpen
 
-Note that this (as of version 0.4.0) does not resize the source image, so if it has high resolution, it won't be suitable for the target platform.
+Note that this (as of version 0.6.0) does not resize the source image, so if it has high resolution, it won't be suitable for the target platform.
 Use the Import menu item instead to scale the image down before exporting it.
 
 # Changelog
