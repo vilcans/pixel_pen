@@ -4,7 +4,7 @@
 
 ## [Unreleased] - ReleaseDate
 ### Added
-- Undo
+- Undo and redo
 
 ## [0.5.0] - 2021-10-17
 ### Added

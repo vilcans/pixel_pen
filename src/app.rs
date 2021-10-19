@@ -74,6 +74,7 @@ struct UserActions {
     pub zoom_out: bool,
     pub toggle_grid: bool,
     pub undo: bool,
+    pub redo: bool,
 }
 impl UserActions {
     pub fn update_from_text(&mut self, t: &str) {
@@ -82,6 +83,7 @@ impl UserActions {
             "-" => self.zoom_out = true,
             "g" => self.toggle_grid = true,
             "z" => self.undo = true,
+            "y" => self.redo = true,
             _ => (),
         }
     }
@@ -119,6 +121,7 @@ impl epi::App for Application {
             ..
         } = self;
         let undo_available = history.can_undo();
+        let redo_available = history.can_redo();
 
         let (width, height) = doc.image.pixel_size();
         let mut new_doc = None;
@@ -222,6 +225,10 @@ impl epi::App for Application {
                     ui.set_enabled(undo_available);
                     if ui.button("Undo").clicked() {
                         user_actions.undo = true;
+                    }
+                    ui.set_enabled(redo_available);
+                    if ui.button("Redo").clicked() {
+                        user_actions.redo = true;
                     }
                 });
             });
@@ -458,6 +465,10 @@ impl epi::App for Application {
         }
         if user_actions.undo && undo_available {
             history.undo(doc);
+            doc.image.dirty = true;
+        }
+        if user_actions.redo && redo_available {
+            history.redo(doc);
             doc.image.dirty = true;
         }
 
