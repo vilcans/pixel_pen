@@ -1,6 +1,7 @@
 use std::{path::Path, time::Instant};
 
 use crate::{
+    actions::{self, Action, ActionType},
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
@@ -22,6 +23,7 @@ use eframe::{
 };
 use image::imageops::FilterType;
 use itertools::Itertools;
+use undo::Record;
 
 // Don't scale the texture more than this to avoid huge textures when zooming.
 const MAX_SCALE: u32 = 8;
@@ -71,6 +73,7 @@ struct UserActions {
     pub zoom_in: bool,
     pub zoom_out: bool,
     pub toggle_grid: bool,
+    pub undo: bool,
 }
 impl UserActions {
     pub fn update_from_text(&mut self, t: &str) {
@@ -78,6 +81,7 @@ impl UserActions {
             "+" => self.zoom_in = true,
             "-" => self.zoom_out = true,
             "g" => self.toggle_grid = true,
+            "z" => self.undo = true,
             _ => (),
         }
     }
@@ -87,6 +91,7 @@ pub struct Application {
     doc: Document,
     ui_state: UiState,
     image_texture: Option<Texture>,
+    history: Record<actions::Action>,
     pub system: Box<dyn SystemFunctions>,
 }
 
@@ -110,6 +115,7 @@ impl epi::App for Application {
             ui_state,
             image_texture,
             system,
+            history,
             ..
         } = self;
 
@@ -209,6 +215,11 @@ impl epi::App for Application {
                     ui.separator();
                     if ui.button("Quit").clicked() {
                         frame.quit();
+                    }
+                });
+                egui::menu::menu(ui, "Edit", |ui| {
+                    if ui.button("Undo").clicked() {
+                        user_actions.undo = true;
                     }
                 });
             });
@@ -341,11 +352,11 @@ impl epi::App for Application {
                     | Mode::MakeHiRes
                     | Mode::MakeMulticolor => {
                         update_in_paint_mode(
+                            history,
                             hover_pos,
                             doc,
                             ui,
                             &response,
-                            &pixel_transform,
                             ui_state,
                             &mut cursor_icon,
                         );
@@ -442,6 +453,10 @@ impl epi::App for Application {
         }
         if user_actions.toggle_grid {
             ui_state.grid = !ui_state.grid;
+        }
+        if user_actions.undo {
+            history.undo(doc);
+            doc.image.dirty = true;
         }
 
         if let Some(doc) = new_doc {
@@ -544,11 +559,11 @@ fn image_painter(ui: &mut egui::Ui) -> (Response, Painter) {
 }
 
 fn update_in_paint_mode(
+    history: &mut Record<actions::Action>,
     pixel_pos: Option<Point>,
     doc: &mut Document,
     ui: &mut egui::Ui,
     response: &egui::Response,
-    _pixel_transform: &PixelTransform,
     ui_state: &mut UiState,
     cursor_icon: &mut Option<CursorIcon>,
 ) {
@@ -571,19 +586,22 @@ fn update_in_paint_mode(
     if let Some(color) = color {
         let Point { x, y } = hover_pos;
         let was_dirty = doc.image.dirty;
-        let result = match ui_state.mode {
-            Mode::PixelPaint => doc.image.set_pixel(x, y, &DrawMode::Pixel, color as u8),
-            Mode::ColorPaint => doc.image.set_pixel(x, y, &DrawMode::Color, color as u8),
-            Mode::MakeHiRes => doc.image.set_pixel(x, y, &DrawMode::HighRes, color as u8),
-            Mode::MakeMulticolor => doc
-                .image
-                .set_pixel(x, y, &DrawMode::Multicolor, color as u8),
-            _ => panic!(
-                "update_in paint_mode with invalid mode: {:?}",
-                ui_state.mode
-            ),
-        };
-        match result {
+        let action = Action::new(ActionType::Plot {
+            x,
+            y,
+            color: color as u8,
+            draw_mode: match ui_state.mode {
+                Mode::PixelPaint => DrawMode::Pixel,
+                Mode::ColorPaint => DrawMode::Color,
+                Mode::MakeHiRes => DrawMode::HighRes,
+                Mode::MakeMulticolor => DrawMode::Multicolor,
+                _ => panic!(
+                    "update_in paint_mode with invalid mode: {:?}",
+                    ui_state.mode
+                ),
+            },
+        });
+        match history.apply(doc, action) {
             Ok(true) => (),
             Ok(false) => doc.image.dirty = was_dirty,
             Err(e) => ui_state.show_warning(e.to_string()),
@@ -724,6 +742,7 @@ impl Application {
     pub fn with_doc(doc: Document) -> Self {
         let system = Box::new(system::DummySystemFunctions {});
         Application {
+            history: Record::new(),
             ui_state: UiState {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,

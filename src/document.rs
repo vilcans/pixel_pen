@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{mutation_monitor::MutationMonitor, vic::VicImage};
 
 /// A "document" the user is working on.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct Document {
     #[serde(skip)]

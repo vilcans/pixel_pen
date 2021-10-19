@@ -1,5 +1,7 @@
-use std::io;
+use std::{fmt, io};
 use thiserror::Error;
+
+pub trait DisallowedAction: fmt::Debug + fmt::Display {}
 
 #[derive(Error, Debug)]
 pub enum Error {

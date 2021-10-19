@@ -9,6 +9,18 @@ pub struct MutationMonitor<T> {
     pub dirty: bool,
 }
 
+impl<T> Clone for MutationMonitor<T>
+where
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            target: self.target.clone(),
+            dirty: self.dirty,
+        }
+    }
+}
+
 impl<T> MutationMonitor<T> {
     /// Wrap the target object and set the dirty flag.
     pub fn new_dirty(target: T) -> Self {

@@ -9,7 +9,12 @@ use std::{
 };
 use thiserror::Error;
 
-use crate::{colors::TrueColor, coords::Point, error::Error, image_operations};
+use crate::{
+    colors::TrueColor,
+    coords::Point,
+    error::{DisallowedAction, Error},
+    image_operations,
+};
 
 mod serialization;
 
@@ -260,7 +265,7 @@ impl Char {
         y: i32,
         color: u8,
         colors: &GlobalColors,
-    ) -> Result<bool, DisallowedEdit> {
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
         debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
         debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
         let old_bits = self.bits[y as usize];
@@ -280,7 +285,7 @@ impl Char {
                     new_bits = (old_bits & !mask) | (mask & 0b10101010);
                     new_color = color;
                 }
-                _ => return Err(DisallowedEdit::DisallowedMulticolorColor),
+                _ => return Err(Box::new(DisallowedEdit::DisallowedMulticolorColor)),
             }
         } else {
             let bit = 0x80u8 >> x;
@@ -290,7 +295,7 @@ impl Char {
                 new_bits = old_bits | bit;
                 new_color = color;
             } else {
-                return Err(DisallowedEdit::DisallowedHiresColor);
+                return Err(Box::new(DisallowedEdit::DisallowedHiresColor));
             }
         }
         if new_bits != old_bits || new_color != self.color {
@@ -302,7 +307,7 @@ impl Char {
         }
     }
 
-    fn make_high_res(&mut self) -> Result<bool, DisallowedEdit> {
+    fn make_high_res(&mut self) -> Result<bool, Box<dyn DisallowedAction>> {
         if !self.multicolor {
             return Ok(false);
         }
@@ -310,7 +315,7 @@ impl Char {
         Ok(true)
     }
 
-    fn make_multicolor(&mut self) -> Result<bool, DisallowedEdit> {
+    fn make_multicolor(&mut self) -> Result<bool, Box<dyn DisallowedAction>> {
         if self.multicolor {
             return Ok(false);
         }
@@ -325,6 +330,7 @@ impl Default for Char {
     }
 }
 
+#[derive(Clone)]
 pub struct VicImage {
     columns: usize,
     rows: usize,
@@ -487,7 +493,7 @@ impl VicImage {
         y: i32,
         mode: &DrawMode,
         color: u8,
-    ) -> Result<bool, DisallowedEdit> {
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
         if let Some((column, row, cx, cy)) = self.char_coordinates(x, y) {
             let cell = &mut self.video[(column, row)];
             match *mode {
@@ -502,10 +508,15 @@ impl VicImage {
     }
 
     /// Change the character color at given pixel coordinates
-    pub fn set_color(&mut self, x: i32, y: i32, color: u8) -> Result<bool, DisallowedEdit> {
+    pub fn set_color(
+        &mut self,
+        x: i32,
+        y: i32,
+        color: u8,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
         if let Some((column, row, _cx, _cy)) = self.char_coordinates(x, y) {
             if !ALLOWED_CHAR_COLORS.contains(&color) {
-                return Err(DisallowedEdit::DisallowedCharacterColor);
+                return Err(Box::new(DisallowedEdit::DisallowedCharacterColor));
             }
             let cell = &mut self.video[(column, row)];
             if cell.color == color {
@@ -715,3 +726,5 @@ pub enum DisallowedEdit {
     #[error("Character color must be between 0 and 7")]
     DisallowedCharacterColor,
 }
+
+impl DisallowedAction for DisallowedEdit {}
