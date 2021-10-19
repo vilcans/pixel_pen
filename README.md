@@ -12,7 +12,7 @@ but that was only to get some images to test with at the start of the project. I
 
 There is also Pixel Pen's own file format (file extension: `pixelpen`), the details of which are subject to change, but it's based on JSON. Pixel Pen can save and load files in this format.
 
-Apart from that, you can paint single pixels, and that's about it right now.
+Apart from that, you can paint single pixels, change a character cell's color, and switch a character cell to multicolor or high resolution.
 
 ## Input
 
