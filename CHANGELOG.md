@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- Undo
 
 ## [0.5.0] - 2021-10-17
 ### Added
