@@ -23,6 +23,7 @@ Apart from that, you can paint single pixels, and that's about it right now.
 | +                                   | Zoom in
 | -                                   | Zoom out
 | Z                                   | Undo
+| Y                                   | Redo
 | G                                   | Grid on/off
 | Scroll wheel                        | Scroll
 | Ctrl + scroll wheel                 | Zoom
