@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+
+## [0.6.0] - 2021-10-19
 ### Added
 - Undo and redo
 
@@ -37,7 +39,8 @@
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/vilcans/pixel_pen/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/vilcans/pixel_pen/compare/pixel_pen-v0.4.0...v0.5.0
 [0.4.0]: https://github.com/vilcans/pixel_pen/compare/v0.3.0...pixel_pen-v0.4.0
 [0.3.0]: https://github.com/vilcans/pixel_pen/compare/pixel_pen-v0.2.2...v0.3.0
