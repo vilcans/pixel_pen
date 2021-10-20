@@ -1,7 +1,19 @@
 use std::{fmt, io};
 use thiserror::Error;
 
-pub trait DisallowedAction: fmt::Debug + fmt::Display {}
+/// How serious an error is.
+pub enum Severity {
+    /// There is no need to report this to the user.
+    Silent,
+    /// Not serious, but the user should be notified about it.
+    Notification,
+}
+
+pub trait DisallowedAction: fmt::Debug + fmt::Display {
+    fn severity(&self) -> Severity {
+        Severity::Notification
+    }
+}
 
 #[derive(Error, Debug)]
 pub enum Error {

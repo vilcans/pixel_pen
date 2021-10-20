@@ -5,7 +5,7 @@ use crate::{
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
-    error::Error,
+    error::{Error, Severity},
     import::{self, Import, ImportSettings},
     mutation_monitor::MutationMonitor,
     storage,
@@ -617,7 +617,10 @@ fn update_in_paint_mode(
         match history.apply(doc, action) {
             Ok(true) => (),
             Ok(false) => doc.image.dirty = was_dirty,
-            Err(e) => ui_state.show_warning(e.to_string()),
+            Err(e) => match e.severity() {
+                Severity::Silent => {}
+                Severity::Notification => ui_state.show_warning(e.to_string()),
+            },
         }
     }
 }

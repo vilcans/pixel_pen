@@ -1,6 +1,10 @@
 use std::fmt;
 
-use crate::{error::DisallowedAction, vic::DrawMode, Document};
+use crate::{
+    error::{DisallowedAction, Severity},
+    vic::DrawMode,
+    Document,
+};
 
 pub struct Action {
     pub action: ActionType,
@@ -69,4 +73,8 @@ impl fmt::Display for NoChange {
     }
 }
 
-impl DisallowedAction for NoChange {}
+impl DisallowedAction for NoChange {
+    fn severity(&self) -> crate::error::Severity {
+        Severity::Silent
+    }
+}
