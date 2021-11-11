@@ -200,37 +200,28 @@ impl epi::App for Application {
                                     ))
                                     .clicked()
                                 {
-                                    save(doc, &filename, system);
+                                    save(history, doc, &filename, system);
                                 }
                             }
                             None => {
                                 if ui.button("Save").clicked() {
-                                    save_as(doc, system);
+                                    save_as(history, doc, system);
                                 }
                             }
                         }
                         if ui.button("Save As...").clicked() {
-                            save_as(doc, system);
+                            save_as(history, doc, system);
                         }
                         if ui.button("Export...").clicked() {
                             export(doc, system);
                         }
                     }
                     ui.separator();
-                    if ui.button("Quit").clicked() {
-                        if history.is_saved() || {
-                            system
-                                .request_confirmation(&format!(
-                                    "File is not saved: \"{}\". Are you sure you want to quit?",
-                                    doc.filename
-                                        .clone()
-                                        .map(|path| path.to_string_lossy().to_string())
-                                        .unwrap_or_else(|| "Untitled".to_string())
-                                ))
-                                .unwrap_or(false)
-                        } {
-                            frame.quit();
-                        }
+                    if ui.button("Quit").clicked()
+                        && (history.is_saved()
+                            || check_quit(system.as_mut(), doc.filename.as_deref()))
+                    {
+                        frame.quit();
                     }
                 });
                 egui::menu::menu(ui, "Edit", |ui| {
@@ -496,9 +487,13 @@ impl epi::App for Application {
 
 /// Ask for filename and save the document. Show any error message to the user.
 /// Returns false if the file was not saved, either because user cancelled or there was an error.
-fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) -> bool {
+fn save_as(
+    history: &mut Record<actions::Action>,
+    doc: &mut Document,
+    system: &mut Box<dyn SystemFunctions>,
+) -> bool {
     match system.save_file_dialog(SaveFileOptions::for_save(doc.filename.as_deref())) {
-        Ok(Some(filename)) => save(doc, &filename, system),
+        Ok(Some(filename)) => save(history, doc, &filename, system),
         Ok(None) => false,
         Err(e) => {
             system.show_error(&format!("Could not get file name: {:?}", e));
@@ -525,11 +520,17 @@ fn export(doc: &Document, system: &mut Box<dyn SystemFunctions>) {
 /// Save the document as a given filename.
 /// Ask for filename and save the document. Show any error message to the user.
 /// Returns false if the file was not saved, either because user cancelled or there was an error.
-fn save(doc: &mut Document, filename: &Path, system: &mut Box<dyn SystemFunctions>) -> bool {
+fn save(
+    history: &mut Record<actions::Action>,
+    doc: &mut Document,
+    filename: &Path,
+    system: &mut Box<dyn SystemFunctions>,
+) -> bool {
     println!("Saving as {}", filename.display());
     match storage::save(doc, filename) {
         Ok(()) => {
             doc.filename = Some(filename.to_owned());
+            history.set_saved(true);
             true
         }
         Err(e) => {
@@ -537,6 +538,17 @@ fn save(doc: &mut Document, filename: &Path, system: &mut Box<dyn SystemFunction
             false
         }
     }
+}
+
+fn check_quit(system: &mut dyn SystemFunctions, filename: Option<&Path>) -> bool {
+    system
+        .request_confirmation(&format!(
+            "File is not saved: \"{}\". Are you sure you want to quit?",
+            filename
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_else(|| "Untitled".to_string())
+        ))
+        .unwrap_or(false)
 }
 
 fn start_import_mode(
