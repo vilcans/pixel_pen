@@ -200,12 +200,12 @@ impl epi::App for Application {
                                     ))
                                     .clicked()
                                 {
-                                    save(doc, &filename, system)
+                                    save(doc, &filename, system);
                                 }
                             }
                             None => {
                                 if ui.button("Save").clicked() {
-                                    save_as(doc, system)
+                                    save_as(doc, system);
                                 }
                             }
                         }
@@ -218,7 +218,19 @@ impl epi::App for Application {
                     }
                     ui.separator();
                     if ui.button("Quit").clicked() {
-                        frame.quit();
+                        if history.is_saved() || {
+                            system
+                                .request_confirmation(&format!(
+                                    "File is not saved: \"{}\". Are you sure you want to quit?",
+                                    doc.filename
+                                        .clone()
+                                        .map(|path| path.to_string_lossy().to_string())
+                                        .unwrap_or_else(|| "Untitled".to_string())
+                                ))
+                                .unwrap_or(false)
+                        } {
+                            frame.quit();
+                        }
                     }
                 });
                 egui::menu::menu(ui, "Edit", |ui| {
@@ -482,13 +494,15 @@ impl epi::App for Application {
     }
 }
 
-/// Ask for filename and save the document.
-fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) {
+/// Ask for filename and save the document. Show any error message to the user.
+/// Returns false if the file was not saved, either because user cancelled or there was an error.
+fn save_as(doc: &mut Document, system: &mut Box<dyn SystemFunctions>) -> bool {
     match system.save_file_dialog(SaveFileOptions::for_save(doc.filename.as_deref())) {
         Ok(Some(filename)) => save(doc, &filename, system),
-        Ok(None) => {}
+        Ok(None) => false,
         Err(e) => {
             system.show_error(&format!("Could not get file name: {:?}", e));
+            false
         }
     }
 }
@@ -509,14 +523,18 @@ fn export(doc: &Document, system: &mut Box<dyn SystemFunctions>) {
 }
 
 /// Save the document as a given filename.
-fn save(doc: &mut Document, filename: &Path, system: &mut Box<dyn SystemFunctions>) {
+/// Ask for filename and save the document. Show any error message to the user.
+/// Returns false if the file was not saved, either because user cancelled or there was an error.
+fn save(doc: &mut Document, filename: &Path, system: &mut Box<dyn SystemFunctions>) -> bool {
     println!("Saving as {}", filename.display());
     match storage::save(doc, filename) {
         Ok(()) => {
             doc.filename = Some(filename.to_owned());
+            true
         }
         Err(e) => {
             system.show_error(&format!("Failed to save: {:?}", e));
+            false
         }
     }
 }
