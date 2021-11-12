@@ -36,6 +36,15 @@ const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
 
 const GRID_COLOR: Color32 = Color32::GRAY;
 
+const GRID_TOOLTIP: &str = "Show character cell grid";
+
+const RAW_TOOLTIP: &str = "Show image with fixed colors:
+• Gray = background color in hi-res cells
+• Black = background color in multicolor cells
+• White = character color
+• Blue = border color in multicolor cells
+• Red = aux color in multicolor cells";
+
 #[derive(Debug)]
 enum Mode {
     Import(Import),
@@ -252,9 +261,10 @@ impl epi::App for Application {
                     }
                     user_actions.zoom_in |= ui.button("+").on_hover_text("Zoom in").clicked();
                     ui.separator();
-                    ui.checkbox(&mut ui_state.grid, "Grid");
+                    ui.checkbox(&mut ui_state.grid, "Grid")
+                        .on_hover_text(GRID_TOOLTIP);
                     let mut raw_mode = ui_state.image_view_settings == ViewSettings::Raw;
-                    ui.checkbox(&mut raw_mode, "Raw");
+                    ui.checkbox(&mut raw_mode, "Raw").on_hover_text(RAW_TOOLTIP);
                     ui_state.image_view_settings = if raw_mode {
                         ViewSettings::Raw
                     } else {
