@@ -43,7 +43,7 @@ pub fn main() -> Result<Option<Application>, i32> {
         }
         Ok(true) => Ok(None),
         Ok(false) => {
-            let doc = doc.unwrap_or_else(Document::default);
+            let doc = doc.unwrap_or_default();
             let mut app = Application::with_doc(doc);
             if let Some(filename) = opts.import_file {
                 match app.start_import_mode(&filename) {
