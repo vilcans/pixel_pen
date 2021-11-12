@@ -11,7 +11,7 @@ use crate::{
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     ui,
-    vic::{self, DrawMode, GlobalColors, VicImage},
+    vic::{self, DrawMode, GlobalColors, VicImage, ViewSettings},
     widgets,
 };
 use eframe::{
@@ -47,6 +47,7 @@ enum Mode {
 
 struct Texture {
     pub id: TextureId,
+    pub settings: ViewSettings,
     pub width: usize,
     pub height: usize,
 }
@@ -54,6 +55,7 @@ struct Texture {
 struct UiState {
     mode: Mode,
     zoom: f32,
+    image_view_settings: ViewSettings,
     /// Enable showing the character grid
     grid: bool,
     /// Whether user is currently panning
@@ -251,6 +253,13 @@ impl epi::App for Application {
                     user_actions.zoom_in |= ui.button("+").on_hover_text("Zoom in").clicked();
                     ui.separator();
                     ui.checkbox(&mut ui_state.grid, "Grid");
+                    let mut raw_mode = ui_state.image_view_settings == ViewSettings::Raw;
+                    ui.checkbox(&mut raw_mode, "Raw");
+                    ui_state.image_view_settings = if raw_mode {
+                        ViewSettings::Raw
+                    } else {
+                        ViewSettings::Normal
+                    };
                 });
                 ui.separator();
                 render_palette(ui, &mut doc.paint_color, &mut doc.image);
@@ -394,6 +403,7 @@ impl epi::App for Application {
                 frame.tex_allocator(),
                 par,
                 ui_state.zoom,
+                &ui_state.image_view_settings,
             );
             let mut mesh = Mesh::with_texture(texture);
             mesh.add_rect_with_uv(
@@ -728,6 +738,7 @@ fn update_texture(
     tex_allocator: &mut dyn TextureAllocator,
     par: f32,
     zoom: f32,
+    settings: &ViewSettings,
 ) -> TextureId {
     let scale_x = ((par * zoom).ceil() as u32).max(1).min(MAX_SCALE);
     let scale_y = (zoom.ceil() as u32).max(1).min(MAX_SCALE);
@@ -737,7 +748,11 @@ fn update_texture(
 
     // Recreate the texture if the size has changed or the image has been updated
     if let Some(t) = image_texture {
-        if t.width != texture_width || t.height != texture_height || image.dirty {
+        if t.settings != *settings
+            || t.width != texture_width
+            || t.height != texture_height
+            || image.dirty
+        {
             tex_allocator.free(t.id);
             *image_texture = None;
         }
@@ -748,7 +763,7 @@ fn update_texture(
     let texture = if let Some(texture) = image_texture {
         texture.id
     } else {
-        let unscaled_image = image.render();
+        let unscaled_image = image.render_with_settings(settings);
         let scaled_image = image::imageops::resize(
             &unscaled_image,
             unscaled_image.width() * scale_x,
@@ -763,6 +778,7 @@ fn update_texture(
             tex_allocator.alloc_srgba_premultiplied((texture_width, texture_height), &pixels);
         *image_texture = Some(Texture {
             id: texture_id,
+            settings: settings.clone(),
             width: texture_width,
             height: texture_height,
         });
@@ -792,6 +808,7 @@ impl Application {
             ui_state: UiState {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
+                image_view_settings: ViewSettings::Normal,
                 grid: false,
                 panning: false,
                 pan: Vec2::ZERO,

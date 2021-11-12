@@ -39,6 +39,14 @@ const PALETTE: [(u32, &str); 16] = [
     (0xffffc9, "Light Yellow"),
 ];
 
+const RAW_HIRES_BACKGROUND: TrueColor = TrueColor::from_u32(0x555555);
+const RAW_HIRES_CHAR_COLOR: TrueColor = TrueColor::from_u32(0xeeeeee);
+
+const RAW_MULTICOLOR_BACKGROUND: TrueColor = TrueColor::from_u32(0x000000);
+const RAW_MULTICOLOR_BORDER: TrueColor = TrueColor::from_u32(0x0044ff);
+const RAW_MULTICOLOR_AUX: TrueColor = TrueColor::from_u32(0xff0000);
+const RAW_MULTICOLOR_CHAR_COLOR: TrueColor = TrueColor::from_u32(0xffffff);
+
 /// Number of entries in the palette.
 pub const PALETTE_SIZE: usize = 16;
 
@@ -107,6 +115,17 @@ impl Iterator for GlobalColorsIntoIterator {
 pub enum ColorFormat {
     HighRes,
     Multicolor,
+}
+
+#[derive(Clone, PartialEq)]
+pub enum ViewSettings {
+    Normal,
+    Raw,
+}
+impl Default for ViewSettings {
+    fn default() -> Self {
+        ViewSettings::Normal
+    }
 }
 
 pub enum DrawMode {
@@ -212,48 +231,87 @@ impl Char {
         self.color + if self.multicolor { 8 } else { 0 }
     }
 
-    fn render(&self, colors: &GlobalColors) -> [TrueColor; Self::WIDTH * Self::HEIGHT] {
+    fn render(
+        &self,
+        colors: &GlobalColors,
+        settings: &ViewSettings,
+    ) -> [TrueColor; Self::WIDTH * Self::HEIGHT] {
         if self.multicolor {
-            self.render_multicolor(colors)
+            let (background, border, aux, char_color) = match settings {
+                ViewSettings::Normal => (
+                    palette_color(colors[GlobalColors::BACKGROUND]),
+                    palette_color(colors[GlobalColors::BORDER]),
+                    palette_color(colors[GlobalColors::AUX]),
+                    palette_color(self.color),
+                ),
+                ViewSettings::Raw => (
+                    RAW_MULTICOLOR_BACKGROUND,
+                    RAW_MULTICOLOR_BORDER,
+                    RAW_MULTICOLOR_AUX,
+                    RAW_MULTICOLOR_CHAR_COLOR,
+                ),
+            };
+            Self::render_multicolor(&self.bits, background, border, aux, char_color)
         } else {
-            self.render_hires(colors)
+            let (background, char_color) = match settings {
+                ViewSettings::Normal => (
+                    palette_color(colors[GlobalColors::BACKGROUND]),
+                    palette_color(self.color),
+                ),
+                ViewSettings::Raw => (RAW_HIRES_BACKGROUND, RAW_HIRES_CHAR_COLOR),
+            };
+            Self::render_hires(&self.bits, background, char_color)
         }
     }
 
     /// Render high resolution character (not multicolor).
-    fn render_hires(&self, colors: &GlobalColors) -> [TrueColor; Self::WIDTH * Self::HEIGHT] {
-        let mut pixels = [TrueColor::default(); Self::WIDTH * Self::HEIGHT];
+    fn render_hires<Pixel>(
+        bitmap: &[u8; Self::HEIGHT],
+        background: Pixel,
+        char_color: Pixel,
+    ) -> [Pixel; Self::WIDTH * Self::HEIGHT]
+    where
+        Pixel: Copy + Default,
+    {
+        let mut pixels = [Pixel::default(); Self::WIDTH * Self::HEIGHT];
         let mut pixel_iter = pixels.iter_mut();
-        for bits in self.bits.iter() {
+        for bits in bitmap.iter() {
             for b in 0..Self::WIDTH {
-                let index = if (bits & (0x80 >> b)) == 0 {
-                    colors[GlobalColors::BACKGROUND]
+                *pixel_iter.next().unwrap() = if (bits & (0x80 >> b)) == 0 {
+                    background
                 } else {
-                    self.color
+                    char_color
                 };
-                *pixel_iter.next().unwrap() = palette_color(index);
             }
         }
         pixels
     }
 
     /// Render multicolor character (low resolution).
-    fn render_multicolor(&self, colors: &GlobalColors) -> [TrueColor; Self::WIDTH * Self::HEIGHT] {
-        let mut pixels = [TrueColor::default(); Self::WIDTH * Self::HEIGHT];
+    fn render_multicolor<Pixel>(
+        bitmap: &[u8; Self::HEIGHT],
+        background: Pixel,
+        border: Pixel,
+        aux: Pixel,
+        char_color: Pixel,
+    ) -> [Pixel; Self::WIDTH * Self::HEIGHT]
+    where
+        Pixel: Copy + Default,
+    {
+        let mut pixels = [Pixel::default(); Self::WIDTH * Self::HEIGHT];
         let mut pixel_iter = pixels.iter_mut();
-        for bits in self.bits.iter() {
+        for bits in bitmap.iter() {
             for b in (0..8).step_by(2) {
                 let v = (bits >> (6 - b)) & 0b11;
                 let index = match v {
-                    0b00 => colors[GlobalColors::BACKGROUND],
-                    0b01 => colors[GlobalColors::BORDER],
-                    0b10 => self.color,
-                    0b11 => colors[GlobalColors::AUX],
+                    0b00 => background,
+                    0b01 => border,
+                    0b10 => char_color,
+                    0b11 => aux,
                     _ => unreachable!(),
                 };
-                let color = palette_color(index);
-                *pixel_iter.next().unwrap() = color;
-                *pixel_iter.next().unwrap() = color;
+                *pixel_iter.next().unwrap() = index;
+                *pixel_iter.next().unwrap() = index;
             }
         }
         pixels
@@ -613,11 +671,15 @@ impl VicImage {
 
     /// Render true color pixels for this image.
     pub fn render(&self) -> RgbaImage {
+        self.render_with_settings(&ViewSettings::default())
+    }
+
+    pub fn render_with_settings(&self, settings: &ViewSettings) -> RgbaImage {
         let (source_width, source_height) = self.pixel_size();
         let mut image = RgbaImage::new(source_width as u32, source_height as u32);
         for (row, chars) in self.video.rows().enumerate() {
             for (column, char) in chars.iter().enumerate() {
-                let char_pixels = char.render(&self.colors);
+                let char_pixels = char.render(&self.colors, settings);
                 let left = column as u32 * Char::WIDTH as u32;
                 let top = row as u32 * Char::HEIGHT as u32;
                 for ((y, x), s) in ((0..Char::HEIGHT as u32)

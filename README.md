@@ -46,6 +46,23 @@ The Make Multicolor tool changes a character cell to multicolor mode.
 In multicolor mode, the cell can contain pixels of four colors: the background color, the border color, the aux color, and the character color.
 There are 4 by 8 pixels in the cell in this mode, and each pixel is twice as wide as in high-res mode.
 
+## View Settings
+
+### Grid
+
+The Grid checkbox displays a grid so you can see the borders of each cell.
+
+### Raw
+
+The Raw checkbox changes the display mode to "raw". This mode is useful to "debug" the image, or understand how it's built. In raw mode, the selected colors for background, border, aux, and the cell's character color are not used. Instead they are displayed as:
+
+  * Gray = background in hi-res cells
+  * White = character color in hi-res cells
+  * Black = background color in multicolor cells
+  * Blue = border color in multicolor cells
+  * Red = aux color in multicolor cells
+  * White = character color in multicolor cells
+
 ## Input
 
 | Input                               | Action

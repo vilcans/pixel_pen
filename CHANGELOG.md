@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- "Raw" display mode for inspecting the image without colors
 
 ## [0.6.0] - 2021-10-19
 ### Added
