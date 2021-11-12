@@ -14,6 +14,38 @@ There is also Pixel Pen's own file format (file extension: `pixelpen`), the deta
 
 Apart from that, you can paint single pixels, change a character cell's color, and switch a character cell to multicolor or high resolution.
 
+## The Palette
+
+The color swatches at the top of the window is the palette.
+Right-click one of the colors and a menu will popup where you can select that color as the background, border, or aux color.
+Left-clicking selects your primary paint color.
+
+## Tools
+
+### Pixel paint
+
+In this mode, select a color from the palette and left-click to paint with it.
+Note that each cell (8 by 8 pixels) can contain only 2 colors in high-res mode,
+and 4 colors in multicolor mode.
+
+You can use the right mouse button to paint with the background color.
+
+### Color paint
+
+In Color paint mode, select a color from the palette and left-click to change the character color of a cell.
+
+### Make High-res
+
+The Make high-res tool changes a character cell to high-resolution mode.
+In high-res mode, the cell can contain pixels of two colors: the background color and the character color.
+There are 8 by 8 pixels in the cell in this mode.
+
+### Make Multicolor
+
+The Make Multicolor tool changes a character cell to multicolor mode.
+In multicolor mode, the cell can contain pixels of four colors: the background color, the border color, the aux color, and the character color.
+There are 4 by 8 pixels in the cell in this mode, and each pixel is twice as wide as in high-res mode.
+
 ## Input
 
 | Input                               | Action
