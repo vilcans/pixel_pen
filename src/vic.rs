@@ -53,6 +53,11 @@ pub const PALETTE_SIZE: usize = 16;
 /// Which colors are allowed as the "character" color.
 pub const ALLOWED_CHAR_COLORS: RangeInclusive<u8> = 0..=7;
 
+const BACKGROUND_BITS: u8 = 0b00000000;
+const BORDER_BITS: u8 = 0b01010101;
+const CHAR_COLOR_BITS: u8 = 0b10101010;
+const AUX_BITS: u8 = 0b11111111;
+
 pub const GLOBAL_COLORS: [(usize, &str, RangeInclusive<u8>); 3] = [
     (0, "Background", 0..=15),
     (1, "Border", 0..=7),
@@ -129,9 +134,15 @@ impl Default for ViewSettings {
 }
 
 pub enum DrawMode {
+    /// Draw a single pixel
     Pixel,
+    /// Fill the whole character cell with a color
+    Fill,
+    /// Change the color of the cell
     Color,
+    /// Make the cell high-res
     HighRes,
+    /// Make the cell multicolor
     Multicolor,
 }
 
@@ -336,11 +347,11 @@ impl Char {
                     new_bits = old_bits & !mask;
                 }
                 _ if color == colors[GlobalColors::BORDER] => {
-                    new_bits = (old_bits & !mask) | (mask & 0b01010101)
+                    new_bits = (old_bits & !mask) | (mask & BORDER_BITS)
                 }
                 _ if color == colors[GlobalColors::AUX] => new_bits = old_bits | mask,
                 _ if ALLOWED_CHAR_COLORS.contains(&color) => {
-                    new_bits = (old_bits & !mask) | (mask & 0b10101010);
+                    new_bits = (old_bits & !mask) | (mask & CHAR_COLOR_BITS);
                     new_color = color;
                 }
                 _ => return Err(Box::new(DisallowedEdit::DisallowedMulticolorColor)),
@@ -362,6 +373,48 @@ impl Char {
             Ok(true)
         } else {
             Ok(false)
+        }
+    }
+
+    fn fill(
+        &mut self,
+        color: u8,
+        colors: &GlobalColors,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
+        let new_bits;
+        let mut new_color = self.color;
+        match () {
+            _ if color == colors[GlobalColors::BACKGROUND] => {
+                new_bits = BACKGROUND_BITS;
+            }
+            _ if self.multicolor && color == colors[GlobalColors::BORDER] => {
+                new_bits = BORDER_BITS;
+            }
+            _ if self.multicolor && color == colors[GlobalColors::AUX] => {
+                new_bits = AUX_BITS;
+            }
+            _ if ALLOWED_CHAR_COLORS.contains(&color) => {
+                new_bits = if self.multicolor {
+                    CHAR_COLOR_BITS
+                } else {
+                    0b11111111
+                };
+                new_color = color;
+            }
+            _ => {
+                if self.multicolor {
+                    return Err(Box::new(DisallowedEdit::DisallowedMulticolorColor));
+                } else {
+                    return Err(Box::new(DisallowedEdit::DisallowedHiresColor));
+                }
+            }
+        }
+        if new_color == self.color && self.bits.iter().all(|b| *b == new_bits) {
+            Ok(false)
+        } else {
+            self.bits = [new_bits; Self::HEIGHT];
+            self.color = new_color;
+            Ok(true)
         }
     }
 
@@ -556,6 +609,7 @@ impl VicImage {
             let cell = &mut self.video[(column, row)];
             match *mode {
                 DrawMode::Pixel => cell.set_pixel(cx, cy, color, &self.colors),
+                DrawMode::Fill => cell.fill(color, &self.colors),
                 DrawMode::Color => self.set_color(x, y, color),
                 DrawMode::HighRes => cell.make_high_res(),
                 DrawMode::Multicolor => cell.make_multicolor(),

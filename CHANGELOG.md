@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- "Fill Cell" tool for quickly filling a character cell with a color.
 
 ## [0.7.0] - 2021-11-13
 ### Added

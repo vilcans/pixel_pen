@@ -49,6 +49,7 @@ const RAW_TOOLTIP: &str = "Show image with fixed colors:
 enum Mode {
     Import(Import),
     PixelPaint,
+    FillCell,
     ColorPaint,
     MakeHiRes,
     MakeMulticolor,
@@ -306,6 +307,14 @@ impl epi::App for Application {
                     {
                         ui_state.mode = Mode::PixelPaint;
                     }
+                    // FillCell
+                    if ui
+                        .selectable_label(matches!(ui_state.mode, Mode::FillCell), "Fill cell")
+                        .on_hover_text("Fill the whole character cell with a color")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::FillCell;
+                    }
                     // ColorPaint
                     if ui
                         .selectable_label(matches!(ui_state.mode, Mode::ColorPaint), "Color paint")
@@ -379,6 +388,7 @@ impl epi::App for Application {
                 match ui_state.mode {
                     Mode::Import(_) => {}
                     Mode::PixelPaint
+                    | Mode::FillCell
                     | Mode::ColorPaint
                     | Mode::MakeHiRes
                     | Mode::MakeMulticolor => {
@@ -655,6 +665,7 @@ fn update_in_paint_mode(
             color: color as u8,
             draw_mode: match ui_state.mode {
                 Mode::PixelPaint => DrawMode::Pixel,
+                Mode::FillCell => DrawMode::Fill,
                 Mode::ColorPaint => DrawMode::Color,
                 Mode::MakeHiRes => DrawMode::HighRes,
                 Mode::MakeMulticolor => DrawMode::Multicolor,
@@ -802,6 +813,9 @@ fn mode_instructions(mode: &Mode) -> &str {
     match mode {
         Mode::Import(_) => "Tweak settings and click Import.",
         Mode::PixelPaint => "Click to paint. Right-click to paint with background color.",
+        Mode::FillCell => {
+            "Click to fill the character cell with a color. Right-click to fill with background color."
+        }
         Mode::ColorPaint => {
             "Click to change the color of the character cell. Right-click for background color."
         }

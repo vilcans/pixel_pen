@@ -30,6 +30,12 @@ and 4 colors in multicolor mode.
 
 You can use the right mouse button to paint with the background color.
 
+### Fill cell
+
+In Fill cell mode, select a color from the palette and left-click to fill the whole character cell with that color.
+Right-clicking fills the cell with the background color.
+This is useful for quickly filling large areas with a color.
+
 ### Color paint
 
 In Color paint mode, select a color from the palette and left-click to change the character color of a cell.
