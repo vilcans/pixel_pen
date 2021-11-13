@@ -296,7 +296,7 @@ impl epi::App for Application {
 
         // Left toolbar
         egui::SidePanel::left("toolbar").show(ctx, |ui| {
-            egui::ScrollArea::auto_sized().show(ui, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.vertical_centered_justified(|ui| {
                     // PixelPaint
                     if ui
