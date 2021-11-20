@@ -127,7 +127,7 @@ fn render_patch_popups(
             vic::palette_entry_name(index)
         ),
     };
-    response.clone().on_hover_text(color_description);
+    response.on_hover_text(color_description);
 }
 
 fn render_color_popup(
@@ -137,8 +137,8 @@ fn render_color_popup(
     image: &mut MutationMonitor<VicImage>,
     patch: PaintColor,
 ) {
-    widgets::popup(ui, popup_id, &response, |ui| {
-        let patch_size = patch_size(ui); //.mul(0.5);
+    widgets::popup(ui, popup_id, response, |ui| {
+        let patch_size = patch_size(ui);
         for (_, indices) in patch.selectable_colors().group_by(|i| i / 8).into_iter() {
             ui.horizontal(|ui| {
                 for index in indices {
