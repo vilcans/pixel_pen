@@ -27,7 +27,8 @@ use undo::Record;
 const MAX_SCALE: u32 = 8;
 
 const POPUP_MESSAGE_TIME: f32 = 3.0;
-const POPUP_HIGHLIGHT_TIME: f32 = 0.3;
+const POPUP_HIGHLIGHT_TIME: f32 = 0.4;
+const POPUP_FADE_OUT_TIME: f32 = 0.8;
 
 const BORDER_CORNER_RADIUS: f32 = 15.0;
 const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
@@ -280,9 +281,16 @@ impl epi::App for Application {
                 let age = Instant::now()
                     .saturating_duration_since(*time)
                     .as_secs_f32();
-                let highlight = 1.0 - (age / POPUP_HIGHLIGHT_TIME).clamp(0.0, 1.0);
-                let color = Rgba::RED * highlight;
-                ui.add(Label::new(message).background_color(color));
+                let highlight =
+                    1.0 - ((age - POPUP_HIGHLIGHT_TIME) / POPUP_FADE_OUT_TIME).clamp(0.0, 1.0);
+                let bg_color = Rgba::RED * highlight;
+                let text_color = (Rgba::WHITE * highlight)
+                    + (Rgba::from(ctx.style().visuals.text_color()) * (1.0 - highlight));
+                ui.add(
+                    Label::new(message)
+                        .text_color(text_color)
+                        .background_color(bg_color),
+                );
                 if age >= POPUP_MESSAGE_TIME {
                     ui_state.message = None;
                 } else if highlight > 0.0 {
