@@ -12,17 +12,15 @@ use crate::{
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     ui,
     vic::{self, DrawMode, GlobalColors, VicImage, ViewSettings},
-    widgets,
 };
 use eframe::{
     egui::{
         self, paint::Mesh, Align2, Color32, CursorIcon, Label, Painter, PointerButton, Pos2, Rect,
-        Response, Rgba, Sense, Shape, Stroke, TextStyle, TextureId, Vec2,
+        Response, Rgba, Shape, Stroke, TextStyle, TextureId, Vec2,
     },
     epi::{self, TextureAllocator},
 };
 use image::imageops::FilterType;
-use itertools::Itertools;
 use undo::Record;
 
 // Don't scale the texture more than this to avoid huge textures when zooming.
@@ -273,7 +271,7 @@ impl epi::App for Application {
                     };
                 });
                 ui.separator();
-                render_palette(ui, &mut doc.paint_color, &mut doc.image);
+                ui::palette::render_palette(ui, &mut doc.paint_color, &mut doc.image);
             });
         });
 
@@ -684,71 +682,6 @@ fn update_in_paint_mode(
             },
         }
     }
-}
-
-fn render_palette(
-    ui: &mut egui::Ui,
-    paint_color: &mut usize,
-    image: &mut MutationMonitor<VicImage>,
-) {
-    ui.horizontal_wrapped(|ui| {
-        let interact_size = ui.spacing().interact_size;
-        let patch_width = interact_size.x.max(interact_size.y);
-        let patch_height = patch_width;
-        for color_index in 0..vic::PALETTE_SIZE {
-            let color = vic::palette_color(color_index);
-            let (patch_rect, response) =
-                ui.allocate_exact_size(Vec2::new(patch_width, patch_height), Sense::click());
-            ui::palette::palette_patch(
-                ui.painter(),
-                &patch_rect,
-                color.into(),
-                color_index == image.colors[GlobalColors::BACKGROUND] as usize,
-                color_index == image.colors[GlobalColors::BORDER] as usize,
-                color_index == image.colors[GlobalColors::AUX] as usize,
-                color_index == *paint_color,
-            );
-            if response.clicked() {
-                *paint_color = color_index;
-            }
-            let color_description = format!(
-                "${0:x} ({0}): {1}",
-                color_index,
-                vic::palette_entry_name(color_index),
-            );
-            let popup_id = ui.make_persistent_id(format!("color_popup_{}", color_index));
-            if response.secondary_clicked() {
-                ui.memory().open_popup(popup_id);
-            }
-            if !ui.memory().is_popup_open(popup_id) {
-                let mut tooltip = color_description.clone();
-                let usages = &vic::GLOBAL_COLORS
-                    .iter()
-                    .filter(|(index, _, _)| image.colors[*index as u32] == color_index as u8)
-                    .map(|(_, label, _)| label)
-                    .join(", ");
-                if !usages.is_empty() {
-                    tooltip = format!("{}\n{}", tooltip, usages);
-                }
-                response.clone().on_hover_text(tooltip);
-            }
-            widgets::popup(ui, popup_id, &response, |ui| {
-                let color_index = color_index as u8;
-                ui.label(color_description);
-                for (index, label, range) in vic::GLOBAL_COLORS.iter() {
-                    let index = *index as u32;
-                    if range.contains(&color_index) {
-                        let setting = image.colors[index];
-                        let mut selected = setting == color_index;
-                        if ui.checkbox(&mut selected, *label).clicked() && setting != color_index {
-                            println!("Setting {0} to {1}", label, color_index);
-                            image.colors[index] = color_index;
-                        }
-                    }
-                }
-            });
-        }
-    });
 }
 
 /// Updates the texture with the current image content, if needed.
