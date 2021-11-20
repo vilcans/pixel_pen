@@ -5,7 +5,10 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{mutation_monitor::MutationMonitor, vic::VicImage};
+use crate::{
+    mutation_monitor::MutationMonitor,
+    vic::{PaintColor, VicImage},
+};
 
 /// A "document" the user is working on.
 #[derive(Serialize, Deserialize, Clone)]
@@ -13,7 +16,8 @@ use crate::{mutation_monitor::MutationMonitor, vic::VicImage};
 pub struct Document {
     #[serde(skip)]
     pub filename: Option<PathBuf>,
-    pub paint_color: usize,
+    #[serde(default)]
+    pub primary_color: PaintColor,
     pub image: MutationMonitor<VicImage>,
 }
 
@@ -31,7 +35,7 @@ impl Default for Document {
         let image = VicImage::default();
         Self {
             filename: None,
-            paint_color: 1,
+            primary_color: PaintColor::CharColor(3),
             image: MutationMonitor::new_dirty(image),
         }
     }

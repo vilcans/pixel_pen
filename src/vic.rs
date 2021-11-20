@@ -47,9 +47,6 @@ const RAW_MULTICOLOR_BORDER: TrueColor = TrueColor::from_u32(0x0044ff);
 const RAW_MULTICOLOR_AUX: TrueColor = TrueColor::from_u32(0xff0000);
 const RAW_MULTICOLOR_CHAR_COLOR: TrueColor = TrueColor::from_u32(0xffffff);
 
-/// Number of entries in the palette.
-pub const PALETTE_SIZE: usize = 16;
-
 /// Which colors are allowed as the "character" color.
 pub const ALLOWED_CHAR_COLORS: RangeInclusive<u8> = 0..=7;
 
@@ -57,12 +54,6 @@ const BACKGROUND_BITS: u8 = 0b00000000;
 const BORDER_BITS: u8 = 0b01010101;
 const CHAR_COLOR_BITS: u8 = 0b10101010;
 const AUX_BITS: u8 = 0b11111111;
-
-pub const GLOBAL_COLORS: [(usize, &str, RangeInclusive<u8>); 3] = [
-    (0, "Background", 0..=15),
-    (1, "Border", 0..=7),
-    (2, "Aux", 0..=15),
-];
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GlobalColors(pub [u8; 3]);
@@ -112,6 +103,31 @@ impl Iterator for GlobalColorsIntoIterator {
             Some(c)
         } else {
             None
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum PaintColor {
+    Background,
+    Border,
+    Aux,
+    CharColor(u8),
+}
+
+impl Default for PaintColor {
+    fn default() -> Self {
+        Self::CharColor(2)
+    }
+}
+
+impl PaintColor {
+    pub fn selectable_colors(&self) -> impl Iterator<Item = u8> {
+        match self {
+            PaintColor::Background => 0..=15,
+            PaintColor::Border => 0..=7,
+            PaintColor::Aux => 0..=15,
+            PaintColor::CharColor(index) => *index..=*index,
         }
     }
 }
@@ -332,8 +348,7 @@ impl Char {
         &mut self,
         x: i32,
         y: i32,
-        color: u8,
-        colors: &GlobalColors,
+        color: PaintColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
         debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
@@ -342,29 +357,25 @@ impl Char {
         let mut new_color = self.color;
         if self.multicolor {
             let mask = 0xc0u8 >> (x & !1);
-            match () {
-                _ if color == colors[GlobalColors::BACKGROUND] => {
-                    new_bits = old_bits & !mask;
-                }
-                _ if color == colors[GlobalColors::BORDER] => {
-                    new_bits = (old_bits & !mask) | (mask & BORDER_BITS)
-                }
-                _ if color == colors[GlobalColors::AUX] => new_bits = old_bits | mask,
-                _ if ALLOWED_CHAR_COLORS.contains(&color) => {
+            match color {
+                PaintColor::Background => new_bits = old_bits & !mask,
+                PaintColor::Border => new_bits = (old_bits & !mask) | (mask & BORDER_BITS),
+                PaintColor::Aux => new_bits = old_bits | mask,
+                PaintColor::CharColor(index) if ALLOWED_CHAR_COLORS.contains(&index) => {
                     new_bits = (old_bits & !mask) | (mask & CHAR_COLOR_BITS);
-                    new_color = color;
+                    new_color = index;
                 }
                 _ => return Err(Box::new(DisallowedEdit::DisallowedMulticolorColor)),
             }
         } else {
             let bit = 0x80u8 >> x;
-            if color == colors[GlobalColors::BACKGROUND] {
-                new_bits = old_bits & !bit;
-            } else if ALLOWED_CHAR_COLORS.contains(&color) {
-                new_bits = old_bits | bit;
-                new_color = color;
-            } else {
-                return Err(Box::new(DisallowedEdit::DisallowedHiresColor));
+            match color {
+                PaintColor::Background => new_bits = old_bits & !bit,
+                PaintColor::CharColor(index) if ALLOWED_CHAR_COLORS.contains(&index) => {
+                    new_bits = old_bits | bit;
+                    new_color = index;
+                }
+                _ => return Err(Box::new(DisallowedEdit::DisallowedHiresColor)),
             }
         }
         if new_bits != old_bits || new_color != self.color {
@@ -376,30 +387,20 @@ impl Char {
         }
     }
 
-    fn fill(
-        &mut self,
-        color: u8,
-        colors: &GlobalColors,
-    ) -> Result<bool, Box<dyn DisallowedAction>> {
+    fn fill(&mut self, color: PaintColor) -> Result<bool, Box<dyn DisallowedAction>> {
         let new_bits;
         let mut new_color = self.color;
-        match () {
-            _ if color == colors[GlobalColors::BACKGROUND] => {
-                new_bits = BACKGROUND_BITS;
-            }
-            _ if self.multicolor && color == colors[GlobalColors::BORDER] => {
-                new_bits = BORDER_BITS;
-            }
-            _ if self.multicolor && color == colors[GlobalColors::AUX] => {
-                new_bits = AUX_BITS;
-            }
-            _ if ALLOWED_CHAR_COLORS.contains(&color) => {
+        match color {
+            PaintColor::Background => new_bits = BACKGROUND_BITS,
+            PaintColor::Border if self.multicolor => new_bits = BORDER_BITS,
+            PaintColor::Aux if self.multicolor => new_bits = AUX_BITS,
+            PaintColor::CharColor(index) if ALLOWED_CHAR_COLORS.contains(&index) => {
                 new_bits = if self.multicolor {
                     CHAR_COLOR_BITS
                 } else {
                     0b11111111
                 };
-                new_color = color;
+                new_color = index;
             }
             _ => {
                 if self.multicolor {
@@ -592,6 +593,19 @@ impl VicImage {
         }
     }
 
+    pub fn color_index_from_paint_color(&self, c: &PaintColor) -> u8 {
+        match c {
+            PaintColor::Background => self.colors[GlobalColors::BACKGROUND],
+            PaintColor::Border => self.colors[GlobalColors::BORDER],
+            PaintColor::Aux => self.colors[GlobalColors::AUX],
+            PaintColor::CharColor(index) => *index,
+        }
+    }
+
+    pub fn true_color_from_paint_color(&self, c: &PaintColor) -> TrueColor {
+        palette_color(self.color_index_from_paint_color(c))
+    }
+
     /// Get the width and height of the image in pixels.
     pub fn pixel_size(&self) -> (usize, usize) {
         (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
@@ -603,14 +617,14 @@ impl VicImage {
         x: i32,
         y: i32,
         mode: &DrawMode,
-        color: u8,
+        color: PaintColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         if let Some((column, row, cx, cy)) = self.char_coordinates(x, y) {
             let cell = &mut self.video[(column, row)];
             match *mode {
-                DrawMode::Pixel => cell.set_pixel(cx, cy, color, &self.colors),
-                DrawMode::Fill => cell.fill(color, &self.colors),
-                DrawMode::Color => self.set_color(x, y, color),
+                DrawMode::Pixel => cell.set_pixel(cx, cy, color),
+                DrawMode::Fill => cell.fill(color),
+                DrawMode::Color => self.set_color(x, y, self.color_index_from_paint_color(&color)),
                 DrawMode::HighRes => cell.make_high_res(),
                 DrawMode::Multicolor => cell.make_multicolor(),
             }

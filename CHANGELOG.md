@@ -3,6 +3,9 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Changed
+- UI change: Show background, border, and aux as separate color patches.
+This makes it impossible to try to draw with colors 8-15 unless in a multicolor cell, and then only using aux or bg.
 
 ## [0.8.0] - 2021-11-14
 ### Added

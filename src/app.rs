@@ -11,7 +11,7 @@ use crate::{
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     ui,
-    vic::{self, DrawMode, GlobalColors, VicImage, ViewSettings},
+    vic::{DrawMode, PaintColor, VicImage, ViewSettings},
 };
 use eframe::{
     egui::{
@@ -271,7 +271,7 @@ impl epi::App for Application {
                     };
                 });
                 ui.separator();
-                ui::palette::render_palette(ui, &mut doc.paint_color, &mut doc.image);
+                ui::palette::render_palette(ui, &mut doc.primary_color, &mut doc.image);
             });
         });
 
@@ -452,7 +452,10 @@ impl epi::App for Application {
                                     .screen_pos(Point::new(top_left.x + w, top_left.y + h)),
                             ),
                             0.0,
-                            (1.0, vic::palette_color(doc.paint_color)),
+                            (
+                                1.0,
+                                doc.image.true_color_from_paint_color(&doc.primary_color),
+                            ),
                         );
                     }
                 }
@@ -648,9 +651,9 @@ fn update_in_paint_mode(
     let color = if response.secondary_clicked()
         || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
     {
-        Some(doc.image.colors[GlobalColors::BACKGROUND] as usize)
+        Some(PaintColor::Background)
     } else if response.clicked() || response.dragged() {
-        Some(doc.paint_color)
+        Some(doc.primary_color)
     } else {
         None
     };
@@ -660,7 +663,7 @@ fn update_in_paint_mode(
         let action = Action::new(ActionType::Plot {
             x,
             y,
-            color: color as u8,
+            color,
             draw_mode: match ui_state.mode {
                 Mode::PixelPaint => DrawMode::Pixel,
                 Mode::FillCell => DrawMode::Fill,

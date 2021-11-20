@@ -1,110 +1,95 @@
 use crate::mutation_monitor::MutationMonitor;
-use crate::vic::{self, GlobalColors, VicImage};
+use crate::vic::{self, GlobalColors, PaintColor, VicImage};
 use crate::widgets;
 use eframe::egui::{self, Color32, Painter, Rect, Sense, Shape, Vec2};
 use itertools::Itertools;
 
+const PATCH_CORNER_RADIUS_FRACTION: f32 = 0.1;
+
 pub fn render_palette(
     ui: &mut egui::Ui,
-    paint_color: &mut usize,
+    selected_pen: &mut PaintColor,
     image: &mut MutationMonitor<VicImage>,
 ) {
     ui.horizontal_wrapped(|ui| {
-        let interact_size = ui.spacing().interact_size;
-        let patch_width = interact_size.x.max(interact_size.y);
-        let patch_height = patch_width;
-        for color_index in 0..vic::PALETTE_SIZE {
-            let color = vic::palette_color(color_index);
-            let (patch_rect, response) =
-                ui.allocate_exact_size(Vec2::new(patch_width, patch_height), Sense::click());
-            palette_patch(
-                ui.painter(),
-                &patch_rect,
-                color.into(),
-                color_index == image.colors[GlobalColors::BACKGROUND] as usize,
-                color_index == image.colors[GlobalColors::BORDER] as usize,
-                color_index == image.colors[GlobalColors::AUX] as usize,
-                color_index == *paint_color,
-            );
-            if response.clicked() {
-                *paint_color = color_index;
-            }
-            let color_description = format!(
-                "${0:x} ({0}): {1}",
-                color_index,
-                vic::palette_entry_name(color_index),
-            );
-            let popup_id = ui.make_persistent_id(format!("color_popup_{}", color_index));
-            if response.secondary_clicked() {
-                ui.memory().open_popup(popup_id);
-            }
-            if !ui.memory().is_popup_open(popup_id) {
-                let mut tooltip = color_description.clone();
-                let usages = &vic::GLOBAL_COLORS
-                    .iter()
-                    .filter(|(index, _, _)| image.colors[*index as u32] == color_index as u8)
-                    .map(|(_, label, _)| label)
-                    .join(", ");
-                if !usages.is_empty() {
-                    tooltip = format!("{}\n{}", tooltip, usages);
-                }
-                response.clone().on_hover_text(tooltip);
-            }
-            widgets::popup(ui, popup_id, &response, |ui| {
-                let color_index = color_index as u8;
-                ui.label(color_description);
-                for (index, label, range) in vic::GLOBAL_COLORS.iter() {
-                    let index = *index as u32;
-                    if range.contains(&color_index) {
-                        let setting = image.colors[index];
-                        let mut selected = setting == color_index;
-                        if ui.checkbox(&mut selected, *label).clicked() && setting != color_index {
-                            println!("Setting {0} to {1}", label, color_index);
-                            image.colors[index] = color_index;
-                        }
-                    }
-                }
-            });
+        ui.allocate_at_least(
+            Vec2::new(0.0, ui.spacing().interact_size.y * 3.0),
+            Sense::hover(),
+        );
+        render_special_color_label(ui, image, PaintColor::Background, "Background", "Can be used in any cell. Click to change.");
+        render_patch(ui, image, PaintColor::Background, selected_pen);
+        render_special_color_label(ui, image, PaintColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change.");
+        render_patch(ui, image, PaintColor::Border, selected_pen);
+        render_special_color_label(ui, image, PaintColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change.");
+        render_patch(ui, image, PaintColor::Aux, selected_pen);
+        ui.separator();
+        for color_number in vic::ALLOWED_CHAR_COLORS {
+            let patch = PaintColor::CharColor(color_number as u8);
+            render_patch(ui, image, patch, selected_pen);
         }
     });
 }
 
-fn palette_patch(
+fn render_patch(
+    ui: &mut egui::Ui,
+    image: &mut MutationMonitor<VicImage>,
+    patch: PaintColor,
+    selected_pen: &mut PaintColor,
+) {
+    let patch_size = patch_size(ui);
+    let (patch_rect, response) = ui.allocate_exact_size(patch_size, Sense::click());
+    draw_patch(ui.painter(), &patch_rect, image, patch, *selected_pen);
+    if response.clicked() {
+        *selected_pen = patch;
+    }
+    render_patch_popups(image, ui, response, patch);
+}
+
+/// The clickable label for a special color. Shows a popup if clicked.
+fn render_special_color_label(
+    ui: &mut egui::Ui,
+    image: &mut MutationMonitor<VicImage>,
+    patch: PaintColor,
+    label: &str,
+    tooltip: &str,
+) {
+    let response = ui.small_button(label);
+    let popup_id = ui.make_persistent_id(format!("color_popup_{:?}", patch));
+    if !ui.memory().is_popup_open(popup_id) {
+        response.clone().on_hover_text(tooltip);
+    }
+    if response.clicked() {
+        ui.memory().open_popup(popup_id);
+    }
+    render_color_popup(ui, &response, popup_id, image, patch);
+}
+
+fn draw_patch(
     painter: &Painter,
     rect: &Rect,
-    color: Color32,
-    selected_background: bool,
-    selected_border: bool,
-    selected_aux: bool,
-    selected_pen: bool,
+    image: &VicImage,
+    patch: PaintColor,
+    selected_pen: PaintColor,
 ) {
+    let rgb = image.true_color_from_paint_color(&patch);
+
     let size = rect.width();
     let d = size * 0.2;
     let r = d / 2.0;
-    let icon_distance = d * 1.1;
-    let number_of_icons = if selected_background { 1 } else { 0 }
-        + if selected_border { 1 } else { 0 }
-        + if selected_aux { 1 } else { 0 };
-    let mut icon_num = 0;
-    let mut next_icon_pos = || {
-        let i = icon_num;
-        icon_num += 1;
-        let xoffs = (i as f32 - (number_of_icons - 1) as f32 / 2.0) * icon_distance;
-        Rect::from_center_size(rect.center_bottom() + Vec2::new(xoffs, -r), Vec2::new(d, d))
-    };
 
     // The patch
     let patch_rect = Rect::from_min_size(
         rect.left_top() + Vec2::new(0.0, d),
         rect.size() + Vec2::new(0.0, -d * 2.2),
     );
-    if selected_pen {
-        painter.rect_filled(patch_rect, size * 0.1, color);
+    let corner = size * PATCH_CORNER_RADIUS_FRACTION;
+    if selected_pen == patch {
+        painter.rect_filled(patch_rect, corner, rgb);
     } else {
-        painter.rect_filled(patch_rect.shrink(size * 0.05), size * 0.1, color);
+        painter.rect_filled(patch_rect.shrink(size * 0.05), corner, rgb);
     }
 
-    if selected_pen {
+    if selected_pen == patch {
         painter.add(Shape::convex_polygon(
             vec![
                 patch_rect.center_top(),
@@ -115,19 +100,76 @@ fn palette_patch(
             (0.0, Color32::WHITE),
         ));
     }
-    if selected_background {
-        painter.rect_filled(next_icon_pos(), 0.0, Color32::WHITE);
-    }
-    if selected_border {
-        let width = size * 0.04;
-        painter.rect_stroke(
-            next_icon_pos().shrink(width / 2.0),
-            0.0,
-            (width, Color32::WHITE),
-        );
-    }
-    if selected_aux {
-        let rect = next_icon_pos();
-        painter.circle_filled(rect.center(), rect.width() / 2.0, Color32::WHITE);
-    }
+}
+
+fn render_patch_popups(
+    image: &mut MutationMonitor<VicImage>,
+    _ui: &mut egui::Ui,
+    response: egui::Response,
+    patch: PaintColor,
+) {
+    let color_description = match patch {
+        PaintColor::Background => format!(
+            "Background ({})",
+            vic::palette_entry_name(image.colors[GlobalColors::BACKGROUND])
+        ),
+        PaintColor::Border => format!(
+            "Border ({})",
+            vic::palette_entry_name(image.colors[GlobalColors::BORDER])
+        ),
+        PaintColor::Aux => format!(
+            "Auxiliary ({})",
+            vic::palette_entry_name(image.colors[GlobalColors::AUX])
+        ),
+        PaintColor::CharColor(index) => format!(
+            "Character color {}: {}",
+            index,
+            vic::palette_entry_name(index)
+        ),
+    };
+    response.clone().on_hover_text(color_description);
+}
+
+fn render_color_popup(
+    ui: &mut egui::Ui,
+    response: &egui::Response,
+    popup_id: egui::Id,
+    image: &mut MutationMonitor<VicImage>,
+    patch: PaintColor,
+) {
+    widgets::popup(ui, popup_id, &response, |ui| {
+        let patch_size = patch_size(ui); //.mul(0.5);
+        for (_, indices) in patch.selectable_colors().group_by(|i| i / 8).into_iter() {
+            ui.horizontal(|ui| {
+                for index in indices {
+                    let index = index as u8;
+                    let label = vic::palette_entry_name(index);
+                    let (patch_rect, response) = ui.allocate_exact_size(patch_size, Sense::click());
+                    ui.painter().rect_filled(
+                        patch_rect,
+                        patch_rect.size().y * PATCH_CORNER_RADIUS_FRACTION,
+                        vic::palette_color(index),
+                    );
+                    response.clone().on_hover_text(label);
+                    if response.clicked() {
+                        match patch {
+                            PaintColor::Background => {
+                                image.colors[GlobalColors::BACKGROUND] = index
+                            }
+                            PaintColor::Border => image.colors[GlobalColors::BORDER] = index,
+                            PaintColor::Aux => image.colors[GlobalColors::AUX] = index,
+                            PaintColor::CharColor(_) => {}
+                        }
+                    }
+                }
+            });
+        }
+    });
+}
+
+fn patch_size(ui: &egui::Ui) -> Vec2 {
+    let interact_size = ui.spacing().interact_size;
+    let patch_width = interact_size.x.max(interact_size.y);
+    let patch_height = patch_width;
+    Vec2::new(patch_width, patch_height)
 }

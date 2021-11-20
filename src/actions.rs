@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     error::{DisallowedAction, Severity},
-    vic::DrawMode,
+    vic::{DrawMode, PaintColor},
     Document,
 };
 
@@ -24,7 +24,7 @@ pub enum ActionType {
     Plot {
         x: i32,
         y: i32,
-        color: u8,
+        color: PaintColor,
         draw_mode: DrawMode,
     },
 }
