@@ -65,6 +65,7 @@ struct UiState {
     mode: Mode,
     zoom: f32,
     image_view_settings: ViewSettings,
+    primary_color: PaintColor,
     /// Enable showing the character grid
     grid: bool,
     /// Whether user is currently panning
@@ -272,7 +273,7 @@ impl epi::App for Application {
                     };
                 });
                 ui.separator();
-                ui::palette::render_palette(ui, &mut doc.primary_color, &mut doc.image);
+                ui::palette::render_palette(ui, &mut ui_state.primary_color, &mut doc.image);
             });
         });
 
@@ -462,7 +463,8 @@ impl epi::App for Application {
                             0.0,
                             (
                                 1.0,
-                                doc.image.true_color_from_paint_color(&doc.primary_color),
+                                doc.image
+                                    .true_color_from_paint_color(&ui_state.primary_color),
                             ),
                         );
                     }
@@ -661,7 +663,7 @@ fn update_in_paint_mode(
     {
         Some(PaintColor::Background)
     } else if response.clicked() || response.dragged() {
-        Some(doc.primary_color)
+        Some(ui_state.primary_color)
     } else {
         None
     };
@@ -777,6 +779,7 @@ impl Application {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
                 image_view_settings: ViewSettings::Normal,
+                primary_color: PaintColor::CharColor(3),
                 grid: false,
                 panning: false,
                 pan: Vec2::ZERO,
