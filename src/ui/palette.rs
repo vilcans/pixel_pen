@@ -8,7 +8,8 @@ const PATCH_CORNER_RADIUS_FRACTION: f32 = 0.1;
 
 pub fn render_palette(
     ui: &mut egui::Ui,
-    selected_pen: &mut PaintColor,
+    primary_color: &mut PaintColor,
+    secondary_color: &mut PaintColor,
     image: &mut MutationMonitor<VicImage>,
 ) {
     ui.horizontal_wrapped(|ui| {
@@ -17,15 +18,15 @@ pub fn render_palette(
             Sense::hover(),
         );
         render_special_color_label(ui, image, PaintColor::Background, "Background", "Can be used in any cell. Click to change.");
-        render_patch(ui, image, PaintColor::Background, selected_pen);
+        render_patch(ui, image, PaintColor::Background, primary_color, secondary_color);
         render_special_color_label(ui, image, PaintColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change.");
-        render_patch(ui, image, PaintColor::Border, selected_pen);
+        render_patch(ui, image, PaintColor::Border, primary_color, secondary_color);
         render_special_color_label(ui, image, PaintColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change.");
-        render_patch(ui, image, PaintColor::Aux, selected_pen);
+        render_patch(ui, image, PaintColor::Aux, primary_color, secondary_color);
         ui.separator();
         for color_number in vic::ALLOWED_CHAR_COLORS {
             let patch = PaintColor::CharColor(color_number as u8);
-            render_patch(ui, image, patch, selected_pen);
+            render_patch(ui, image, patch, primary_color, secondary_color);
         }
     });
 }
@@ -34,15 +35,33 @@ fn render_patch(
     ui: &mut egui::Ui,
     image: &mut MutationMonitor<VicImage>,
     patch: PaintColor,
-    selected_pen: &mut PaintColor,
+    primary_color: &mut PaintColor,
+    secondary_color: &mut PaintColor,
 ) {
     let patch_size = patch_size(ui);
     let (patch_rect, response) = ui.allocate_exact_size(patch_size, Sense::click());
-    draw_patch(ui.painter(), &patch_rect, image, patch, *selected_pen);
+    draw_patch(
+        ui.painter(),
+        &patch_rect,
+        image,
+        patch,
+        *primary_color,
+        *secondary_color,
+    );
     if response.clicked() {
-        *selected_pen = patch;
+        *primary_color = patch;
     }
-    render_patch_popups(image, ui, response, patch);
+    if response.secondary_clicked() {
+        *secondary_color = patch;
+    }
+    render_patch_popups(
+        image,
+        ui,
+        response,
+        patch,
+        *primary_color == patch,
+        *secondary_color == patch,
+    );
 }
 
 /// The clickable label for a special color. Shows a popup if clicked.
@@ -69,7 +88,8 @@ fn draw_patch(
     rect: &Rect,
     image: &VicImage,
     patch: PaintColor,
-    selected_pen: PaintColor,
+    primary_color: PaintColor,
+    secondary_color: PaintColor,
 ) {
     let rgb = image.true_color_from_paint_color(&patch);
 
@@ -83,21 +103,38 @@ fn draw_patch(
         rect.size() + Vec2::new(0.0, -d * 2.2),
     );
     let corner = size * PATCH_CORNER_RADIUS_FRACTION;
-    if selected_pen == patch {
+    if primary_color == patch {
         painter.rect_filled(patch_rect, corner, rgb);
     } else {
         painter.rect_filled(patch_rect.shrink(size * 0.05), corner, rgb);
     }
 
-    if selected_pen == patch {
+    // If primary and secondary are the same, make room for both
+    let offset = if primary_color == secondary_color {
+        Vec2::new(r * 1.5, 0.0)
+    } else {
+        Vec2::new(0.0, 0.0)
+    };
+    if primary_color == patch {
         painter.add(Shape::convex_polygon(
             vec![
-                patch_rect.center_top(),
-                rect.center_top() - Vec2::new(r, 0.0),
-                rect.center_top() + Vec2::new(r, 0.0),
+                patch_rect.center_top() - offset,
+                rect.center_top() - offset - Vec2::new(r, 0.0),
+                rect.center_top() - offset + Vec2::new(r, 0.0),
             ],
             Color32::WHITE,
-            (0.0, Color32::WHITE),
+            (1.0, Color32::WHITE),
+        ));
+    }
+    if secondary_color == patch {
+        painter.add(Shape::convex_polygon(
+            vec![
+                patch_rect.center_top() + offset,
+                rect.center_top() + offset - Vec2::new(r, 0.0),
+                rect.center_top() + offset + Vec2::new(r, 0.0),
+            ],
+            Color32::WHITE,
+            (1.0, Color32::BLACK),
         ));
     }
 }
@@ -107,6 +144,8 @@ fn render_patch_popups(
     _ui: &mut egui::Ui,
     response: egui::Response,
     patch: PaintColor,
+    selected_as_primary: bool,
+    selected_as_secondary: bool,
 ) {
     let color_description = match patch {
         PaintColor::Background => format!(
@@ -127,7 +166,13 @@ fn render_patch_popups(
             vic::palette_entry_name(index)
         ),
     };
-    response.on_hover_text(color_description);
+    let selected_text = match (selected_as_primary, selected_as_secondary) {
+        (false, false) => "Left/right click to select as primary/secondary",
+        (true, false) => "Selected primary color",
+        (false, true) => "Selected secondary color",
+        (true, true) => "Selected primary and secondary color",
+    };
+    response.on_hover_text(format!("{}\n{}", color_description, selected_text));
 }
 
 fn render_color_popup(

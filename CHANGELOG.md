@@ -7,6 +7,9 @@
 - UI change: Show background, border, and aux as separate color patches.
 This makes it impossible to try to draw with colors 8-15 unless in a multicolor cell, and then only using aux or bg.
 
+### Added
+- Possible to select a secondary color, used to draw with the right mouse button, instead of always using background.
+
 ## [0.8.0] - 2021-11-14
 ### Added
 - "Fill Cell" tool for quickly filling a character cell with a color.

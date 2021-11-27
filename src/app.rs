@@ -65,7 +65,10 @@ struct UiState {
     mode: Mode,
     zoom: f32,
     image_view_settings: ViewSettings,
+    /// Primary selected color. Typically used when using the left mouse button.
     primary_color: PaintColor,
+    /// Secondary selected color. Typically used when using the right mouse button.
+    secondary_color: PaintColor,
     /// Enable showing the character grid
     grid: bool,
     /// Whether user is currently panning
@@ -273,7 +276,12 @@ impl epi::App for Application {
                     };
                 });
                 ui.separator();
-                ui::palette::render_palette(ui, &mut ui_state.primary_color, &mut doc.image);
+                ui::palette::render_palette(
+                    ui,
+                    &mut ui_state.primary_color,
+                    &mut ui_state.secondary_color,
+                    &mut doc.image,
+                );
             });
         });
 
@@ -661,7 +669,7 @@ fn update_in_paint_mode(
     let color = if response.secondary_clicked()
         || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
     {
-        Some(PaintColor::Background)
+        Some(ui_state.secondary_color)
     } else if response.clicked() || response.dragged() {
         Some(ui_state.primary_color)
     } else {
@@ -779,7 +787,8 @@ impl Application {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
                 image_view_settings: ViewSettings::Normal,
-                primary_color: PaintColor::CharColor(3),
+                primary_color: PaintColor::CharColor(7),
+                secondary_color: PaintColor::Background,
                 grid: false,
                 panning: false,
                 pan: Vec2::ZERO,
