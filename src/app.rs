@@ -34,6 +34,14 @@ const BORDER_CORNER_RADIUS: f32 = 15.0;
 const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
 
 const GRID_COLOR: Color32 = Color32::GRAY;
+const MAKE_HIRES_HIGHLIGHT: Stroke = Stroke {
+    width: 2.0,
+    color: Color32::from_rgb(200, 200, 200),
+};
+const MAKE_MULTICOLOR_HIGHLIGHT: Stroke = Stroke {
+    width: 2.0,
+    color: Color32::from_rgb(255, 255, 255),
+};
 
 const GRID_TOOLTIP: &str = "Show character cell grid";
 
@@ -459,9 +467,20 @@ impl epi::App for Application {
             }
 
             // Highlight character
-            if let Mode::ColorPaint = ui_state.mode {
-                if let Some(pos) = hover_pos {
-                    if let Some((top_left, w, h)) = doc.image.character_box(pos) {
+            if let Some(pos) = hover_pos {
+                if let Some((top_left, w, h)) = doc.image.character_box(pos) {
+                    if let Some(stroke) = match ui_state.mode {
+                        Mode::FillCell | Mode::ColorPaint => Some(Stroke {
+                            width: 1.0,
+                            color: doc
+                                .image
+                                .true_color_from_paint_color(&ui_state.primary_color)
+                                .into(),
+                        }),
+                        Mode::MakeHiRes => Some(MAKE_HIRES_HIGHLIGHT),
+                        Mode::MakeMulticolor => Some(MAKE_MULTICOLOR_HIGHLIGHT),
+                        _ => None,
+                    } {
                         painter.rect_stroke(
                             Rect::from_min_max(
                                 pixel_transform.screen_pos(top_left),
@@ -469,11 +488,7 @@ impl epi::App for Application {
                                     .screen_pos(Point::new(top_left.x + w, top_left.y + h)),
                             ),
                             0.0,
-                            (
-                                1.0,
-                                doc.image
-                                    .true_color_from_paint_color(&ui_state.primary_color),
-                            ),
+                            stroke,
                         );
                     }
                 }

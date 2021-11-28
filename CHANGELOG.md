@@ -9,6 +9,7 @@ This makes it impossible to try to draw with colors 8-15 unless in a multicolor 
 
 ### Added
 - Possible to select a secondary color, used to draw with the right mouse button, instead of always using background.
+- In Fill Cell, Color Paint, Make High-Res, and Make Multicolor modes, highlight the cell that will be affected. (Was only in Color Paint mode.)
 
 ## [0.8.0] - 2021-11-14
 ### Added
