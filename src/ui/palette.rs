@@ -12,22 +12,37 @@ pub fn render_palette(
     secondary_color: &mut PaintColor,
     image: &mut MutationMonitor<VicImage>,
 ) {
+    let allocate = Vec2::new(0.0, ui.spacing().interact_size.y * 2.5);
     ui.horizontal_wrapped(|ui| {
-        ui.allocate_at_least(
-            Vec2::new(0.0, ui.spacing().interact_size.y * 3.0),
-            Sense::hover(),
-        );
-        render_special_color_label(ui, image, PaintColor::Background, "Background", "Can be used in any cell. Click to change.");
-        render_patch(ui, image, PaintColor::Background, primary_color, secondary_color);
-        render_special_color_label(ui, image, PaintColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change.");
-        render_patch(ui, image, PaintColor::Border, primary_color, secondary_color);
-        render_special_color_label(ui, image, PaintColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change.");
-        render_patch(ui, image, PaintColor::Aux, primary_color, secondary_color);
+        ui.vertical(|ui| {
+            ui.small("Color Registers").on_hover_text("Global color settings that affect the whole screen.");
+            ui.horizontal(|ui| {
+                ui.allocate_at_least(
+                    allocate,
+                    Sense::hover(),
+                );
+                render_special_color_label(ui, image, PaintColor::Background, "Background", "Can be used in any cell. Click to change.");
+                render_patch(ui, image, PaintColor::Background, primary_color, secondary_color);
+                render_special_color_label(ui, image, PaintColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change.");
+                render_patch(ui, image, PaintColor::Border, primary_color, secondary_color);
+                render_special_color_label(ui, image, PaintColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change.");
+                render_patch(ui, image, PaintColor::Aux, primary_color, secondary_color);
+            });
+        });
         ui.separator();
-        for color_number in vic::ALLOWED_CHAR_COLORS {
-            let patch = PaintColor::CharColor(color_number as u8);
-            render_patch(ui, image, patch, primary_color, secondary_color);
-        }
+        ui.vertical(|ui| {
+            ui.small("Character Colors").on_hover_text("A color that can be set for an individual character cell.");
+            ui.horizontal(|ui| {
+                ui.allocate_at_least(
+                    allocate,
+                    Sense::hover(),
+                );
+                for color_number in vic::ALLOWED_CHAR_COLORS {
+                    let patch = PaintColor::CharColor(color_number as u8);
+                    render_patch(ui, image, patch, primary_color, secondary_color);
+                }
+            });
+        });
     });
 }
 
