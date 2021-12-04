@@ -17,8 +17,10 @@ Apart from that, you can paint single pixels, change a character cell's color, a
 ## The Palette
 
 The color swatches at the top of the window is the palette.
-Right-click one of the colors and a menu will popup where you can select that color as the background, border, or aux color.
-Left-clicking selects your primary paint color.
+Left-click on one of then to select the primary color to use when painting.
+Right-click on one of them to select the secondary color, which you use instead of the primary color when painting with the right mouse button.
+Click one of the *Background*, *Border*, or *Aux* buttons to select which color to use for each one of those.
+Background and Aux can be any of the Vic's 16 colors, while Border can only be one of 8.
 
 ## Tools
 
