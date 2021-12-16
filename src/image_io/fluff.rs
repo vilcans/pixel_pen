@@ -14,6 +14,7 @@ use crate::{
 /// The first 7 bytes of a Fluff file
 pub const FILE_IDENTIFIER: &[u8; 7] = b"FLUFF64";
 
+#[allow(dead_code)] // some fields are never read
 #[derive(Deserialize, Copy, Clone, Debug)]
 #[repr(packed(1))]
 struct FluffHeader {
