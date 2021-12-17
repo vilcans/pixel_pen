@@ -109,7 +109,7 @@ mod native {
             options: OpenFileOptions<'_>,
         ) -> Result<Option<PathBuf>, Error> {
             let dialog = self.create_file_dialog(
-                options.initial_path.as_deref(),
+                options.initial_path,
                 options.include_native,
                 options.include_images,
             );
