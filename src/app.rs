@@ -80,6 +80,8 @@ struct UiState {
     primary_color: PaintColor,
     /// Secondary selected color. Typically used when using the right mouse button.
     secondary_color: PaintColor,
+    /// Where the user currently is painting
+    paint_position: Option<Point>,
     /// Enable showing the character grid
     grid: bool,
     /// Whether user is currently panning
@@ -701,42 +703,64 @@ fn update_in_paint_mode(
     if pixel_pos.is_none() {
         return;
     }
-    let hover_pos = pixel_pos.unwrap();
-
     *cursor_icon = Some(CursorIcon::PointingHand);
 
-    let area = UpdateArea::from_pixel(hover_pos.x, hover_pos.y);
+    let hover_pos = pixel_pos.unwrap();
 
-    let action = if response.secondary_clicked()
+    let pressed = if response.secondary_clicked()
         || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
     {
-        // Used secondary mouse button - swap colors
-        Some(paint_action(
-            ui_state,
-            area,
-            ui_state.secondary_color,
-            ui_state.primary_color,
-        ))
+        Some(true)
     } else if response.clicked() || response.dragged() {
-        Some(paint_action(
-            ui_state,
-            area,
-            ui_state.primary_color,
-            ui_state.secondary_color,
-        ))
+        Some(false)
     } else {
         None
     };
-    if let Some(action) = action {
-        let was_dirty = doc.image.dirty;
-        match history.apply(doc, action) {
-            Ok(true) => (),
-            Ok(false) => doc.image.dirty = was_dirty,
-            Err(e) => match e.severity() {
-                Severity::Silent => {}
-                Severity::Notification => ui_state.show_warning(e.to_string()),
-            },
+
+    let secondary = match pressed {
+        None => {
+            ui_state.paint_position = None;
+            return;
         }
+        Some(v) => v,
+    };
+
+    let area = match ui_state.paint_position {
+        Some(p) => {
+            if p == hover_pos {
+                // Mouse is held and hasn't moved
+                return;
+            }
+            UpdateArea::pixel_line(p, hover_pos)
+        }
+        None => UpdateArea::from_pixel(hover_pos.x, hover_pos.y),
+    };
+    ui_state.paint_position = Some(hover_pos);
+
+    let action = if secondary {
+        // Used secondary mouse button - swap colors
+        paint_action(
+            ui_state,
+            area,
+            ui_state.secondary_color,
+            ui_state.primary_color,
+        )
+    } else {
+        paint_action(
+            ui_state,
+            area,
+            ui_state.primary_color,
+            ui_state.secondary_color,
+        )
+    };
+    let was_dirty = doc.image.dirty;
+    match history.apply(doc, action) {
+        Ok(true) => (),
+        Ok(false) => doc.image.dirty = was_dirty,
+        Err(e) => match e.severity() {
+            Severity::Silent => {}
+            Severity::Notification => ui_state.show_warning(e.to_string()),
+        },
     }
 }
 
@@ -855,6 +879,7 @@ impl Application {
                 image_view_settings: ViewSettings::Normal,
                 primary_color: PaintColor::CharColor(7),
                 secondary_color: PaintColor::Background,
+                paint_position: None,
                 grid: false,
                 panning: false,
                 pan: Vec2::ZERO,

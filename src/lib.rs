@@ -11,6 +11,7 @@ pub mod error;
 mod image_io;
 mod image_operations;
 mod import;
+mod line;
 mod mutation_monitor;
 pub mod storage;
 pub mod system;

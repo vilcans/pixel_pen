@@ -9,6 +9,8 @@
 
 ### Changed
 - Renamed "Color Paint" tool to "Cell Color" to better explain what it does.
+- When dragging the mouse while painting, fill in all intermediate pixels between mouse position,
+so painting becomes a continuous line.
 
 ## [0.9.0] - 2021-12-01
 ### Changed
