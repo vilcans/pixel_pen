@@ -846,9 +846,12 @@ impl VicImage {
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// Returns None if the coordinates are outside the image.
     fn char_coordinates(&self, x: i32, y: i32) -> Option<(usize, usize, i32, i32)> {
+        if x < 0 || y < 0 {
+            return None;
+        }
         let column = x / Char::WIDTH as i32;
         let row = y / Char::WIDTH as i32;
-        if !(0..self.columns as i32).contains(&column) || !(0..self.rows as i32).contains(&row) {
+        if column >= self.columns as i32 || row >= self.rows as i32 {
             return None;
         }
         let cx = x % Char::WIDTH as i32;
