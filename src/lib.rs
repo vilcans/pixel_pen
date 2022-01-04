@@ -15,6 +15,7 @@ mod mutation_monitor;
 pub mod storage;
 pub mod system;
 mod ui;
+mod update_area;
 mod vic;
 mod widgets;
 pub use app::Application;

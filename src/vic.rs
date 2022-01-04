@@ -1,4 +1,5 @@
 use bimap::BiMap;
+use bit_vec::BitVec;
 use image::{imageops::FilterType, GenericImage, GenericImageView, RgbaImage};
 use imgref::{ImgRef, ImgVec};
 use itertools::Itertools;
@@ -14,6 +15,7 @@ use crate::{
     coords::Point,
     error::{DisallowedAction, Error},
     image_operations,
+    update_area::UpdateArea,
 };
 
 mod serialization;
@@ -49,11 +51,6 @@ const RAW_MULTICOLOR_CHAR_COLOR: TrueColor = TrueColor::from_u32(0xffffff);
 
 /// Which colors are allowed as the "character" color.
 pub const ALLOWED_CHAR_COLORS: RangeInclusive<u8> = 0..=7;
-
-const BACKGROUND_BITS: u8 = 0b00000000;
-const BORDER_BITS: u8 = 0b01010101;
-const CHAR_COLOR_BITS: u8 = 0b10101010;
-const AUX_BITS: u8 = 0b11111111;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GlobalColors(pub [u8; 3]);
@@ -147,19 +144,6 @@ impl Default for ViewSettings {
     fn default() -> Self {
         ViewSettings::Normal
     }
-}
-
-pub enum DrawMode {
-    /// Draw a single pixel
-    Pixel,
-    /// Fill the whole character cell with a color
-    Fill,
-    /// Change the color of the cell
-    Color,
-    /// Make the cell high-res
-    HighRes,
-    /// Make the cell multicolor
-    Multicolor,
 }
 
 #[derive(Clone, Copy, Hash)]
@@ -344,79 +328,109 @@ impl Char {
         pixels
     }
 
-    fn set_pixel(
+    pub fn mutate_pixels<F>(
         &mut self,
-        x: i32,
-        y: i32,
-        color: PaintColor,
-    ) -> Result<bool, Box<dyn DisallowedAction>> {
-        debug_assert!((0..Self::WIDTH).contains(&(x as usize)));
-        debug_assert!((0..Self::HEIGHT).contains(&(y as usize)));
-        let old_bits = self.bits[y as usize];
-        let new_bits;
-        let mut new_color = self.color;
+        mask: &BitVec,
+        operation: F,
+    ) -> Result<bool, Box<dyn DisallowedAction>>
+    where
+        F: Fn(PaintColor) -> PaintColor,
+    {
         if self.multicolor {
-            let mask = 0xc0u8 >> (x & !1);
-            match color {
-                PaintColor::Background => new_bits = old_bits & !mask,
-                PaintColor::Border => new_bits = (old_bits & !mask) | (mask & BORDER_BITS),
-                PaintColor::Aux => new_bits = old_bits | mask,
-                PaintColor::CharColor(index) if ALLOWED_CHAR_COLORS.contains(&index) => {
-                    new_bits = (old_bits & !mask) | (mask & CHAR_COLOR_BITS);
-                    new_color = index;
-                }
-                _ => return Err(Box::new(DisallowedEdit::DisallowedMulticolorColor)),
-            }
+            self.mutate_pixels_multicolor(mask, operation)
         } else {
-            let bit = 0x80u8 >> x;
-            match color {
-                PaintColor::Background => new_bits = old_bits & !bit,
-                PaintColor::CharColor(index) if ALLOWED_CHAR_COLORS.contains(&index) => {
-                    new_bits = old_bits | bit;
-                    new_color = index;
-                }
-                _ => return Err(Box::new(DisallowedEdit::DisallowedHiresColor)),
-            }
-        }
-        if new_bits != old_bits || new_color != self.color {
-            self.bits[y as usize] = new_bits;
-            self.color = new_color;
-            Ok(true)
-        } else {
-            Ok(false)
+            self.mutate_pixels_hires(mask, operation)
         }
     }
 
-    fn fill(&mut self, color: PaintColor) -> Result<bool, Box<dyn DisallowedAction>> {
-        let new_bits;
+    fn mutate_pixels_multicolor<F>(
+        &mut self,
+        mask: &BitVec,
+        operation: F,
+    ) -> Result<bool, Box<dyn DisallowedAction>>
+    where
+        F: Fn(PaintColor) -> PaintColor,
+    {
+        let mut changed = false;
         let mut new_color = self.color;
-        match color {
-            PaintColor::Background => new_bits = BACKGROUND_BITS,
-            PaintColor::Border if self.multicolor => new_bits = BORDER_BITS,
-            PaintColor::Aux if self.multicolor => new_bits = AUX_BITS,
-            PaintColor::CharColor(index) if ALLOWED_CHAR_COLORS.contains(&index) => {
-                new_bits = if self.multicolor {
-                    CHAR_COLOR_BITS
-                } else {
-                    0b11111111
-                };
-                new_color = index;
-            }
-            _ => {
-                if self.multicolor {
-                    return Err(Box::new(DisallowedEdit::DisallowedMulticolorColor));
-                } else {
-                    return Err(Box::new(DisallowedEdit::DisallowedHiresColor));
+
+        for cy in 0..Self::HEIGHT {
+            let mut new_bits = self.bits[cy];
+            for cx in (0..Self::WIDTH).step_by(2) {
+                let shift = 6 - cx;
+                if mask[cx + cy * Self::WIDTH] || mask[cx + cy * Self::WIDTH + 1] {
+                    let current = match (self.bits[cy] >> shift) & 0b11 {
+                        0b00 => PaintColor::Background,
+                        0b01 => PaintColor::Border,
+                        0b10 => PaintColor::CharColor(self.color),
+                        0b11 => PaintColor::Aux,
+                        _ => unreachable!(),
+                    };
+                    let to_set = match operation(current) {
+                        PaintColor::Background => 0b00,
+                        PaintColor::Border => 0b01,
+                        PaintColor::CharColor(c) => {
+                            new_color = c;
+                            0b10
+                        }
+                        PaintColor::Aux => 0b11,
+                    };
+                    new_bits &= !(0b11 << shift);
+                    new_bits |= to_set << shift;
                 }
             }
+            if new_bits != self.bits[cy] {
+                self.bits[cy] = new_bits;
+                changed = true;
+            }
         }
-        if new_color == self.color && self.bits.iter().all(|b| *b == new_bits) {
-            Ok(false)
-        } else {
-            self.bits = [new_bits; Self::HEIGHT];
+        if new_color != self.color {
             self.color = new_color;
-            Ok(true)
+            changed = true;
         }
+        Ok(changed)
+    }
+
+    fn mutate_pixels_hires<F>(
+        &mut self,
+        mask: &BitVec,
+        operation: F,
+    ) -> Result<bool, Box<dyn DisallowedAction>>
+    where
+        F: Fn(PaintColor) -> PaintColor,
+    {
+        let mut changed = false;
+        let mut new_color = self.color;
+
+        for cy in 0..Self::HEIGHT {
+            let mut new_bits = self.bits[cy];
+            for cx in 0..Self::WIDTH {
+                let bytemask = 0x80 >> cx;
+                if let Some(true) = mask.get(cx + cy * Self::WIDTH) {
+                    let current = match self.bits[cy] & bytemask {
+                        0 => PaintColor::Background,
+                        _ => PaintColor::CharColor(self.color),
+                    };
+                    match operation(current) {
+                        PaintColor::Background => new_bits &= !bytemask,
+                        PaintColor::CharColor(c) => {
+                            new_color = c;
+                            new_bits |= bytemask;
+                        }
+                        _ => return Err(Box::new(DisallowedEdit::DisallowedHiresColor)),
+                    }
+                }
+            }
+            if new_bits != self.bits[cy] {
+                self.bits[cy] = new_bits;
+                changed = true;
+            }
+        }
+        if new_color != self.color {
+            self.color = new_color;
+            changed = true;
+        }
+        Ok(changed)
     }
 
     fn make_high_res(&mut self) -> Result<bool, Box<dyn DisallowedAction>> {
@@ -611,49 +625,75 @@ impl VicImage {
         (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
     }
 
-    /// Set a pixel at the given coordinates to a given color.
-    pub fn set_pixel(
+    /// Standard draw tool. Draw single pixels.
+    pub fn plot(
         &mut self,
-        x: i32,
-        y: i32,
-        mode: &DrawMode,
+        target: &UpdateArea,
         color: PaintColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
-        if let Some((column, row, cx, cy)) = self.char_coordinates(x, y) {
-            let cell = &mut self.video[(column, row)];
-            match *mode {
-                DrawMode::Pixel => cell.set_pixel(cx, cy, color),
-                DrawMode::Fill => cell.fill(color),
-                DrawMode::Color => self.set_color(x, y, self.color_index_from_paint_color(&color)),
-                DrawMode::HighRes => cell.make_high_res(),
-                DrawMode::Multicolor => cell.make_multicolor(),
-            }
-        } else {
-            Ok(false)
+        let mut changed = false;
+        for ((column, row), mask) in self.cells_and_pixels(target) {
+            let char = &mut self.video[(column, row)];
+            changed |= char.mutate_pixels(&mask, |_| color)?;
         }
+        Ok(changed)
     }
 
-    /// Change the character color at given pixel coordinates
+    /// Fill the whole cell with a given color
+    pub fn fill_cells(
+        &mut self,
+        target: &UpdateArea,
+        color: PaintColor,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
+        let mut changed = false;
+        let mask = BitVec::from_elem(Char::WIDTH * Char::HEIGHT, true);
+        for (column, row) in self.target_cells(target) {
+            let char = &mut self.video[(column, row)];
+            changed |= char.mutate_pixels(&mask, |_| color)?;
+        }
+        Ok(changed)
+    }
+
+    /// Change the character color of cells
     pub fn set_color(
         &mut self,
-        x: i32,
-        y: i32,
+        target: &UpdateArea,
         color: u8,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
-        if let Some((column, row, _cx, _cy)) = self.char_coordinates(x, y) {
-            if !ALLOWED_CHAR_COLORS.contains(&color) {
-                return Err(Box::new(DisallowedEdit::DisallowedCharacterColor));
-            }
-            let cell = &mut self.video[(column, row)];
-            if cell.color == color {
-                Ok(false)
-            } else {
-                cell.color = color;
-                Ok(true)
-            }
-        } else {
-            Ok(false)
+        if !ALLOWED_CHAR_COLORS.contains(&color) {
+            return Err(Box::new(DisallowedEdit::DisallowedCharacterColor));
         }
+        let mut changed = false;
+        for (col, row) in self.target_cells(target) {
+            let cell = &mut self.video[(col, row)];
+            if cell.color != color {
+                cell.color = color;
+                changed = true;
+            }
+        }
+        Ok(changed)
+    }
+
+    pub fn make_high_res(
+        &mut self,
+        target: &UpdateArea,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
+        let mut changed = false;
+        for (column, row) in self.target_cells(target) {
+            changed |= self.video[(column, row)].make_high_res()?;
+        }
+        Ok(changed)
+    }
+
+    pub fn make_multicolor(
+        &mut self,
+        target: &UpdateArea,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
+        let mut changed = false;
+        for (column, row) in self.target_cells(target) {
+            changed |= self.video[(column, row)].make_multicolor()?;
+        }
+        Ok(changed)
     }
 
     /// Get the rectangle of the character at the given pixel coordinates.
@@ -773,6 +813,26 @@ impl VicImage {
         let cy = y % Char::WIDTH as i32;
         Some((column as usize, row as usize, cx, cy))
     }
+
+    /// Get the character cells to update given an UpdateArea.
+    /// Returns the columns and rows of the cells within this image's bounds.
+    fn target_cells(&self, target: &UpdateArea) -> Vec<(u32, u32)> {
+        self.cells_and_pixels(target)
+            .iter()
+            .map(|(cell, _)| cell)
+            .copied()
+            .collect()
+    }
+
+    /// Get the character cells to update, and which pixel in each cell to update.
+    fn cells_and_pixels(&self, target: &UpdateArea) -> HashMap<(u32, u32), BitVec> {
+        target.cells_and_pixels(
+            Char::WIDTH as u32,
+            Char::HEIGHT as u32,
+            self.columns as u32,
+            self.rows as u32,
+        )
+    }
 }
 
 /// Get a color from the palette.
@@ -851,8 +911,6 @@ fn optimized_image(
 pub enum DisallowedEdit {
     #[error("High resolution characters can be painted with color 0-7, or background")]
     DisallowedHiresColor,
-    #[error("Multicolor characters can be painted with color 0-7, background, border, or aux")]
-    DisallowedMulticolorColor,
     #[error("Character color must be between 0 and 7")]
     DisallowedCharacterColor,
 }

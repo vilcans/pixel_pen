@@ -11,7 +11,8 @@ use crate::{
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     ui,
-    vic::{DrawMode, PaintColor, VicImage, ViewSettings},
+    update_area::UpdateArea,
+    vic::{PaintColor, VicImage, ViewSettings},
 };
 use eframe::{
     egui::{
@@ -692,23 +693,19 @@ fn update_in_paint_mode(
     };
     if let Some(color) = color {
         let Point { x, y } = hover_pos;
+        let area = UpdateArea::from_pixel(x, y);
         let was_dirty = doc.image.dirty;
-        let action = Action::new(ActionType::Plot {
-            x,
-            y,
-            color,
-            draw_mode: match ui_state.mode {
-                Mode::PixelPaint => DrawMode::Pixel,
-                Mode::FillCell => DrawMode::Fill,
-                Mode::ColorPaint => DrawMode::Color,
-                Mode::MakeHiRes => DrawMode::HighRes,
-                Mode::MakeMulticolor => DrawMode::Multicolor,
-                _ => panic!(
-                    "update_in paint_mode with invalid mode: {:?}",
-                    ui_state.mode
-                ),
-            },
-        });
+        let action = match ui_state.mode {
+            Mode::PixelPaint => Action::new(ActionType::Plot { area, color }),
+            Mode::FillCell => Action::new(ActionType::Fill { area, color }),
+            Mode::ColorPaint => Action::new(ActionType::SetColor { area, color }),
+            Mode::MakeHiRes => Action::new(ActionType::MakeHighRes { area }),
+            Mode::MakeMulticolor => Action::new(ActionType::MakeMulticolor { area }),
+            _ => panic!(
+                "update_in paint_mode with invalid mode: {:?}",
+                ui_state.mode
+            ),
+        };
         match history.apply(doc, action) {
             Ok(true) => (),
             Ok(false) => doc.image.dirty = was_dirty,
