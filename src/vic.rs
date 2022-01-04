@@ -673,6 +673,29 @@ impl VicImage {
         Ok(changed)
     }
 
+    /// Swap two colors
+    pub fn swap_colors(
+        &mut self,
+        target: &UpdateArea,
+        color_1: PaintColor,
+        color_2: PaintColor,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
+        let mut changed = false;
+        for ((column, row), mask) in self.cells_and_pixels(target) {
+            let char = &mut self.video[(column, row)];
+            changed |= char.mutate_pixels(&mask, |old| {
+                if old == color_1 {
+                    color_2
+                } else if old == color_2 {
+                    color_1
+                } else {
+                    old
+                }
+            })?;
+        }
+        Ok(changed)
+    }
+
     /// Change the character color of cells
     pub fn set_color(
         &mut self,

@@ -38,6 +38,12 @@ pub enum ActionType {
         to_replace: PaintColor,
         replacement: PaintColor,
     },
+    /// Swap two colors
+    SwapColors {
+        area: UpdateArea,
+        color_1: PaintColor,
+        color_2: PaintColor,
+    },
 }
 
 impl undo::Action for Action {
@@ -62,6 +68,11 @@ impl undo::Action for Action {
                 to_replace,
                 replacement,
             } => image.replace_color(area, *to_replace, *replacement),
+            ActionType::SwapColors {
+                area,
+                color_1,
+                color_2,
+            } => image.swap_colors(area, *color_1, *color_2),
         };
         match result {
             Ok(true) => {

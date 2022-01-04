@@ -62,6 +62,7 @@ enum Mode {
     MakeHiRes,
     MakeMulticolor,
     ReplaceColor,
+    SwapColors,
 }
 
 struct Texture {
@@ -359,6 +360,14 @@ impl epi::App for Application {
                     {
                         ui_state.mode = Mode::ReplaceColor;
                     }
+                    // SwapColors
+                    if ui
+                        .selectable_label(matches!(ui_state.mode, Mode::SwapColors), "Swap Colors")
+                        .on_hover_text("Swap two colors")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::SwapColors;
+                    }
                     // MakeHiRes
                     if ui
                         .selectable_label(matches!(ui_state.mode, Mode::MakeHiRes), "Make High-res")
@@ -428,7 +437,8 @@ impl epi::App for Application {
                     | Mode::CellColor
                     | Mode::MakeHiRes
                     | Mode::MakeMulticolor
-                    | Mode::ReplaceColor => {
+                    | Mode::ReplaceColor
+                    | Mode::SwapColors => {
                         update_in_paint_mode(
                             history,
                             hover_pos,
@@ -747,6 +757,11 @@ fn paint_action(
             to_replace: other_color,
             replacement: color,
         }),
+        Mode::SwapColors => Action::new(ActionType::SwapColors {
+            area,
+            color_1: color,
+            color_2: other_color,
+        }),
         _ => panic!(
             "update_in paint_mode with invalid mode: {:?}",
             ui_state.mode
@@ -824,7 +839,8 @@ fn mode_instructions(mode: &Mode) -> &str {
         }
         Mode::MakeHiRes => "Click to make the character cell high-resolution.",
         Mode::MakeMulticolor => "Click to make the character cell multicolor.",
-        Mode::ReplaceColor => "Click to replace secondary color with primary color. Right-click for the inverse."
+        Mode::ReplaceColor => "Click to replace secondary color with primary color. Right-click for the inverse.",
+        Mode::SwapColors => "Click to replace primary color with secondary color and vice versa.",
     }
 }
 

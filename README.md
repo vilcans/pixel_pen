@@ -46,6 +46,10 @@ In Cell Color mode, select a color from the palette and left-click to change the
 
 In Replace Color mode, select a primary color by left-clicking on the palette. Select a secondary color by right-clicking on the palette. Left-click on the image to replace the secondary color with the primary color. You can also right-click to replace in the other direction, i.e. replacing the primary color with the secondary.
 
+### Swap Colors
+
+In Swap Colors mode, select one color by left-clicking on the palette and another one by right-clicking on the palette. Click on the image to replace one color with the other.
+
 ### Make High-res
 
 The Make High-res tool changes a character cell to high-resolution mode.

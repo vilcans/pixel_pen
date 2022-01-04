@@ -5,6 +5,7 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - "Replace Color" tool to replace one color with another.
+- "Swap Colors" tool to replace one color with another, and vice versa.
 
 ### Changed
 - Renamed "Color Paint" tool to "Cell Color" to better explain what it does.
