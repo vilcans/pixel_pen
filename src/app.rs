@@ -410,7 +410,7 @@ impl epi::App for Application {
             };
 
             let hover_pos_screen = ui.input().pointer.hover_pos();
-            let hover_pos = hover_pos_screen.and_then(|p| pixel_transform.bounded_pixel_pos(p));
+            let hover_pos = hover_pos_screen.map(|p| pixel_transform.pixel_pos(p));
 
             let input = ui.input();
             if input.modifiers.command {
