@@ -654,6 +654,25 @@ impl VicImage {
         Ok(changed)
     }
 
+    /// Replace one color with another.
+    pub fn replace_color(
+        &mut self,
+        target: &UpdateArea,
+        to_replace: PaintColor,
+        replacement: PaintColor,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
+        let mut changed = false;
+        for ((column, row), mask) in self.cells_and_pixels(target) {
+            let char = &mut self.video[(column, row)];
+            changed |=
+                char.mutate_pixels(
+                    &mask,
+                    |old| if old == to_replace { replacement } else { old },
+                )?;
+        }
+        Ok(changed)
+    }
+
     /// Change the character color of cells
     pub fn set_color(
         &mut self,

@@ -32,6 +32,12 @@ pub enum ActionType {
     MakeHighRes { area: UpdateArea },
     /// Make the cell multicolor
     MakeMulticolor { area: UpdateArea },
+    /// Replace one color with another.
+    ReplaceColor {
+        area: UpdateArea,
+        to_replace: PaintColor,
+        replacement: PaintColor,
+    },
 }
 
 impl undo::Action for Action {
@@ -51,6 +57,11 @@ impl undo::Action for Action {
             }
             ActionType::MakeHighRes { area } => image.make_high_res(area),
             ActionType::MakeMulticolor { area } => image.make_multicolor(area),
+            ActionType::ReplaceColor {
+                area,
+                to_replace,
+                replacement,
+            } => image.replace_color(area, *to_replace, *replacement),
         };
         match result {
             Ok(true) => {

@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- "Replace Color" tool to replace one color with another.
 
 ## [0.9.0] - 2021-12-01
 ### Changed

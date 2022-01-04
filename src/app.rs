@@ -61,6 +61,7 @@ enum Mode {
     ColorPaint,
     MakeHiRes,
     MakeMulticolor,
+    ReplaceColor,
 }
 
 struct Texture {
@@ -347,6 +348,17 @@ impl epi::App for Application {
                     {
                         ui_state.mode = Mode::ColorPaint;
                     }
+                    // ReplaceColor
+                    if ui
+                        .selectable_label(
+                            matches!(ui_state.mode, Mode::ReplaceColor),
+                            "Replace color",
+                        )
+                        .on_hover_text("Replace one color with another")
+                        .clicked()
+                    {
+                        ui_state.mode = Mode::ReplaceColor;
+                    }
                     // MakeHiRes
                     if ui
                         .selectable_label(matches!(ui_state.mode, Mode::MakeHiRes), "Make high-res")
@@ -415,7 +427,8 @@ impl epi::App for Application {
                     | Mode::FillCell
                     | Mode::ColorPaint
                     | Mode::MakeHiRes
-                    | Mode::MakeMulticolor => {
+                    | Mode::MakeMulticolor
+                    | Mode::ReplaceColor => {
                         update_in_paint_mode(
                             history,
                             hover_pos,
@@ -682,30 +695,30 @@ fn update_in_paint_mode(
 
     *cursor_icon = Some(CursorIcon::PointingHand);
 
-    let color = if response.secondary_clicked()
+    let area = UpdateArea::from_pixel(hover_pos.x, hover_pos.y);
+
+    let action = if response.secondary_clicked()
         || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
     {
-        Some(ui_state.secondary_color)
+        // Used secondary mouse button - swap colors
+        Some(paint_action(
+            ui_state,
+            area,
+            ui_state.secondary_color,
+            ui_state.primary_color,
+        ))
     } else if response.clicked() || response.dragged() {
-        Some(ui_state.primary_color)
+        Some(paint_action(
+            ui_state,
+            area,
+            ui_state.primary_color,
+            ui_state.secondary_color,
+        ))
     } else {
         None
     };
-    if let Some(color) = color {
-        let Point { x, y } = hover_pos;
-        let area = UpdateArea::from_pixel(x, y);
+    if let Some(action) = action {
         let was_dirty = doc.image.dirty;
-        let action = match ui_state.mode {
-            Mode::PixelPaint => Action::new(ActionType::Plot { area, color }),
-            Mode::FillCell => Action::new(ActionType::Fill { area, color }),
-            Mode::ColorPaint => Action::new(ActionType::SetColor { area, color }),
-            Mode::MakeHiRes => Action::new(ActionType::MakeHighRes { area }),
-            Mode::MakeMulticolor => Action::new(ActionType::MakeMulticolor { area }),
-            _ => panic!(
-                "update_in paint_mode with invalid mode: {:?}",
-                ui_state.mode
-            ),
-        };
         match history.apply(doc, action) {
             Ok(true) => (),
             Ok(false) => doc.image.dirty = was_dirty,
@@ -714,6 +727,30 @@ fn update_in_paint_mode(
                 Severity::Notification => ui_state.show_warning(e.to_string()),
             },
         }
+    }
+}
+
+fn paint_action(
+    ui_state: &mut UiState,
+    area: UpdateArea,
+    color: PaintColor,
+    other_color: PaintColor,
+) -> Action {
+    match ui_state.mode {
+        Mode::PixelPaint => Action::new(ActionType::Plot { area, color }),
+        Mode::FillCell => Action::new(ActionType::Fill { area, color }),
+        Mode::ColorPaint => Action::new(ActionType::SetColor { area, color }),
+        Mode::MakeHiRes => Action::new(ActionType::MakeHighRes { area }),
+        Mode::MakeMulticolor => Action::new(ActionType::MakeMulticolor { area }),
+        Mode::ReplaceColor => Action::new(ActionType::ReplaceColor {
+            area,
+            to_replace: other_color,
+            replacement: color,
+        }),
+        _ => panic!(
+            "update_in paint_mode with invalid mode: {:?}",
+            ui_state.mode
+        ),
     }
 }
 
@@ -787,6 +824,7 @@ fn mode_instructions(mode: &Mode) -> &str {
         }
         Mode::MakeHiRes => "Click to make the character cell high-resolution.",
         Mode::MakeMulticolor => "Click to make the character cell multicolor.",
+        Mode::ReplaceColor => "Click to replace secondary color with primary color. Right-click for the inverse."
     }
 }
 

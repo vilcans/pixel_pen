@@ -42,6 +42,10 @@ This is useful for quickly filling large areas with a color.
 
 In Color paint mode, select a color from the palette and left-click to change the character color of a cell.
 
+### Replace color
+
+In Replace color mode, select a primary color by left-clicking on the palette. Select a secondary color by right-clicking on the palette. Left-click on the image to replace the secondary color with the primary color. You can also right-click to replace in the other direction, i.e. replacing the primary color with the secondary.
+
 ### Make High-res
 
 The Make high-res tool changes a character cell to high-resolution mode.
