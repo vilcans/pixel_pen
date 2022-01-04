@@ -6,6 +6,9 @@
 ### Added
 - "Replace Color" tool to replace one color with another.
 
+### Changed
+- Renamed "Color Paint" tool to "Cell Color" to better explain what it does.
+
 ## [0.9.0] - 2021-12-01
 ### Changed
 - UI change: Show background, border, and aux as separate color patches.

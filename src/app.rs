@@ -58,7 +58,7 @@ enum Mode {
     Import(Import),
     PixelPaint,
     FillCell,
-    ColorPaint,
+    CellColor,
     MakeHiRes,
     MakeMulticolor,
     ReplaceColor,
@@ -326,7 +326,7 @@ impl epi::App for Application {
                 ui.vertical_centered_justified(|ui| {
                     // PixelPaint
                     if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::PixelPaint), "Pixel paint")
+                        .selectable_label(matches!(ui_state.mode, Mode::PixelPaint), "Pixel Paint")
                         .on_hover_text("Paint pixels")
                         .clicked()
                     {
@@ -334,7 +334,7 @@ impl epi::App for Application {
                     }
                     // FillCell
                     if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::FillCell), "Fill cell")
+                        .selectable_label(matches!(ui_state.mode, Mode::FillCell), "Fill Cell")
                         .on_hover_text("Fill the whole character cell with a color")
                         .clicked()
                     {
@@ -342,17 +342,17 @@ impl epi::App for Application {
                     }
                     // ColorPaint
                     if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::ColorPaint), "Color paint")
+                        .selectable_label(matches!(ui_state.mode, Mode::CellColor), "Cell Color")
                         .on_hover_text("Change the color of character cells")
                         .clicked()
                     {
-                        ui_state.mode = Mode::ColorPaint;
+                        ui_state.mode = Mode::CellColor;
                     }
                     // ReplaceColor
                     if ui
                         .selectable_label(
                             matches!(ui_state.mode, Mode::ReplaceColor),
-                            "Replace color",
+                            "Replace Color",
                         )
                         .on_hover_text("Replace one color with another")
                         .clicked()
@@ -361,7 +361,7 @@ impl epi::App for Application {
                     }
                     // MakeHiRes
                     if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::MakeHiRes), "Make high-res")
+                        .selectable_label(matches!(ui_state.mode, Mode::MakeHiRes), "Make High-res")
                         .on_hover_text("Set character cells to high-resolution mode")
                         .clicked()
                     {
@@ -371,7 +371,7 @@ impl epi::App for Application {
                     if ui
                         .selectable_label(
                             matches!(ui_state.mode, Mode::MakeMulticolor),
-                            "Make multicolor",
+                            "Make Multicolor",
                         )
                         .on_hover_text("Set character cells to multicolor mode")
                         .clicked()
@@ -425,7 +425,7 @@ impl epi::App for Application {
                     Mode::Import(_) => {}
                     Mode::PixelPaint
                     | Mode::FillCell
-                    | Mode::ColorPaint
+                    | Mode::CellColor
                     | Mode::MakeHiRes
                     | Mode::MakeMulticolor
                     | Mode::ReplaceColor => {
@@ -484,7 +484,7 @@ impl epi::App for Application {
             if let Some(pos) = hover_pos {
                 if let Some((top_left, w, h)) = doc.image.character_box(pos) {
                     if let Some(stroke) = match ui_state.mode {
-                        Mode::FillCell | Mode::ColorPaint => Some(Stroke {
+                        Mode::FillCell | Mode::CellColor => Some(Stroke {
                             width: 1.0,
                             color: doc
                                 .image
@@ -739,7 +739,7 @@ fn paint_action(
     match ui_state.mode {
         Mode::PixelPaint => Action::new(ActionType::Plot { area, color }),
         Mode::FillCell => Action::new(ActionType::Fill { area, color }),
-        Mode::ColorPaint => Action::new(ActionType::SetColor { area, color }),
+        Mode::CellColor => Action::new(ActionType::CellColor { area, color }),
         Mode::MakeHiRes => Action::new(ActionType::MakeHighRes { area }),
         Mode::MakeMulticolor => Action::new(ActionType::MakeMulticolor { area }),
         Mode::ReplaceColor => Action::new(ActionType::ReplaceColor {
@@ -819,7 +819,7 @@ fn mode_instructions(mode: &Mode) -> &str {
         Mode::FillCell => {
             "Click to fill the character cell with a color. Right-click to fill with background color."
         }
-        Mode::ColorPaint => {
+        Mode::CellColor => {
             "Click to change the color of the character cell. Right-click for background color."
         }
         Mode::MakeHiRes => "Click to make the character cell high-resolution.",

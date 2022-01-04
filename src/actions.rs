@@ -27,7 +27,7 @@ pub enum ActionType {
     /// Fill the whole character cell with a color
     Fill { area: UpdateArea, color: PaintColor },
     /// Change the color of the cell
-    SetColor { area: UpdateArea, color: PaintColor },
+    CellColor { area: UpdateArea, color: PaintColor },
     /// Make the cell high-res
     MakeHighRes { area: UpdateArea },
     /// Make the cell multicolor
@@ -51,7 +51,7 @@ impl undo::Action for Action {
         let result = match &self.action {
             ActionType::Plot { area, color } => image.plot(area, *color),
             ActionType::Fill { area, color } => image.fill_cells(area, *color),
-            ActionType::SetColor { area, color } => {
+            ActionType::CellColor { area, color } => {
                 let c = image.color_index_from_paint_color(color);
                 image.set_color(area, c)
             }

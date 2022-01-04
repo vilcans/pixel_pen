@@ -24,7 +24,7 @@ Background and Aux can be any of the Vic's 16 colors, while Border can only be o
 
 ## Tools
 
-### Pixel paint
+### Pixel Paint
 
 In this mode, select a color from the palette and left-click to paint with it.
 Note that each cell (8 by 8 pixels) can contain only 2 colors in high-res mode,
@@ -32,23 +32,23 @@ and 4 colors in multicolor mode.
 
 You can use the right mouse button to paint with the background color.
 
-### Fill cell
+### Fill Cell
 
-In Fill cell mode, select a color from the palette and left-click to fill the whole character cell with that color.
+In Fill Cell mode, select a color from the palette and left-click to fill the whole character cell with that color.
 Right-clicking fills the cell with the background color.
 This is useful for quickly filling large areas with a color.
 
-### Color paint
+### Cell Color
 
-In Color paint mode, select a color from the palette and left-click to change the character color of a cell.
+In Cell Color mode, select a color from the palette and left-click to change the character color of a cell.
 
-### Replace color
+### Replace Color
 
-In Replace color mode, select a primary color by left-clicking on the palette. Select a secondary color by right-clicking on the palette. Left-click on the image to replace the secondary color with the primary color. You can also right-click to replace in the other direction, i.e. replacing the primary color with the secondary.
+In Replace Color mode, select a primary color by left-clicking on the palette. Select a secondary color by right-clicking on the palette. Left-click on the image to replace the secondary color with the primary color. You can also right-click to replace in the other direction, i.e. replacing the primary color with the secondary.
 
 ### Make High-res
 
-The Make high-res tool changes a character cell to high-resolution mode.
+The Make High-res tool changes a character cell to high-resolution mode.
 In high-res mode, the cell can contain pixels of two colors: the background color and the character color.
 There are 8 by 8 pixels in the cell in this mode.
 
