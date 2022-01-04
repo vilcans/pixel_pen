@@ -6,14 +6,12 @@ use crate::{coords::Point, line};
 
 /// Pixels or cells that are affected by an update
 pub struct UpdateArea {
-    pixels: Vec<(i32, i32)>,
+    pixels: Vec<Point>,
 }
 
 impl UpdateArea {
-    pub fn from_pixel(x: i32, y: i32) -> Self {
-        Self {
-            pixels: vec![(x, y)],
-        }
+    pub fn from_pixel(p: Point) -> Self {
+        Self { pixels: vec![p] }
     }
 
     /// Create an UpdateArea from a line between two pixels.
@@ -21,12 +19,8 @@ impl UpdateArea {
     /// the starting pixel `p0` is not included in the line.
     pub fn pixel_line(p0: Point, p1: Point) -> Self {
         UpdateArea {
-            pixels: line::line(p0, p1).skip(1).map(|p| (p.x, p.y)).collect(),
+            pixels: line::line(p0, p1).skip(1).collect(),
         }
-    }
-
-    pub fn iter_pixels(&self) -> impl Iterator<Item = (i32, i32)> + '_ {
-        self.pixels.iter().copied()
     }
 
     /// Get the character cells affected by this area.
@@ -44,7 +38,7 @@ impl UpdateArea {
         let x_range = 0..(columns * cell_width) as i32;
         let y_range = 0..(rows * cell_height) as i32;
         let mut cells = HashMap::new();
-        for (x, y) in self.pixels.iter().copied() {
+        for Point { x, y } in self.pixels.iter().copied() {
             if x_range.contains(&x) && y_range.contains(&y) {
                 let (x, y) = (x as u32, y as u32);
                 let col = x / cell_width;

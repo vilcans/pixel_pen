@@ -733,7 +733,7 @@ fn update_in_paint_mode(
             }
             UpdateArea::pixel_line(p, hover_pos)
         }
-        None => UpdateArea::from_pixel(hover_pos.x, hover_pos.y),
+        None => UpdateArea::from_pixel(hover_pos),
     };
     ui_state.paint_position = Some(hover_pos);
 
