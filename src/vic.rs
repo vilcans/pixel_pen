@@ -625,18 +625,46 @@ impl VicImage {
         (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
     }
 
+    fn apply_operation_to_pixels<F>(
+        &mut self,
+        target: &UpdateArea,
+        operation: F,
+    ) -> Result<bool, Box<dyn DisallowedAction>>
+    where
+        F: Fn(PaintColor) -> PaintColor,
+    {
+        let mut changed = false;
+        for ((column, row), mask) in self.cells_and_pixels(target) {
+            let char = &mut self.video[(column, row)];
+            changed |= char.mutate_pixels(&mask, &operation)?;
+        }
+        Ok(changed)
+    }
+
+    fn apply_operation_to_cells<F>(
+        &mut self,
+        target: &UpdateArea,
+        operation: F,
+    ) -> Result<bool, Box<dyn DisallowedAction>>
+    where
+        F: Fn(PaintColor) -> PaintColor,
+    {
+        let mut changed = false;
+        let mask = BitVec::from_elem(Char::WIDTH * Char::HEIGHT, true);
+        for (column, row) in self.target_cells(target) {
+            let char = &mut self.video[(column, row)];
+            changed |= char.mutate_pixels(&mask, &operation)?;
+        }
+        Ok(changed)
+    }
+
     /// Standard draw tool. Draw single pixels.
     pub fn plot(
         &mut self,
         target: &UpdateArea,
         color: PaintColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
-        let mut changed = false;
-        for ((column, row), mask) in self.cells_and_pixels(target) {
-            let char = &mut self.video[(column, row)];
-            changed |= char.mutate_pixels(&mask, |_| color)?;
-        }
-        Ok(changed)
+        self.apply_operation_to_pixels(target, |_| color)
     }
 
     /// Fill the whole cell with a given color
@@ -645,13 +673,7 @@ impl VicImage {
         target: &UpdateArea,
         color: PaintColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
-        let mut changed = false;
-        let mask = BitVec::from_elem(Char::WIDTH * Char::HEIGHT, true);
-        for (column, row) in self.target_cells(target) {
-            let char = &mut self.video[(column, row)];
-            changed |= char.mutate_pixels(&mask, |_| color)?;
-        }
-        Ok(changed)
+        self.apply_operation_to_cells(target, |_| color)
     }
 
     /// Replace one color with another.
@@ -661,16 +683,10 @@ impl VicImage {
         to_replace: PaintColor,
         replacement: PaintColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
-        let mut changed = false;
-        for ((column, row), mask) in self.cells_and_pixels(target) {
-            let char = &mut self.video[(column, row)];
-            changed |=
-                char.mutate_pixels(
-                    &mask,
-                    |old| if old == to_replace { replacement } else { old },
-                )?;
-        }
-        Ok(changed)
+        self.apply_operation_to_pixels(
+            target,
+            |old| if old == to_replace { replacement } else { old },
+        )
     }
 
     /// Swap two colors
@@ -680,20 +696,15 @@ impl VicImage {
         color_1: PaintColor,
         color_2: PaintColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
-        let mut changed = false;
-        for ((column, row), mask) in self.cells_and_pixels(target) {
-            let char = &mut self.video[(column, row)];
-            changed |= char.mutate_pixels(&mask, |old| {
-                if old == color_1 {
-                    color_2
-                } else if old == color_2 {
-                    color_1
-                } else {
-                    old
-                }
-            })?;
-        }
-        Ok(changed)
+        self.apply_operation_to_pixels(target, |old| {
+            if old == color_1 {
+                color_2
+            } else if old == color_2 {
+                color_1
+            } else {
+                old
+            }
+        })
     }
 
     /// Change the character color of cells
