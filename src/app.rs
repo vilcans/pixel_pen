@@ -5,6 +5,7 @@ use crate::{
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
+    editing::Mode,
     error::{Error, Severity},
     import::{self, Import, ImportSettings},
     mutation_monitor::MutationMonitor,
@@ -57,17 +58,6 @@ const RAW_TOOLTIP: &str = "Show image with fixed colors:
 enum Tool {
     Import(Import),
     Paint,
-}
-
-#[derive(Debug)]
-enum Mode {
-    PixelPaint,
-    FillCell,
-    CellColor,
-    MakeHiRes,
-    MakeMulticolor,
-    ReplaceColor,
-    SwapColors,
 }
 
 struct Texture {
@@ -325,7 +315,7 @@ impl epi::App for Application {
                     ctx.request_repaint(); // to animate color highlight
                 }
             } else {
-                ui.label(mode_instructions(&ui_state.tool, &ui_state.mode));
+                ui.label(tool_instructions(&ui_state.tool, &ui_state.mode));
             }
         });
 
@@ -843,22 +833,10 @@ fn update_texture(
     texture
 }
 
-fn mode_instructions(tool: &Tool, mode: &Mode) -> &'static str {
+fn tool_instructions(tool: &Tool, mode: &Mode) -> &'static str {
     match tool {
         Tool::Import(_) => "Tweak settings and click Import.",
-        Tool::Paint => match mode {
-            Mode::PixelPaint => "Click to paint. Right-click to paint with background color.",
-            Mode::FillCell => {
-                "Click to fill the character cell with a color. Right-click to fill with background color."
-            }
-            Mode::CellColor => {
-                "Click to change the color of the character cell. Right-click for background color."
-            }
-            Mode::MakeHiRes => "Click to make the character cell high-resolution.",
-            Mode::MakeMulticolor => "Click to make the character cell multicolor.",
-            Mode::ReplaceColor => "Click to replace secondary color with primary color. Right-click for the inverse.",
-            Mode::SwapColors => "Click to replace primary color with secondary color and vice versa.",
-        }
+        Tool::Paint => mode.instructions(),
     }
 }
 

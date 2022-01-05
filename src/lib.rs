@@ -7,6 +7,7 @@ mod app;
 mod colors;
 mod coords;
 mod document;
+mod editing;
 pub mod error;
 mod image_io;
 mod image_operations;
