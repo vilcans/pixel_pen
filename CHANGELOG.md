@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- Possible to undo importing an image.
 
 ## [0.10.0] - 2022-01-04
 ### Added

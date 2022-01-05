@@ -7,7 +7,7 @@ use crate::{
     document::Document,
     editing::Mode,
     error::{Error, Severity},
-    import::{self, Import, ImportSettings},
+    import::{self, Import, ImportSettings, UiResult},
     mutation_monitor::MutationMonitor,
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
@@ -523,12 +523,12 @@ impl epi::App for Application {
         });
 
         if let Tool::Import(import) = &mut ui_state.tool {
-            let mut keep_open = true;
-            egui::Window::new("Import").show(ctx, |ui| {
-                keep_open = import::tool_ui(ui, doc, import);
-            });
-            if !keep_open {
-                ui_state.tool = Tool::Paint;
+            let mut result = UiResult::KeepOpen;
+            egui::Window::new("Import").show(ctx, |ui| result = import::tool_ui(ui, doc, import));
+            match result {
+                import::UiResult::KeepOpen => {}
+                import::UiResult::Close => ui_state.tool = Tool::Paint,
+                import::UiResult::Action(a) => apply_action(doc, history, ui_state, a),
             }
         }
 
@@ -738,6 +738,16 @@ fn update_in_paint_mode(
             ui_state.secondary_color,
         )
     };
+    apply_action(doc, history, ui_state, action);
+}
+
+/// Apply an action and record it in the history. Show any error to the user.
+fn apply_action(
+    doc: &mut Document,
+    history: &mut Record<Undoable>,
+    ui_state: &mut UiState,
+    action: Action,
+) {
     let was_dirty = doc.image.dirty;
     match history.apply(doc, Undoable::new(action)) {
         Ok(true) => (),

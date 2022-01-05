@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::path::Path;
 use std::path::PathBuf;
 
+use crate::actions::Action;
 use crate::coords::PixelTransform;
 use crate::coords::Point;
 use crate::error::Error;
@@ -82,6 +83,12 @@ pub struct Import {
     pub image: DynamicImage,
 }
 
+pub enum UiResult {
+    KeepOpen,
+    Close,
+    Action(Action),
+}
+
 impl Import {
     pub fn load(filename: &Path) -> Result<Import, Error> {
         let image = match image::open(filename) {
@@ -143,8 +150,8 @@ pub fn image_ui(_ui: &mut egui::Ui, p: &Painter, import: &mut Import, transform:
 }
 
 /// Render the tool UI.
-pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bool {
-    let mut keep_open = true;
+pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> UiResult {
+    let mut result = UiResult::KeepOpen;
 
     egui::Grid::new("import_grid").show(ui, |ui| {
         let source = &import.image;
@@ -281,18 +288,18 @@ pub fn tool_ui(ui: &mut egui::Ui, doc: &mut Document, import: &mut Import) -> bo
     ui.horizontal(|ui| {
         if ui.button("Import").clicked() {
             let scaled = import.scale_image();
-            doc.image.paste_image(
-                &scaled,
-                import.settings.left,
-                import.settings.top,
-                import.settings.format,
-            );
+            result = UiResult::Action(Action::PasteTrueColor {
+                source: scaled,
+                target_x: import.settings.left,
+                target_y: import.settings.top,
+                format: import.settings.format,
+            });
         }
         if ui.button("Close").clicked() {
-            keep_open = false;
+            result = UiResult::Close;
         }
     });
     ui.end_row();
 
-    keep_open
+    result
 }

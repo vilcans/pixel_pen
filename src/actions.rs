@@ -1,9 +1,11 @@
 use std::fmt;
 
+use image::RgbaImage;
+
 use crate::{
     error::{DisallowedAction, Severity},
     update_area::UpdateArea,
-    vic::PaintColor,
+    vic::{ColorFormat, PaintColor},
     Document,
 };
 
@@ -22,6 +24,13 @@ impl Undoable {
 }
 
 pub enum Action {
+    /// Paste a true color image into the image
+    PasteTrueColor {
+        source: RgbaImage,
+        target_x: i32,
+        target_y: i32,
+        format: ColorFormat,
+    },
     /// Change the color of single pixels
     Plot { area: UpdateArea, color: PaintColor },
     /// Fill the whole character cell with a color

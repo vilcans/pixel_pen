@@ -30,6 +30,15 @@ impl Document {
     pub fn apply(&mut self, action: &Action) -> Result<bool, Box<dyn DisallowedAction>> {
         let image = &mut self.image;
         match action {
+            Action::PasteTrueColor {
+                source,
+                target_x,
+                target_y,
+                format,
+            } => {
+                image.paste_image(source, *target_x, *target_y, *format);
+                Ok(true)
+            }
             Action::Plot { area, color } => image.plot(area, *color),
             Action::Fill { area, color } => image.fill_cells(area, *color),
             Action::CellColor { area, color } => {
