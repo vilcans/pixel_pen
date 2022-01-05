@@ -54,8 +54,13 @@ const RAW_TOOLTIP: &str = "Show image with fixed colors:
 • Red = aux color in multicolor cells";
 
 #[derive(Debug)]
-enum Mode {
+enum Tool {
     Import(Import),
+    Paint,
+}
+
+#[derive(Debug)]
+enum Mode {
     PixelPaint,
     FillCell,
     CellColor,
@@ -73,6 +78,7 @@ struct Texture {
 }
 
 struct UiState {
+    tool: Tool,
     mode: Mode,
     zoom: f32,
     image_view_settings: ViewSettings,
@@ -190,9 +196,9 @@ impl epi::App for Application {
                     }
                     if system.has_open_file_dialog() && ui.button("Import...").clicked() {
                         match system.open_file_dialog(OpenFileOptions::for_import(match &ui_state
-                            .mode
+                            .tool
                         {
-                            Mode::Import(Import {
+                            Tool::Import(Import {
                                 settings: ImportSettings { filename, .. },
                                 ..
                             }) => filename.as_deref(),
@@ -319,7 +325,7 @@ impl epi::App for Application {
                     ctx.request_repaint(); // to animate color highlight
                 }
             } else {
-                ui.label(mode_instructions(&ui_state.mode));
+                ui.label(mode_instructions(&ui_state.tool, &ui_state.mode));
             }
         });
 
@@ -431,27 +437,16 @@ impl epi::App for Application {
             if ui_state.panning {
                 ui_state.pan += input.pointer.delta();
                 cursor_icon = Some(CursorIcon::Grabbing);
-            } else {
-                match ui_state.mode {
-                    Mode::Import(_) => {}
-                    Mode::PixelPaint
-                    | Mode::FillCell
-                    | Mode::CellColor
-                    | Mode::MakeHiRes
-                    | Mode::MakeMulticolor
-                    | Mode::ReplaceColor
-                    | Mode::SwapColors => {
-                        update_in_paint_mode(
-                            history,
-                            hover_pos,
-                            doc,
-                            ui,
-                            &response,
-                            ui_state,
-                            &mut cursor_icon,
-                        );
-                    }
-                }
+            } else if let Tool::Paint = &ui_state.tool {
+                update_in_paint_mode(
+                    history,
+                    hover_pos,
+                    doc,
+                    ui,
+                    &response,
+                    ui_state,
+                    &mut cursor_icon,
+                );
             }
             if response.drag_released() {
                 ui_state.panning = false;
@@ -488,7 +483,7 @@ impl epi::App for Application {
             }
 
             // Import preview
-            if let Mode::Import(import) = &mut ui_state.mode {
+            if let Tool::Import(import) = &mut ui_state.tool {
                 import::image_ui(ui, &painter, import, &pixel_transform);
             }
 
@@ -537,13 +532,13 @@ impl epi::App for Application {
             );
         });
 
-        if let Mode::Import(import) = &mut ui_state.mode {
+        if let Tool::Import(import) = &mut ui_state.tool {
             let mut keep_open = true;
             egui::Window::new("Import").show(ctx, |ui| {
                 keep_open = import::tool_ui(ui, doc, import);
             });
             if !keep_open {
-                ui_state.mode = Mode::PixelPaint;
+                ui_state.tool = Tool::Paint;
             }
         }
 
@@ -649,7 +644,7 @@ fn start_import_mode(
     let mut i = Import::load(filename)?;
     i.settings.width = i.settings.width.min(doc.image.pixel_size().0 as u32);
     i.settings.height = i.settings.height.min(doc.image.pixel_size().1 as u32);
-    ui_state.mode = Mode::Import(i);
+    ui_state.tool = Tool::Import(i);
     Ok(())
 }
 
@@ -740,14 +735,14 @@ fn update_in_paint_mode(
     let action = if secondary {
         // Used secondary mouse button - swap colors
         paint_action(
-            ui_state,
+            &ui_state.mode,
             area,
             ui_state.secondary_color,
             ui_state.primary_color,
         )
     } else {
         paint_action(
-            ui_state,
+            &ui_state.mode,
             area,
             ui_state.primary_color,
             ui_state.secondary_color,
@@ -764,13 +759,14 @@ fn update_in_paint_mode(
     }
 }
 
+/// Create an Action from a paint Mode.
 fn paint_action(
-    ui_state: &mut UiState,
+    mode: &Mode,
     area: UpdateArea,
     color: PaintColor,
     other_color: PaintColor,
 ) -> Action {
-    match ui_state.mode {
+    match mode {
         Mode::PixelPaint => Action::new(ActionType::Plot { area, color }),
         Mode::FillCell => Action::new(ActionType::Fill { area, color }),
         Mode::CellColor => Action::new(ActionType::CellColor { area, color }),
@@ -786,10 +782,6 @@ fn paint_action(
             color_1: color,
             color_2: other_color,
         }),
-        _ => panic!(
-            "update_in paint_mode with invalid mode: {:?}",
-            ui_state.mode
-        ),
     }
 }
 
@@ -851,20 +843,22 @@ fn update_texture(
     texture
 }
 
-fn mode_instructions(mode: &Mode) -> &str {
-    match mode {
-        Mode::Import(_) => "Tweak settings and click Import.",
-        Mode::PixelPaint => "Click to paint. Right-click to paint with background color.",
-        Mode::FillCell => {
-            "Click to fill the character cell with a color. Right-click to fill with background color."
+fn mode_instructions(tool: &Tool, mode: &Mode) -> &'static str {
+    match tool {
+        Tool::Import(_) => "Tweak settings and click Import.",
+        Tool::Paint => match mode {
+            Mode::PixelPaint => "Click to paint. Right-click to paint with background color.",
+            Mode::FillCell => {
+                "Click to fill the character cell with a color. Right-click to fill with background color."
+            }
+            Mode::CellColor => {
+                "Click to change the color of the character cell. Right-click for background color."
+            }
+            Mode::MakeHiRes => "Click to make the character cell high-resolution.",
+            Mode::MakeMulticolor => "Click to make the character cell multicolor.",
+            Mode::ReplaceColor => "Click to replace secondary color with primary color. Right-click for the inverse.",
+            Mode::SwapColors => "Click to replace primary color with secondary color and vice versa.",
         }
-        Mode::CellColor => {
-            "Click to change the color of the character cell. Right-click for background color."
-        }
-        Mode::MakeHiRes => "Click to make the character cell high-resolution.",
-        Mode::MakeMulticolor => "Click to make the character cell multicolor.",
-        Mode::ReplaceColor => "Click to replace secondary color with primary color. Right-click for the inverse.",
-        Mode::SwapColors => "Click to replace primary color with secondary color and vice versa.",
     }
 }
 
@@ -874,6 +868,7 @@ impl Application {
         Application {
             history: Record::new(),
             ui_state: UiState {
+                tool: Tool::Paint,
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
                 image_view_settings: ViewSettings::Normal,
