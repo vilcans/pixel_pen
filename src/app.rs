@@ -1,7 +1,7 @@
 use std::{path::Path, time::Instant};
 
 use crate::{
-    actions::{self, Action, ActionType},
+    actions::{self, Action, Undoable},
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
@@ -117,7 +117,7 @@ pub struct Application {
     doc: Document,
     ui_state: UiState,
     image_texture: Option<Texture>,
-    history: Record<actions::Action>,
+    history: Record<actions::Undoable>,
     pub system: Box<dyn SystemFunctions>,
 }
 
@@ -563,7 +563,7 @@ impl epi::App for Application {
 /// Ask for filename and save the document. Show any error message to the user.
 /// Returns false if the file was not saved, either because user cancelled or there was an error.
 fn save_as(
-    history: &mut Record<actions::Action>,
+    history: &mut Record<actions::Undoable>,
     doc: &mut Document,
     system: &mut Box<dyn SystemFunctions>,
 ) -> bool {
@@ -596,7 +596,7 @@ fn export(doc: &Document, system: &mut Box<dyn SystemFunctions>) {
 /// Ask for filename and save the document. Show any error message to the user.
 /// Returns false if the file was not saved, either because user cancelled or there was an error.
 fn save(
-    history: &mut Record<actions::Action>,
+    history: &mut Record<actions::Undoable>,
     doc: &mut Document,
     filename: &Path,
     system: &mut Box<dyn SystemFunctions>,
@@ -677,7 +677,7 @@ fn image_painter(ui: &mut egui::Ui) -> (Response, Painter) {
 }
 
 fn update_in_paint_mode(
-    history: &mut Record<actions::Action>,
+    history: &mut Record<actions::Undoable>,
     pixel_pos: Option<Point>,
     doc: &mut Document,
     ui: &mut egui::Ui,
@@ -739,7 +739,7 @@ fn update_in_paint_mode(
         )
     };
     let was_dirty = doc.image.dirty;
-    match history.apply(doc, action) {
+    match history.apply(doc, Undoable::new(action)) {
         Ok(true) => (),
         Ok(false) => doc.image.dirty = was_dirty,
         Err(e) => match e.severity() {
@@ -757,21 +757,21 @@ fn paint_action(
     other_color: PaintColor,
 ) -> Action {
     match mode {
-        Mode::PixelPaint => Action::new(ActionType::Plot { area, color }),
-        Mode::FillCell => Action::new(ActionType::Fill { area, color }),
-        Mode::CellColor => Action::new(ActionType::CellColor { area, color }),
-        Mode::MakeHiRes => Action::new(ActionType::MakeHighRes { area }),
-        Mode::MakeMulticolor => Action::new(ActionType::MakeMulticolor { area }),
-        Mode::ReplaceColor => Action::new(ActionType::ReplaceColor {
+        Mode::PixelPaint => Action::Plot { area, color },
+        Mode::FillCell => Action::Fill { area, color },
+        Mode::CellColor => Action::CellColor { area, color },
+        Mode::MakeHiRes => Action::MakeHighRes { area },
+        Mode::MakeMulticolor => Action::MakeMulticolor { area },
+        Mode::ReplaceColor => Action::ReplaceColor {
             area,
             to_replace: other_color,
             replacement: color,
-        }),
-        Mode::SwapColors => Action::new(ActionType::SwapColors {
+        },
+        Mode::SwapColors => Action::SwapColors {
             area,
             color_1: color,
             color_2: other_color,
-        }),
+        },
     }
 }
 

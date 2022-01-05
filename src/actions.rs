@@ -7,13 +7,13 @@ use crate::{
     Document,
 };
 
-pub struct Action {
-    pub action: ActionType,
+pub struct Undoable {
+    pub action: Action,
     previous: Option<Document>,
 }
 
-impl Action {
-    pub fn new(action: ActionType) -> Self {
+impl Undoable {
+    pub fn new(action: Action) -> Self {
         Self {
             action,
             previous: None,
@@ -21,7 +21,7 @@ impl Action {
     }
 }
 
-pub enum ActionType {
+pub enum Action {
     /// Change the color of single pixels
     Plot { area: UpdateArea, color: PaintColor },
     /// Fill the whole character cell with a color
@@ -46,7 +46,7 @@ pub enum ActionType {
     },
 }
 
-impl undo::Action for Action {
+impl undo::Action for Undoable {
     type Target = Document;
     type Output = bool;
     type Error = Box<dyn DisallowedAction>;
@@ -55,20 +55,20 @@ impl undo::Action for Action {
         let previous = target.clone();
         let image = &mut target.image;
         let result = match &self.action {
-            ActionType::Plot { area, color } => image.plot(area, *color),
-            ActionType::Fill { area, color } => image.fill_cells(area, *color),
-            ActionType::CellColor { area, color } => {
+            Action::Plot { area, color } => image.plot(area, *color),
+            Action::Fill { area, color } => image.fill_cells(area, *color),
+            Action::CellColor { area, color } => {
                 let c = image.color_index_from_paint_color(color);
                 image.set_color(area, c)
             }
-            ActionType::MakeHighRes { area } => image.make_high_res(area),
-            ActionType::MakeMulticolor { area } => image.make_multicolor(area),
-            ActionType::ReplaceColor {
+            Action::MakeHighRes { area } => image.make_high_res(area),
+            Action::MakeMulticolor { area } => image.make_multicolor(area),
+            Action::ReplaceColor {
                 area,
                 to_replace,
                 replacement,
             } => image.replace_color(area, *to_replace, *replacement),
-            ActionType::SwapColors {
+            Action::SwapColors {
                 area,
                 color_1,
                 color_2,
