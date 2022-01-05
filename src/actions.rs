@@ -53,28 +53,7 @@ impl undo::Action for Undoable {
 
     fn apply(&mut self, target: &mut Self::Target) -> undo::Result<Self> {
         let previous = target.clone();
-        let image = &mut target.image;
-        let result = match &self.action {
-            Action::Plot { area, color } => image.plot(area, *color),
-            Action::Fill { area, color } => image.fill_cells(area, *color),
-            Action::CellColor { area, color } => {
-                let c = image.color_index_from_paint_color(color);
-                image.set_color(area, c)
-            }
-            Action::MakeHighRes { area } => image.make_high_res(area),
-            Action::MakeMulticolor { area } => image.make_multicolor(area),
-            Action::ReplaceColor {
-                area,
-                to_replace,
-                replacement,
-            } => image.replace_color(area, *to_replace, *replacement),
-            Action::SwapColors {
-                area,
-                color_1,
-                color_2,
-            } => image.swap_colors(area, *color_1, *color_2),
-        };
-        match result {
+        match target.apply(&self.action) {
             Ok(true) => {
                 self.previous = Some(previous);
                 Ok(true)
