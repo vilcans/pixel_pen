@@ -1,3 +1,5 @@
+use crate::{actions::Action, update_area::UpdateArea, vic::PaintColor};
+
 /// In what way an edit operation changes the pixels or character.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Mode {
@@ -48,6 +50,32 @@ impl Mode {
             Mode::MakeMulticolor => "Click to make the character cell multicolor.",
             Mode::ReplaceColor => "Click to replace secondary color with primary color. Right-click for the inverse.",
             Mode::SwapColors => "Click to replace primary color with secondary color and vice versa.",
+        }
+    }
+
+    /// Create an Action from a paint Mode.
+    pub fn paint_action(
+        &self,
+        area: UpdateArea,
+        color: PaintColor,
+        other_color: PaintColor,
+    ) -> Action {
+        match self {
+            Mode::PixelPaint => Action::Plot { area, color },
+            Mode::FillCell => Action::Fill { area, color },
+            Mode::CellColor => Action::CellColor { area, color },
+            Mode::MakeHiRes => Action::MakeHighRes { area },
+            Mode::MakeMulticolor => Action::MakeMulticolor { area },
+            Mode::ReplaceColor => Action::ReplaceColor {
+                area,
+                to_replace: other_color,
+                replacement: color,
+            },
+            Mode::SwapColors => Action::SwapColors {
+                area,
+                color_1: color,
+                color_2: other_color,
+            },
         }
     }
 }

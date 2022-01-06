@@ -13,7 +13,6 @@ use crate::{
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     tool::Tool,
     ui,
-    update_area::UpdateArea,
     vic::{Char, PaintColor, VicImage, ViewSettings},
 };
 use eframe::{
@@ -72,8 +71,6 @@ struct UiState {
     primary_color: PaintColor,
     /// Secondary selected color. Typically used when using the right mouse button.
     secondary_color: PaintColor,
-    /// Where the user currently is painting
-    paint_position: Option<Point>,
     /// Characters to use as a brush
     char_brush: ImgVec<Char>,
     /// Enable showing the character grid
@@ -368,17 +365,21 @@ impl epi::App for Application {
             } else {
                 match &mut ui_state.tool {
                     Tool::Import(_) => {}
-                    Tool::Paint => update_in_paint_mode(
-                        history,
-                        hover_pos,
-                        doc,
-                        ui,
-                        &response,
-                        ui_state,
-                        &mut cursor_icon,
-                    ),
-                    Tool::Grab(state) => {
-                        if let Some(selection) = state.update_ui(hover_pos, &response) {
+                    Tool::Paint(tool) => {
+                        if let Some(action) = tool.update_ui(
+                            hover_pos,
+                            ui,
+                            &response,
+                            &mut cursor_icon,
+                            &ui_state.mode,
+                            ui_state.primary_color,
+                            ui_state.secondary_color,
+                        ) {
+                            apply_action(doc, history, ui_state, action);
+                        }
+                    }
+                    Tool::Grab(tool) => {
+                        if let Some(selection) = tool.update_ui(hover_pos, &response) {
                             let (col0, row0, _, _) = doc
                                 .image
                                 .char_coordinates_clamped(selection.0.x, selection.0.y);
@@ -512,7 +513,7 @@ impl epi::App for Application {
             egui::Window::new("Import").show(ctx, |ui| result = import::tool_ui(ui, doc, import));
             match result {
                 import::UiResult::KeepOpen => {}
-                import::UiResult::Close => ui_state.tool = Tool::Paint,
+                import::UiResult::Close => ui_state.tool = Tool::Paint(Default::default()),
                 import::UiResult::Action(a) => apply_action(doc, history, ui_state, a),
             }
         }
@@ -552,11 +553,11 @@ fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
     ui.add(Label::new("Tool").strong());
     ui.vertical_centered_justified(|ui| {
         if ui
-            .selectable_label(matches!(current_tool, Tool::Paint), "Paint")
+            .selectable_label(matches!(current_tool, Tool::Paint(_)), "Paint")
             .on_hover_text("Paint pixels")
             .clicked()
         {
-            new_tool = Some(Tool::Paint);
+            new_tool = Some(Tool::Paint(Default::default()));
         }
         if ui
             .selectable_label(matches!(current_tool, Tool::Grab { .. }), "Grab")
@@ -719,71 +720,6 @@ fn image_painter(ui: &mut egui::Ui) -> (Response, Painter) {
     (response, painter)
 }
 
-fn update_in_paint_mode(
-    history: &mut Record<actions::Undoable>,
-    pixel_pos: Option<Point>,
-    doc: &mut Document,
-    ui: &mut egui::Ui,
-    response: &egui::Response,
-    ui_state: &mut UiState,
-    cursor_icon: &mut Option<CursorIcon>,
-) {
-    if pixel_pos.is_none() {
-        return;
-    }
-    *cursor_icon = Some(CursorIcon::PointingHand);
-
-    let hover_pos = pixel_pos.unwrap();
-
-    let pressed = if response.secondary_clicked()
-        || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
-    {
-        Some(true)
-    } else if response.clicked() || response.dragged() {
-        Some(false)
-    } else {
-        None
-    };
-
-    let secondary = match pressed {
-        None => {
-            ui_state.paint_position = None;
-            return;
-        }
-        Some(v) => v,
-    };
-
-    let area = match ui_state.paint_position {
-        Some(p) => {
-            if p == hover_pos {
-                // Mouse is held and hasn't moved
-                return;
-            }
-            UpdateArea::pixel_line(p, hover_pos)
-        }
-        None => UpdateArea::from_pixel(hover_pos),
-    };
-    ui_state.paint_position = Some(hover_pos);
-
-    let action = if secondary {
-        // Used secondary mouse button - swap colors
-        paint_action(
-            &ui_state.mode,
-            area,
-            ui_state.secondary_color,
-            ui_state.primary_color,
-        )
-    } else {
-        paint_action(
-            &ui_state.mode,
-            area,
-            ui_state.primary_color,
-            ui_state.secondary_color,
-        )
-    };
-    apply_action(doc, history, ui_state, action);
-}
-
 /// Apply an action and record it in the history. Show any error to the user.
 fn apply_action(
     doc: &mut Document,
@@ -798,32 +734,6 @@ fn apply_action(
         Err(e) => match e.severity() {
             Severity::Silent => {}
             Severity::Notification => ui_state.show_warning(e.to_string()),
-        },
-    }
-}
-
-/// Create an Action from a paint Mode.
-fn paint_action(
-    mode: &Mode,
-    area: UpdateArea,
-    color: PaintColor,
-    other_color: PaintColor,
-) -> Action {
-    match mode {
-        Mode::PixelPaint => Action::Plot { area, color },
-        Mode::FillCell => Action::Fill { area, color },
-        Mode::CellColor => Action::CellColor { area, color },
-        Mode::MakeHiRes => Action::MakeHighRes { area },
-        Mode::MakeMulticolor => Action::MakeMulticolor { area },
-        Mode::ReplaceColor => Action::ReplaceColor {
-            area,
-            to_replace: other_color,
-            replacement: color,
-        },
-        Mode::SwapColors => Action::SwapColors {
-            area,
-            color_1: color,
-            color_2: other_color,
         },
     }
 }
@@ -892,14 +802,13 @@ impl Application {
         Application {
             history: Record::new(),
             ui_state: UiState {
-                tool: Tool::Paint,
+                tool: Tool::Paint(Default::default()),
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
                 image_view_settings: ViewSettings::Normal,
                 primary_color: PaintColor::CharColor(7),
                 secondary_color: PaintColor::Background,
                 char_brush: ImgVec::new(vec![Char::DEFAULT_BRUSH], 1, 1),
-                paint_position: None,
                 grid: false,
                 panning: false,
                 pan: Vec2::ZERO,
