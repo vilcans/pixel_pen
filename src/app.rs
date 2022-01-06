@@ -13,7 +13,7 @@ use crate::{
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     ui,
     update_area::UpdateArea,
-    vic::{PaintColor, VicImage, ViewSettings},
+    vic::{Char, PaintColor, VicImage, ViewSettings},
 };
 use eframe::{
     egui::{
@@ -23,6 +23,7 @@ use eframe::{
     epi::{self, TextureAllocator},
 };
 use image::imageops::FilterType;
+use imgref::ImgVec;
 use undo::Record;
 
 // Don't scale the texture more than this to avoid huge textures when zooming.
@@ -58,6 +59,13 @@ const RAW_TOOLTIP: &str = "Show image with fixed colors:
 enum Tool {
     Import(Import),
     Paint,
+    Grab(GrabState),
+    CharBrush,
+}
+
+#[derive(Default, Debug)]
+struct GrabState {
+    selection_start: Option<Point>,
 }
 
 struct Texture {
@@ -78,6 +86,8 @@ struct UiState {
     secondary_color: PaintColor,
     /// Where the user currently is painting
     paint_position: Option<Point>,
+    /// Characters to use as a brush
+    char_brush: ImgVec<Char>,
     /// Enable showing the character grid
     grid: bool,
     /// Whether user is currently panning
@@ -367,16 +377,63 @@ impl epi::App for Application {
             if ui_state.panning {
                 ui_state.pan += input.pointer.delta();
                 cursor_icon = Some(CursorIcon::Grabbing);
-            } else if let Tool::Paint = &ui_state.tool {
-                update_in_paint_mode(
-                    history,
-                    hover_pos,
-                    doc,
-                    ui,
-                    &response,
-                    ui_state,
-                    &mut cursor_icon,
-                );
+            } else {
+                match &mut ui_state.tool {
+                    Tool::Import(_) => {}
+                    Tool::Paint => update_in_paint_mode(
+                        history,
+                        hover_pos,
+                        doc,
+                        ui,
+                        &response,
+                        ui_state,
+                        &mut cursor_icon,
+                    ),
+                    Tool::Grab(state) => {
+                        if let Some(selection) = update_in_grab_mode(state, hover_pos, &response) {
+                            let (col0, row0, _, _) = doc
+                                .image
+                                .char_coordinates_clamped(selection.0.x, selection.0.y);
+                            let (col1, row1, _, _) = doc
+                                .image
+                                .char_coordinates_clamped(selection.1.x, selection.1.y);
+                            let (c, w) = if col1 >= col0 {
+                                (col0, col1 - col0)
+                            } else {
+                                (col1, col0 - col1)
+                            };
+                            let (r, h) = if row1 >= row0 {
+                                (row0, row1 - row0)
+                            } else {
+                                (row1, row0 - row1)
+                            };
+                            ui_state.char_brush = doc.image.grab_cells(c, r, w, h);
+                            ui_state.tool = Tool::CharBrush;
+                        }
+                    }
+                    Tool::CharBrush => {
+                        if response.clicked() {
+                            let brush = &ui_state.char_brush;
+                            if let Some((column, row, _, _)) = hover_pos.map(|p| {
+                                doc.image.char_coordinates_unclipped(
+                                    p.x - (brush.width() * Char::WIDTH / 2) as i32,
+                                    p.y - (brush.height() * Char::HEIGHT / 2) as i32,
+                                )
+                            }) {
+                                apply_action(
+                                    doc,
+                                    history,
+                                    ui_state,
+                                    Action::CharBrushPaint {
+                                        column,
+                                        row,
+                                        chars: ui_state.char_brush.clone(),
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
             }
             if response.drag_released() {
                 ui_state.panning = false;
@@ -500,6 +557,37 @@ impl epi::App for Application {
     }
 }
 
+fn update_in_grab_mode(
+    state: &mut GrabState,
+    hover_pos: Option<Point>,
+    response: &Response,
+) -> Option<(Point, Point)> {
+    let mut selection = None;
+    match state.selection_start {
+        None => {
+            if let Some(hover_pos) = hover_pos {
+                if response.drag_started() {
+                    if response.drag_started() {
+                        state.selection_start = Some(hover_pos);
+                    }
+                } else if response.clicked() {
+                    selection = Some((hover_pos, hover_pos));
+                }
+            }
+        }
+        Some(selection_start) => {
+            if response.drag_released() {
+                if let Some(hover_pos) = hover_pos {
+                    selection = Some((selection_start, hover_pos));
+                } else {
+                    state.selection_start = None;
+                }
+            }
+        }
+    }
+    selection
+}
+
 /// Renders the UI for tool selection.
 /// Returns which tool to switch to, or None if the user did not change tool.
 fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
@@ -512,6 +600,20 @@ fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
             .clicked()
         {
             new_tool = Some(Tool::Paint);
+        }
+        if ui
+            .selectable_label(matches!(current_tool, Tool::Grab { .. }), "Grab")
+            .on_hover_text("Create a brush from a part of the picture")
+            .clicked()
+        {
+            new_tool = Some(Tool::Grab(Default::default()));
+        }
+        if ui
+            .selectable_label(matches!(current_tool, Tool::CharBrush { .. }), "Char Brush")
+            .on_hover_text("Draw with a character brush")
+            .clicked()
+        {
+            new_tool = Some(Tool::CharBrush);
         }
     });
     new_tool
@@ -831,6 +933,8 @@ fn tool_instructions(tool: &Tool, mode: &Mode) -> &'static str {
     match tool {
         Tool::Import(_) => "Tweak settings and click Import.",
         Tool::Paint => mode.instructions(),
+        Tool::Grab(_) => "Click and drag to select an area to create a brush from.",
+        Tool::CharBrush => "Click to draw with the character brush.",
     }
 }
 
@@ -846,6 +950,7 @@ impl Application {
                 image_view_settings: ViewSettings::Normal,
                 primary_color: PaintColor::CharColor(7),
                 secondary_color: PaintColor::Background,
+                char_brush: ImgVec::new(vec![Char::DEFAULT_BRUSH], 1, 1),
                 paint_position: None,
                 grid: false,
                 panning: false,

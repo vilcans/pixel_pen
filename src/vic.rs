@@ -157,6 +157,11 @@ impl Char {
     pub const WIDTH: usize = 8;
     pub const HEIGHT: usize = 8;
     pub const EMPTY_BITMAP: [u8; Self::HEIGHT] = [0u8; Self::HEIGHT];
+    pub const DEFAULT_BRUSH: Char = Char {
+        bits: [0xff; 8],
+        color: 1,
+        multicolor: false,
+    };
 
     /// Create a new multicolor character
     pub fn new(bits: [u8; Self::HEIGHT], color: u8) -> Self {
@@ -625,6 +630,28 @@ impl VicImage {
         (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
     }
 
+    /// Paste characters into the image.
+    /// `target_column` and `target_row` is the top-left corner.
+    /// The extents of the pasted chars may be outside the image (they are clipped).
+    pub fn paste_chars(
+        &mut self,
+        target_column: i32,
+        target_row: i32,
+        source: ImgRef<'_, Char>,
+    ) -> Result<bool, Box<dyn DisallowedAction>> {
+        let mut changed = false;
+        for (char, (r, c)) in source.pixels().zip(
+            (target_row..target_row + source.height() as i32)
+                .cartesian_product(target_column..target_column + source.width() as i32),
+        ) {
+            if (0..self.columns as i32).contains(&c) && (0..self.rows as i32).contains(&r) {
+                self.video[(c as usize, r as usize)] = char;
+                changed = true;
+            }
+        }
+        Ok(changed)
+    }
+
     fn apply_operation_to_pixels<F>(
         &mut self,
         target: &UpdateArea,
@@ -854,20 +881,53 @@ impl VicImage {
         image
     }
 
+    /// Get a copy of the characters in a rectangular area.
+    pub fn grab_cells(
+        &self,
+        column: usize,
+        row: usize,
+        width: usize,
+        height: usize,
+    ) -> ImgVec<Char> {
+        let chars = self
+            .video
+            .sub_image(column, row, width, height)
+            .pixels()
+            .collect();
+        ImgVec::new(chars, width, height)
+    }
+
+    /// Given pixel coordinates, return column, row, and x and y inside the character.
+    /// May return coordinates outside the image.
+    pub fn char_coordinates_unclipped(&self, x: i32, y: i32) -> (i32, i32, i32, i32) {
+        let column = x.div_euclid(Char::WIDTH as i32);
+        let cx = x.rem_euclid(Char::WIDTH as i32);
+        let row = y.div_euclid(Char::HEIGHT as i32);
+        let cy = y.rem_euclid(Char::HEIGHT as i32);
+        (column, row, cx, cy)
+    }
+
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// Returns None if the coordinates are outside the image.
-    fn char_coordinates(&self, x: i32, y: i32) -> Option<(usize, usize, i32, i32)> {
-        if x < 0 || y < 0 {
-            return None;
+    pub fn char_coordinates(&self, x: i32, y: i32) -> Option<(usize, usize, i32, i32)> {
+        let (width, height) = self.pixel_size();
+        if (0..width as i32).contains(&x) && (0..height as i32).contains(&y) {
+            let (column, row, cx, cy) = self.char_coordinates_unclipped(x, y);
+            Some((column as usize, row as usize, cx, cy))
+        } else {
+            None
         }
-        let column = x / Char::WIDTH as i32;
-        let row = y / Char::WIDTH as i32;
-        if column >= self.columns as i32 || row >= self.rows as i32 {
-            return None;
-        }
-        let cx = x % Char::WIDTH as i32;
-        let cy = y % Char::WIDTH as i32;
-        Some((column as usize, row as usize, cx, cy))
+    }
+
+    /// Given pixel coordinates, return column, row, and x and y inside the character.
+    /// If the arguments are outside the image, they are clamped to be inside it.
+    pub fn char_coordinates_clamped(&self, x: i32, y: i32) -> (usize, usize, i32, i32) {
+        let (width, height) = self.pixel_size();
+        let (column, row, cx, cy) = self.char_coordinates_unclipped(
+            x.clamp(0, width as i32 - 1),
+            y.clamp(0, height as i32 - 1),
+        );
+        (column as usize, row as usize, cx, cy)
     }
 
     /// Get the character cells to update given an UpdateArea.

@@ -1,11 +1,12 @@
 use std::fmt;
 
 use image::RgbaImage;
+use imgref::ImgVec;
 
 use crate::{
     error::{DisallowedAction, Severity},
     update_area::UpdateArea,
-    vic::{ColorFormat, PaintColor},
+    vic::{Char, ColorFormat, PaintColor},
     Document,
 };
 
@@ -52,6 +53,11 @@ pub enum Action {
         area: UpdateArea,
         color_1: PaintColor,
         color_2: PaintColor,
+    },
+    CharBrushPaint {
+        column: i32,
+        row: i32,
+        chars: ImgVec<Char>,
     },
 }
 
