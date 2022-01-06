@@ -322,70 +322,10 @@ impl epi::App for Application {
         // Left toolbar
         egui::SidePanel::left("toolbar").show(ctx, |ui| {
             egui::ScrollArea::vertical().show(ui, |ui| {
-                ui.vertical_centered_justified(|ui| {
-                    // PixelPaint
-                    if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::PixelPaint), "Pixel Paint")
-                        .on_hover_text("Paint pixels")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::PixelPaint;
-                    }
-                    // FillCell
-                    if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::FillCell), "Fill Cell")
-                        .on_hover_text("Fill the whole character cell with a color")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::FillCell;
-                    }
-                    // ColorPaint
-                    if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::CellColor), "Cell Color")
-                        .on_hover_text("Change the color of character cells")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::CellColor;
-                    }
-                    // ReplaceColor
-                    if ui
-                        .selectable_label(
-                            matches!(ui_state.mode, Mode::ReplaceColor),
-                            "Replace Color",
-                        )
-                        .on_hover_text("Replace one color with another")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::ReplaceColor;
-                    }
-                    // SwapColors
-                    if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::SwapColors), "Swap Colors")
-                        .on_hover_text("Swap two colors")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::SwapColors;
-                    }
-                    // MakeHiRes
-                    if ui
-                        .selectable_label(matches!(ui_state.mode, Mode::MakeHiRes), "Make High-res")
-                        .on_hover_text("Set character cells to high-resolution mode")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::MakeHiRes;
-                    }
-                    // MakeMulticolor
-                    if ui
-                        .selectable_label(
-                            matches!(ui_state.mode, Mode::MakeMulticolor),
-                            "Make Multicolor",
-                        )
-                        .on_hover_text("Set character cells to multicolor mode")
-                        .clicked()
-                    {
-                        ui_state.mode = Mode::MakeMulticolor;
-                    }
-                });
+                if let Some(new_tool) = select_tool_ui(ui, &ui_state.tool) {
+                    ui_state.tool = new_tool;
+                }
+                ui_state.mode = select_mode_ui(ui, &ui_state.mode);
             });
         });
 
@@ -558,6 +498,50 @@ impl epi::App for Application {
             ctx.output().cursor_icon = icon;
         }
     }
+}
+
+/// Renders the UI for tool selection.
+/// Returns which tool to switch to, or None if the user did not change tool.
+fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
+    let mut new_tool = None;
+    ui.add(Label::new("Tool").strong());
+    ui.vertical_centered_justified(|ui| {
+        if ui
+            .selectable_label(matches!(current_tool, Tool::Paint), "Paint")
+            .on_hover_text("Paint pixels")
+            .clicked()
+        {
+            new_tool = Some(Tool::Paint);
+        }
+    });
+    new_tool
+}
+
+/// Renders the UI for mode selection.
+/// Returns which mode to use, which is the same as the current one passed in unless changed by the user.
+fn select_mode_ui(ui: &mut egui::Ui, current_mode: &Mode) -> Mode {
+    let mut new_mode = current_mode.clone();
+    ui.add(Label::new("Mode").strong());
+    ui.vertical_centered_justified(|ui| {
+        for mode in [
+            Mode::PixelPaint,
+            Mode::FillCell,
+            Mode::CellColor,
+            Mode::ReplaceColor,
+            Mode::SwapColors,
+            Mode::MakeHiRes,
+            Mode::MakeMulticolor,
+        ] {
+            if ui
+                .selectable_label(*current_mode == mode, mode.title())
+                .on_hover_text(mode.tip())
+                .clicked()
+            {
+                new_mode = mode;
+            }
+        }
+    });
+    new_mode
 }
 
 /// Ask for filename and save the document. Show any error message to the user.
