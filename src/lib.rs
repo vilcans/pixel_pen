@@ -16,6 +16,7 @@ mod line;
 mod mutation_monitor;
 pub mod storage;
 pub mod system;
+mod tool;
 mod ui;
 mod update_area;
 mod vic;

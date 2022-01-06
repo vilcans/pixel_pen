@@ -11,6 +11,7 @@ use crate::{
     mutation_monitor::MutationMonitor,
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
+    tool::Tool,
     ui,
     update_area::UpdateArea,
     vic::{Char, PaintColor, VicImage, ViewSettings},
@@ -54,19 +55,6 @@ const RAW_TOOLTIP: &str = "Show image with fixed colors:
 • White = character color
 • Blue = border color in multicolor cells
 • Red = aux color in multicolor cells";
-
-#[derive(Debug)]
-enum Tool {
-    Import(Import),
-    Paint,
-    Grab(GrabState),
-    CharBrush,
-}
-
-#[derive(Default, Debug)]
-struct GrabState {
-    selection_start: Option<Point>,
-}
 
 struct Texture {
     pub id: TextureId,
@@ -325,7 +313,7 @@ impl epi::App for Application {
                     ctx.request_repaint(); // to animate color highlight
                 }
             } else {
-                ui.label(tool_instructions(&ui_state.tool, &ui_state.mode));
+                ui.label(ui_state.tool.instructions(&ui_state.mode));
             }
         });
 
@@ -390,7 +378,7 @@ impl epi::App for Application {
                         &mut cursor_icon,
                     ),
                     Tool::Grab(state) => {
-                        if let Some(selection) = update_in_grab_mode(state, hover_pos, &response) {
+                        if let Some(selection) = state.update_ui(hover_pos, &response) {
                             let (col0, row0, _, _) = doc
                                 .image
                                 .char_coordinates_clamped(selection.0.x, selection.0.y);
@@ -555,37 +543,6 @@ impl epi::App for Application {
             ctx.output().cursor_icon = icon;
         }
     }
-}
-
-fn update_in_grab_mode(
-    state: &mut GrabState,
-    hover_pos: Option<Point>,
-    response: &Response,
-) -> Option<(Point, Point)> {
-    let mut selection = None;
-    match state.selection_start {
-        None => {
-            if let Some(hover_pos) = hover_pos {
-                if response.drag_started() {
-                    if response.drag_started() {
-                        state.selection_start = Some(hover_pos);
-                    }
-                } else if response.clicked() {
-                    selection = Some((hover_pos, hover_pos));
-                }
-            }
-        }
-        Some(selection_start) => {
-            if response.drag_released() {
-                if let Some(hover_pos) = hover_pos {
-                    selection = Some((selection_start, hover_pos));
-                } else {
-                    state.selection_start = None;
-                }
-            }
-        }
-    }
-    selection
 }
 
 /// Renders the UI for tool selection.
@@ -927,15 +884,6 @@ fn update_texture(
     };
     image.dirty = false;
     texture
-}
-
-fn tool_instructions(tool: &Tool, mode: &Mode) -> &'static str {
-    match tool {
-        Tool::Import(_) => "Tweak settings and click Import.",
-        Tool::Paint => mode.instructions(),
-        Tool::Grab(_) => "Click and drag to select an area to create a brush from.",
-        Tool::CharBrush => "Click to draw with the character brush.",
-    }
 }
 
 impl Application {
