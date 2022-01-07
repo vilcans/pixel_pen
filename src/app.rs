@@ -7,11 +7,11 @@ use crate::{
     document::Document,
     editing::Mode,
     error::{Error, Severity},
-    import::{self, Import, ImportSettings},
+    import::Import,
     mutation_monitor::MutationMonitor,
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
-    tool::Tool,
+    tool::{ImportTool, Tool},
     ui::{self, UiState},
     vic::{Char, PaintColor, VicImage, ViewSettings},
 };
@@ -158,10 +158,7 @@ impl epi::App for Application {
                         match system.open_file_dialog(OpenFileOptions::for_import(match &ui_state
                             .tool
                         {
-                            Tool::Import(Import {
-                                settings: ImportSettings { filename, .. },
-                                ..
-                            }) => filename.as_deref(),
+                            Tool::Import(tool) => tool.filename(),
                             _ => None,
                         })) {
                             Ok(Some(filename)) => {
@@ -376,13 +373,7 @@ impl epi::App for Application {
             // Tool UI
             if !ui_state.panning {
                 let action = match &mut ui_state.tool {
-                    Tool::Import(import) => {
-                        import::image_ui(ui, &painter, import, &pixel_transform);
-                        let mut action = None;
-                        egui::Window::new("Import")
-                            .show(ctx, |ui| action = import::tool_ui(ui, doc, import));
-                        action
-                    }
+                    Tool::Import(tool) => tool.update_ui(ctx, ui, &painter, doc, &pixel_transform),
                     Tool::Paint(tool) => tool.update_ui(
                         hover_pos,
                         ui,
@@ -606,7 +597,7 @@ fn start_import_mode(
     let mut i = Import::load(filename)?;
     i.settings.width = i.settings.width.min(doc.image.pixel_size().0 as u32);
     i.settings.height = i.settings.height.min(doc.image.pixel_size().1 as u32);
-    ui_state.tool = Tool::Import(i);
+    ui_state.tool = Tool::Import(ImportTool::new(i));
     Ok(())
 }
 

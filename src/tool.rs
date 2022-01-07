@@ -1,15 +1,16 @@
 mod brush;
 mod grab;
+mod import;
 mod paint;
 
-use crate::{editing::Mode, import::Import};
+use crate::editing::Mode;
 pub use brush::CharBrushTool;
 pub use grab::GrabTool;
+pub use import::ImportTool;
 pub use paint::PaintTool;
 
-#[derive(Debug)]
 pub enum Tool {
-    Import(Import),
+    Import(ImportTool),
     Paint(PaintTool),
     Grab(GrabTool),
     CharBrush(CharBrushTool),
