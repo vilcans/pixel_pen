@@ -18,8 +18,7 @@ impl PaintTool {
         response: &egui::Response,
         cursor_icon: &mut Option<CursorIcon>,
         mode: &Mode,
-        primary_color: PaintColor,
-        secondary_color: PaintColor,
+        colors: (PaintColor, PaintColor),
     ) -> Option<Action> {
         let hover_pos = pixel_pos?;
 
@@ -57,9 +56,9 @@ impl PaintTool {
 
         let action = if secondary {
             // Used secondary mouse button - swap colors
-            mode.paint_action(area, secondary_color, primary_color)
+            mode.paint_action(area, colors.1, colors.0)
         } else {
-            mode.paint_action(area, primary_color, secondary_color)
+            mode.paint_action(area, colors.0, colors.1)
         };
         Some(Action::Document(action))
     }

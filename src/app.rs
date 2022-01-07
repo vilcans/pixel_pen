@@ -346,8 +346,7 @@ impl epi::App for Application {
                         &response,
                         &mut cursor_icon,
                         &ui_state.mode,
-                        ui_state.primary_color,
-                        ui_state.secondary_color,
+                        (ui_state.primary_color, ui_state.secondary_color),
                     ),
                     Tool::Grab(tool) => tool.update_ui(doc, hover_pos, &response),
                     Tool::CharBrush(tool) => {
