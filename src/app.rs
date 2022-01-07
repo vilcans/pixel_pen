@@ -1,7 +1,7 @@
 use std::{path::Path, time::Instant};
 
 use crate::{
-    actions::{self, Action, DocAction, Undoable},
+    actions::{self, Action, Undoable},
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
@@ -338,48 +338,24 @@ impl epi::App for Application {
                 ui_state.pan += input.pointer.delta();
                 cursor_icon = Some(CursorIcon::Grabbing);
             } else {
-                match &mut ui_state.tool {
-                    Tool::Import(_) => {}
-                    Tool::Paint(tool) => {
-                        if let Some(action) = tool.update_ui(
-                            hover_pos,
-                            ui,
-                            &response,
-                            &mut cursor_icon,
-                            &ui_state.mode,
-                            ui_state.primary_color,
-                            ui_state.secondary_color,
-                        ) {
-                            apply_action(doc, history, ui_state, action);
-                        }
+                let action = match &mut ui_state.tool {
+                    Tool::Import(_) => None,
+                    Tool::Paint(tool) => tool.update_ui(
+                        hover_pos,
+                        ui,
+                        &response,
+                        &mut cursor_icon,
+                        &ui_state.mode,
+                        ui_state.primary_color,
+                        ui_state.secondary_color,
+                    ),
+                    Tool::Grab(tool) => tool.update_ui(doc, hover_pos, &response),
+                    Tool::CharBrush(tool) => {
+                        tool.update_ui(&response, &ui_state.char_brush, hover_pos, doc)
                     }
-                    Tool::Grab(tool) => {
-                        if let Some(action) = tool.update_ui(doc, hover_pos, &response) {
-                            apply_action(doc, history, ui_state, action);
-                        }
-                    }
-                    Tool::CharBrush => {
-                        if response.clicked() {
-                            let brush = &ui_state.char_brush;
-                            if let Some((column, row, _, _)) = hover_pos.map(|p| {
-                                doc.image.char_coordinates_unclipped(
-                                    p.x - (brush.width() * Char::WIDTH / 2) as i32,
-                                    p.y - (brush.height() * Char::HEIGHT / 2) as i32,
-                                )
-                            }) {
-                                apply_action(
-                                    doc,
-                                    history,
-                                    ui_state,
-                                    Action::Document(DocAction::CharBrushPaint {
-                                        column,
-                                        row,
-                                        chars: ui_state.char_brush.clone(),
-                                    }),
-                                );
-                            }
-                        }
-                    }
+                };
+                if let Some(action) = action {
+                    apply_action(doc, history, ui_state, action);
                 }
             }
             if response.drag_released() {
@@ -527,7 +503,7 @@ fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
             .on_hover_text("Draw with a character brush")
             .clicked()
         {
-            new_tool = Some(Tool::CharBrush);
+            new_tool = Some(Tool::CharBrush(Default::default()));
         }
     });
     new_tool
@@ -704,7 +680,7 @@ fn apply_action(
                 height,
             } => {
                 ui_state.char_brush = doc.image.grab_cells(column, row, width, height);
-                ui_state.tool = Tool::CharBrush;
+                ui_state.tool = Tool::CharBrush(Default::default());
             }
         },
     }
