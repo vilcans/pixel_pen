@@ -1,9 +1,14 @@
-use eframe::egui::Response;
+use eframe::egui::{Color32, Painter, Rect, Response, Stroke};
 
 use crate::{
     actions::{Action, UiAction},
-    coords::Point,
+    coords::{PixelTransform, Point},
     Document,
+};
+
+const SELECTION_STROKE: Stroke = Stroke {
+    width: 1.0,
+    color: Color32::from_rgb(200, 200, 200),
 };
 
 #[derive(Default, Debug)]
@@ -14,6 +19,8 @@ pub struct GrabTool {
 impl GrabTool {
     pub fn update_ui(
         &mut self,
+        painter: &Painter,
+        pixel_transform: &PixelTransform,
         doc: &Document,
         hover_pos: Option<Point>,
         response: &Response,
@@ -23,15 +30,24 @@ impl GrabTool {
             None => {
                 if let Some(hover_pos) = hover_pos {
                     if response.drag_started() {
-                        if response.drag_started() {
-                            self.selection_start = Some(hover_pos);
-                        }
+                        self.selection_start = Some(hover_pos);
                     } else if response.clicked() {
                         selection = Some((hover_pos, hover_pos));
                     }
                 }
             }
             Some(selection_start) => {
+                if let Some(hover_pos) = hover_pos {
+                    painter.rect_stroke(
+                        Rect::from_min_max(
+                            pixel_transform.screen_pos(selection_start),
+                            pixel_transform.screen_pos(hover_pos),
+                        ),
+                        0.0,
+                        SELECTION_STROKE,
+                    );
+                }
+
                 if response.drag_released() {
                     if let Some(hover_pos) = hover_pos {
                         selection = Some((selection_start, hover_pos));
