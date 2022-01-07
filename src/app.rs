@@ -337,30 +337,12 @@ impl epi::App for Application {
             if ui_state.panning {
                 ui_state.pan += input.pointer.delta();
                 cursor_icon = Some(CursorIcon::Grabbing);
-            } else {
-                let action = match &mut ui_state.tool {
-                    Tool::Import(_) => None,
-                    Tool::Paint(tool) => tool.update_ui(
-                        hover_pos,
-                        ui,
-                        &response,
-                        &mut cursor_icon,
-                        &ui_state.mode,
-                        (ui_state.primary_color, ui_state.secondary_color),
-                    ),
-                    Tool::Grab(tool) => tool.update_ui(doc, hover_pos, &response),
-                    Tool::CharBrush(tool) => {
-                        tool.update_ui(&response, &ui_state.char_brush, hover_pos, doc)
-                    }
-                };
-                if let Some(action) = action {
-                    apply_action(doc, history, ui_state, action);
-                }
             }
             if response.drag_released() {
                 ui_state.panning = false;
             }
 
+            // Draw border
             painter.rect_filled(
                 pixel_transform
                     .screen_rect
@@ -391,9 +373,32 @@ impl epi::App for Application {
                 draw_grid(&doc.image, &painter, &pixel_transform);
             }
 
-            // Import preview
-            if let Tool::Import(import) = &mut ui_state.tool {
-                import::image_ui(ui, &painter, import, &pixel_transform);
+            // Tool UI
+            if !ui_state.panning {
+                let action = match &mut ui_state.tool {
+                    Tool::Import(import) => {
+                        import::image_ui(ui, &painter, import, &pixel_transform);
+                        let mut action = None;
+                        egui::Window::new("Import")
+                            .show(ctx, |ui| action = import::tool_ui(ui, doc, import));
+                        action
+                    }
+                    Tool::Paint(tool) => tool.update_ui(
+                        hover_pos,
+                        ui,
+                        &response,
+                        &mut cursor_icon,
+                        &ui_state.mode,
+                        (ui_state.primary_color, ui_state.secondary_color),
+                    ),
+                    Tool::Grab(tool) => tool.update_ui(doc, hover_pos, &response),
+                    Tool::CharBrush(tool) => {
+                        tool.update_ui(&response, &ui_state.char_brush, hover_pos, doc)
+                    }
+                };
+                if let Some(action) = action {
+                    apply_action(doc, history, ui_state, action);
+                }
             }
 
             // Highlight character
@@ -440,14 +445,6 @@ impl epi::App for Application {
                 Color32::from_rgb(0x88, 0x88, 0x88),
             );
         });
-
-        if let Tool::Import(import) = &mut ui_state.tool {
-            let mut action = None;
-            egui::Window::new("Import").show(ctx, |ui| action = import::tool_ui(ui, doc, import));
-            if let Some(action) = action {
-                apply_action(doc, history, ui_state, action);
-            }
-        }
 
         if user_actions.zoom_in && ui_state.zoom < 16.0 {
             ui_state.zoom *= 2.0
