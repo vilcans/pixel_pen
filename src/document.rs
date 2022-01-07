@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    actions::Action, error::DisallowedAction, mutation_monitor::MutationMonitor, vic::VicImage,
+    actions::DocAction, error::DisallowedAction, mutation_monitor::MutationMonitor, vic::VicImage,
 };
 
 /// A "document" the user is working on.
@@ -27,10 +27,10 @@ impl Document {
     }
 
     /// Execute an action on this document
-    pub fn apply(&mut self, action: &Action) -> Result<bool, Box<dyn DisallowedAction>> {
+    pub fn apply(&mut self, action: &DocAction) -> Result<bool, Box<dyn DisallowedAction>> {
         let image = &mut self.image;
         match action {
-            Action::PasteTrueColor {
+            DocAction::PasteTrueColor {
                 source,
                 target_x,
                 target_y,
@@ -39,25 +39,25 @@ impl Document {
                 image.paste_image(source, *target_x, *target_y, *format);
                 Ok(true)
             }
-            Action::Plot { area, color } => image.plot(area, *color),
-            Action::Fill { area, color } => image.fill_cells(area, *color),
-            Action::CellColor { area, color } => {
+            DocAction::Plot { area, color } => image.plot(area, *color),
+            DocAction::Fill { area, color } => image.fill_cells(area, *color),
+            DocAction::CellColor { area, color } => {
                 let c = image.color_index_from_paint_color(color);
                 image.set_color(area, c)
             }
-            Action::MakeHighRes { area } => image.make_high_res(area),
-            Action::MakeMulticolor { area } => image.make_multicolor(area),
-            Action::ReplaceColor {
+            DocAction::MakeHighRes { area } => image.make_high_res(area),
+            DocAction::MakeMulticolor { area } => image.make_multicolor(area),
+            DocAction::ReplaceColor {
                 area,
                 to_replace,
                 replacement,
             } => image.replace_color(area, *to_replace, *replacement),
-            Action::SwapColors {
+            DocAction::SwapColors {
                 area,
                 color_1,
                 color_2,
             } => image.swap_colors(area, *color_1, *color_2),
-            Action::CharBrushPaint { column, row, chars } => {
+            DocAction::CharBrushPaint { column, row, chars } => {
                 image.paste_chars(*column, *row, chars.as_ref())
             }
         }

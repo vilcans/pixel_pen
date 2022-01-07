@@ -1,6 +1,10 @@
 use eframe::egui::Response;
 
-use crate::coords::Point;
+use crate::{
+    actions::{Action, UiAction},
+    coords::Point,
+    Document,
+};
 
 #[derive(Default, Debug)]
 pub struct GrabTool {
@@ -10,9 +14,10 @@ pub struct GrabTool {
 impl GrabTool {
     pub fn update_ui(
         &mut self,
+        doc: &Document,
         hover_pos: Option<Point>,
         response: &Response,
-    ) -> Option<(Point, Point)> {
+    ) -> Option<Action> {
         let mut selection = None;
         match self.selection_start {
             None => {
@@ -36,6 +41,31 @@ impl GrabTool {
                 }
             }
         }
-        selection
+        if let Some(selection) = selection {
+            let (col0, row0, _, _) = doc
+                .image
+                .char_coordinates_clamped(selection.0.x, selection.0.y);
+            let (col1, row1, _, _) = doc
+                .image
+                .char_coordinates_clamped(selection.1.x, selection.1.y);
+            let (column, width) = if col1 >= col0 {
+                (col0, col1 - col0)
+            } else {
+                (col1, col0 - col1)
+            };
+            let (row, height) = if row1 >= row0 {
+                (row0, row1 - row0)
+            } else {
+                (row1, row0 - row1)
+            };
+            Some(Action::Ui(UiAction::CreateCharBrush {
+                column,
+                row,
+                width,
+                height,
+            }))
+        } else {
+            None
+        }
     }
 }

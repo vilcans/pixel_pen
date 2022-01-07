@@ -5,18 +5,19 @@ use imgref::ImgVec;
 
 use crate::{
     error::{DisallowedAction, Severity},
+    tool::Tool,
     update_area::UpdateArea,
     vic::{Char, ColorFormat, PaintColor},
     Document,
 };
 
 pub struct Undoable {
-    pub action: Action,
+    pub action: DocAction,
     previous: Option<Document>,
 }
 
 impl Undoable {
-    pub fn new(action: Action) -> Self {
+    pub fn new(action: DocAction) -> Self {
         Self {
             action,
             previous: None,
@@ -25,6 +26,11 @@ impl Undoable {
 }
 
 pub enum Action {
+    Document(DocAction),
+    Ui(UiAction),
+}
+
+pub enum DocAction {
     /// Paste a true color image into the image
     PasteTrueColor {
         source: RgbaImage,
@@ -58,6 +64,17 @@ pub enum Action {
         column: i32,
         row: i32,
         chars: ImgVec<Char>,
+    },
+}
+
+/// An action that changes something in the user interface, not the document. Not undoable.
+pub enum UiAction {
+    SelectTool(Tool),
+    CreateCharBrush {
+        column: usize,
+        row: usize,
+        width: usize,
+        height: usize,
     },
 }
 

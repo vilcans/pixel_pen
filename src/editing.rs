@@ -1,4 +1,4 @@
-use crate::{actions::Action, update_area::UpdateArea, vic::PaintColor};
+use crate::{actions::DocAction, update_area::UpdateArea, vic::PaintColor};
 
 /// In what way an edit operation changes the pixels or character.
 #[derive(Debug, Clone, PartialEq)]
@@ -59,19 +59,19 @@ impl Mode {
         area: UpdateArea,
         color: PaintColor,
         other_color: PaintColor,
-    ) -> Action {
+    ) -> DocAction {
         match self {
-            Mode::PixelPaint => Action::Plot { area, color },
-            Mode::FillCell => Action::Fill { area, color },
-            Mode::CellColor => Action::CellColor { area, color },
-            Mode::MakeHiRes => Action::MakeHighRes { area },
-            Mode::MakeMulticolor => Action::MakeMulticolor { area },
-            Mode::ReplaceColor => Action::ReplaceColor {
+            Mode::PixelPaint => DocAction::Plot { area, color },
+            Mode::FillCell => DocAction::Fill { area, color },
+            Mode::CellColor => DocAction::CellColor { area, color },
+            Mode::MakeHiRes => DocAction::MakeHighRes { area },
+            Mode::MakeMulticolor => DocAction::MakeMulticolor { area },
+            Mode::ReplaceColor => DocAction::ReplaceColor {
                 area,
                 to_replace: other_color,
                 replacement: color,
             },
-            Mode::SwapColors => Action::SwapColors {
+            Mode::SwapColors => DocAction::SwapColors {
                 area,
                 color_1: color,
                 color_2: other_color,

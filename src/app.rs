@@ -1,18 +1,18 @@
 use std::{path::Path, time::Instant};
 
 use crate::{
-    actions::{self, Action, Undoable},
+    actions::{self, Action, DocAction, Undoable},
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
     editing::Mode,
     error::{Error, Severity},
-    import::{self, Import, ImportSettings, UiResult},
+    import::{self, Import, ImportSettings},
     mutation_monitor::MutationMonitor,
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     tool::Tool,
-    ui,
+    ui::{self, UiState},
     vic::{Char, PaintColor, VicImage, ViewSettings},
 };
 use eframe::{
@@ -60,31 +60,6 @@ struct Texture {
     pub settings: ViewSettings,
     pub width: usize,
     pub height: usize,
-}
-
-struct UiState {
-    tool: Tool,
-    mode: Mode,
-    zoom: f32,
-    image_view_settings: ViewSettings,
-    /// Primary selected color. Typically used when using the left mouse button.
-    primary_color: PaintColor,
-    /// Secondary selected color. Typically used when using the right mouse button.
-    secondary_color: PaintColor,
-    /// Characters to use as a brush
-    char_brush: ImgVec<Char>,
-    /// Enable showing the character grid
-    grid: bool,
-    /// Whether user is currently panning
-    panning: bool,
-    pan: Vec2,
-
-    message: Option<(Instant, String)>,
-}
-impl UiState {
-    fn show_warning(&mut self, message: String) {
-        self.message = Some((Instant::now(), message));
-    }
 }
 
 #[derive(Default)]
@@ -379,25 +354,8 @@ impl epi::App for Application {
                         }
                     }
                     Tool::Grab(tool) => {
-                        if let Some(selection) = tool.update_ui(hover_pos, &response) {
-                            let (col0, row0, _, _) = doc
-                                .image
-                                .char_coordinates_clamped(selection.0.x, selection.0.y);
-                            let (col1, row1, _, _) = doc
-                                .image
-                                .char_coordinates_clamped(selection.1.x, selection.1.y);
-                            let (c, w) = if col1 >= col0 {
-                                (col0, col1 - col0)
-                            } else {
-                                (col1, col0 - col1)
-                            };
-                            let (r, h) = if row1 >= row0 {
-                                (row0, row1 - row0)
-                            } else {
-                                (row1, row0 - row1)
-                            };
-                            ui_state.char_brush = doc.image.grab_cells(c, r, w, h);
-                            ui_state.tool = Tool::CharBrush;
+                        if let Some(action) = tool.update_ui(doc, hover_pos, &response) {
+                            apply_action(doc, history, ui_state, action);
                         }
                     }
                     Tool::CharBrush => {
@@ -413,11 +371,11 @@ impl epi::App for Application {
                                     doc,
                                     history,
                                     ui_state,
-                                    Action::CharBrushPaint {
+                                    Action::Document(DocAction::CharBrushPaint {
                                         column,
                                         row,
                                         chars: ui_state.char_brush.clone(),
-                                    },
+                                    }),
                                 );
                             }
                         }
@@ -509,12 +467,10 @@ impl epi::App for Application {
         });
 
         if let Tool::Import(import) = &mut ui_state.tool {
-            let mut result = UiResult::KeepOpen;
-            egui::Window::new("Import").show(ctx, |ui| result = import::tool_ui(ui, doc, import));
-            match result {
-                import::UiResult::KeepOpen => {}
-                import::UiResult::Close => ui_state.tool = Tool::Paint(Default::default()),
-                import::UiResult::Action(a) => apply_action(doc, history, ui_state, a),
+            let mut action = None;
+            egui::Window::new("Import").show(ctx, |ui| action = import::tool_ui(ui, doc, import));
+            if let Some(action) = action {
+                apply_action(doc, history, ui_state, action);
             }
         }
 
@@ -727,13 +683,29 @@ fn apply_action(
     ui_state: &mut UiState,
     action: Action,
 ) {
-    let was_dirty = doc.image.dirty;
-    match history.apply(doc, Undoable::new(action)) {
-        Ok(true) => (),
-        Ok(false) => doc.image.dirty = was_dirty,
-        Err(e) => match e.severity() {
-            Severity::Silent => {}
-            Severity::Notification => ui_state.show_warning(e.to_string()),
+    match action {
+        Action::Document(action) => {
+            let was_dirty = doc.image.dirty;
+            match history.apply(doc, Undoable::new(action)) {
+                Ok(true) => (),
+                Ok(false) => doc.image.dirty = was_dirty,
+                Err(e) => match e.severity() {
+                    Severity::Silent => {}
+                    Severity::Notification => ui_state.show_warning(e.to_string()),
+                },
+            }
+        }
+        Action::Ui(action) => match action {
+            actions::UiAction::SelectTool(tool) => ui_state.tool = tool,
+            actions::UiAction::CreateCharBrush {
+                column,
+                row,
+                width,
+                height,
+            } => {
+                ui_state.char_brush = doc.image.grab_cells(column, row, width, height);
+                ui_state.tool = Tool::CharBrush;
+            }
         },
     }
 }

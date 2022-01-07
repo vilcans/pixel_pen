@@ -64,6 +64,6 @@ impl PaintTool {
         } else {
             mode.paint_action(area, primary_color, secondary_color)
         };
-        Some(action)
+        Some(Action::Document(action))
     }
 }
