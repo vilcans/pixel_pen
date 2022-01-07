@@ -21,12 +21,9 @@ impl PaintTool {
         primary_color: PaintColor,
         secondary_color: PaintColor,
     ) -> Option<Action> {
-        if pixel_pos.is_none() {
-            return None;
-        }
-        *cursor_icon = Some(CursorIcon::PointingHand);
+        let hover_pos = pixel_pos?;
 
-        let hover_pos = pixel_pos.unwrap();
+        *cursor_icon = Some(CursorIcon::PointingHand);
 
         let pressed = if response.secondary_clicked()
             || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
