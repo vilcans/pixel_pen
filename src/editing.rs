@@ -1,4 +1,4 @@
-use crate::{actions::DocAction, update_area::UpdateArea, vic::PaintColor};
+use crate::{actions::DocAction, update_area::UpdateArea, vic::PixelColor};
 
 /// In what way an edit operation changes the pixels or character.
 #[derive(Debug, Clone, PartialEq)]
@@ -57,8 +57,8 @@ impl Mode {
     pub fn paint_action(
         &self,
         area: UpdateArea,
-        color: PaintColor,
-        other_color: PaintColor,
+        color: PixelColor,
+        other_color: PixelColor,
     ) -> DocAction {
         match self {
             Mode::PixelPaint => DocAction::Plot { area, color },

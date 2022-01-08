@@ -3,7 +3,7 @@ use crate::{colors::TrueColor, error::DisallowedAction, ui::ViewSettings};
 use bit_vec::BitVec;
 use imgref::ImgRef;
 
-use super::{DisallowedEdit, GlobalColors, PaintColor, VicPalette};
+use super::{DisallowedEdit, GlobalColors, PixelColor, VicPalette};
 
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
@@ -215,7 +215,7 @@ impl Char {
         operation: F,
     ) -> Result<bool, Box<dyn DisallowedAction>>
     where
-        F: Fn(PaintColor) -> PaintColor,
+        F: Fn(PixelColor) -> PixelColor,
     {
         if self.multicolor {
             self.mutate_pixels_multicolor(mask, operation)
@@ -230,7 +230,7 @@ impl Char {
         operation: F,
     ) -> Result<bool, Box<dyn DisallowedAction>>
     where
-        F: Fn(PaintColor) -> PaintColor,
+        F: Fn(PixelColor) -> PixelColor,
     {
         let mut changed = false;
         let mut new_color = self.color;
@@ -241,20 +241,20 @@ impl Char {
                 let shift = 6 - cx;
                 if mask[cx + cy * Self::WIDTH] || mask[cx + cy * Self::WIDTH + 1] {
                     let current = match (self.bits[cy] >> shift) & 0b11 {
-                        0b00 => PaintColor::Background,
-                        0b01 => PaintColor::Border,
-                        0b10 => PaintColor::CharColor(self.color),
-                        0b11 => PaintColor::Aux,
+                        0b00 => PixelColor::Background,
+                        0b01 => PixelColor::Border,
+                        0b10 => PixelColor::CharColor(self.color),
+                        0b11 => PixelColor::Aux,
                         _ => unreachable!(),
                     };
                     let to_set = match operation(current) {
-                        PaintColor::Background => 0b00,
-                        PaintColor::Border => 0b01,
-                        PaintColor::CharColor(c) => {
+                        PixelColor::Background => 0b00,
+                        PixelColor::Border => 0b01,
+                        PixelColor::CharColor(c) => {
                             new_color = c;
                             0b10
                         }
-                        PaintColor::Aux => 0b11,
+                        PixelColor::Aux => 0b11,
                     };
                     new_bits &= !(0b11 << shift);
                     new_bits |= to_set << shift;
@@ -278,7 +278,7 @@ impl Char {
         operation: F,
     ) -> Result<bool, Box<dyn DisallowedAction>>
     where
-        F: Fn(PaintColor) -> PaintColor,
+        F: Fn(PixelColor) -> PixelColor,
     {
         let mut changed = false;
         let mut new_color = self.color;
@@ -289,12 +289,12 @@ impl Char {
                 let bytemask = 0x80 >> cx;
                 if let Some(true) = mask.get(cx + cy * Self::WIDTH) {
                     let current = match self.bits[cy] & bytemask {
-                        0 => PaintColor::Background,
-                        _ => PaintColor::CharColor(self.color),
+                        0 => PixelColor::Background,
+                        _ => PixelColor::CharColor(self.color),
                     };
                     match operation(current) {
-                        PaintColor::Background => new_bits &= !bytemask,
-                        PaintColor::CharColor(c) => {
+                        PixelColor::Background => new_bits &= !bytemask,
+                        PixelColor::CharColor(c) => {
                             new_color = c;
                             new_bits |= bytemask;
                         }

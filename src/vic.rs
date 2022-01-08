@@ -16,27 +16,29 @@ pub use self::{char::Char, image::VicImage, palette::VicPalette, registers::Glob
 /// Which colors are allowed as the "character" color.
 pub const ALLOWED_CHAR_COLORS: RangeInclusive<u8> = 0..=7;
 
+/// A choice of color for an individual pixel.
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub enum PaintColor {
+pub enum PixelColor {
     Background,
     Border,
     Aux,
     CharColor(u8),
 }
 
-impl Default for PaintColor {
+impl Default for PixelColor {
     fn default() -> Self {
         Self::CharColor(2)
     }
 }
 
-impl PaintColor {
+impl PixelColor {
+    /// Which colors from the palette are possible to choose for this color.
     pub fn selectable_colors(&self) -> impl Iterator<Item = u8> {
         match self {
-            PaintColor::Background => 0..=15,
-            PaintColor::Border => 0..=7,
-            PaintColor::Aux => 0..=15,
-            PaintColor::CharColor(index) => *index..=*index,
+            PixelColor::Background => 0..=15,
+            PixelColor::Border => 0..=7,
+            PixelColor::Aux => 0..=15,
+            PixelColor::CharColor(index) => *index..=*index,
         }
     }
 }

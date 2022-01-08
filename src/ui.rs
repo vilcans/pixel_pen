@@ -6,7 +6,7 @@ use crate::{
     colors::TrueColor,
     editing::Mode,
     tool::Tool,
-    vic::{Char, PaintColor},
+    vic::{Char, PixelColor},
 };
 use eframe::egui::Vec2;
 use imgref::ImgVec;
@@ -17,9 +17,9 @@ pub struct UiState {
     pub zoom: f32,
     pub image_view_settings: ViewSettings,
     /// Primary selected color. Typically used when using the left mouse button.
-    pub primary_color: PaintColor,
+    pub primary_color: PixelColor,
     /// Secondary selected color. Typically used when using the right mouse button.
-    pub secondary_color: PaintColor,
+    pub secondary_color: PixelColor,
     /// Characters to use as a brush
     pub char_brush: ImgVec<Char>,
     /// Enable showing the character grid

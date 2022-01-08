@@ -1,7 +1,7 @@
 use eframe::egui::{self, CursorIcon, PointerButton};
 
 use crate::{
-    actions::Action, coords::Point, editing::Mode, update_area::UpdateArea, vic::PaintColor,
+    actions::Action, coords::Point, editing::Mode, update_area::UpdateArea, vic::PixelColor,
 };
 
 #[derive(Debug, Default, Clone)]
@@ -18,7 +18,7 @@ impl PaintTool {
         response: &egui::Response,
         cursor_icon: &mut Option<CursorIcon>,
         mode: &Mode,
-        colors: (PaintColor, PaintColor),
+        colors: (PixelColor, PixelColor),
     ) -> Option<Action> {
         let hover_pos = pixel_pos?;
 

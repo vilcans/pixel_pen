@@ -7,7 +7,7 @@ use crate::{
     error::{DisallowedAction, Severity},
     tool::Tool,
     update_area::UpdateArea,
-    vic::{Char, ColorFormat, PaintColor},
+    vic::{Char, ColorFormat, PixelColor},
     Document,
 };
 
@@ -39,11 +39,11 @@ pub enum DocAction {
         format: ColorFormat,
     },
     /// Change the color of single pixels
-    Plot { area: UpdateArea, color: PaintColor },
+    Plot { area: UpdateArea, color: PixelColor },
     /// Fill the whole character cell with a color
-    Fill { area: UpdateArea, color: PaintColor },
+    Fill { area: UpdateArea, color: PixelColor },
     /// Change the color of the cell
-    CellColor { area: UpdateArea, color: PaintColor },
+    CellColor { area: UpdateArea, color: PixelColor },
     /// Make the cell high-res
     MakeHighRes { area: UpdateArea },
     /// Make the cell multicolor
@@ -51,14 +51,14 @@ pub enum DocAction {
     /// Replace one color with another.
     ReplaceColor {
         area: UpdateArea,
-        to_replace: PaintColor,
-        replacement: PaintColor,
+        to_replace: PixelColor,
+        replacement: PixelColor,
     },
     /// Swap two colors
     SwapColors {
         area: UpdateArea,
-        color_1: PaintColor,
-        color_2: PaintColor,
+        color_1: PixelColor,
+        color_2: PixelColor,
     },
     CharBrushPaint {
         column: i32,

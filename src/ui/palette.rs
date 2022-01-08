@@ -1,5 +1,5 @@
 use crate::mutation_monitor::MutationMonitor;
-use crate::vic::{self, GlobalColors, PaintColor, VicImage, VicPalette};
+use crate::vic::{self, GlobalColors, PixelColor, VicImage, VicPalette};
 use crate::widgets;
 use eframe::egui::{self, Color32, Painter, Rect, Sense, Shape, Vec2};
 use itertools::Itertools;
@@ -8,8 +8,8 @@ const PATCH_CORNER_RADIUS_FRACTION: f32 = 0.1;
 
 pub fn render_palette(
     ui: &mut egui::Ui,
-    primary_color: &mut PaintColor,
-    secondary_color: &mut PaintColor,
+    primary_color: &mut PixelColor,
+    secondary_color: &mut PixelColor,
     image: &mut MutationMonitor<VicImage>,
 ) {
     let allocate = Vec2::new(0.0, ui.spacing().interact_size.y * 2.5);
@@ -21,12 +21,12 @@ pub fn render_palette(
                     allocate,
                     Sense::hover(),
                 );
-                render_special_color_label(ui, image, PaintColor::Background, "Background", "Can be used in any cell. Click to change.");
-                render_patch(ui, image, PaintColor::Background, primary_color, secondary_color);
-                render_special_color_label(ui, image, PaintColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change.");
-                render_patch(ui, image, PaintColor::Border, primary_color, secondary_color);
-                render_special_color_label(ui, image, PaintColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change.");
-                render_patch(ui, image, PaintColor::Aux, primary_color, secondary_color);
+                render_special_color_label(ui, image, PixelColor::Background, "Background", "Can be used in any cell. Click to change.");
+                render_patch(ui, image, PixelColor::Background, primary_color, secondary_color);
+                render_special_color_label(ui, image, PixelColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change.");
+                render_patch(ui, image, PixelColor::Border, primary_color, secondary_color);
+                render_special_color_label(ui, image, PixelColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change.");
+                render_patch(ui, image, PixelColor::Aux, primary_color, secondary_color);
             });
         });
         ui.separator();
@@ -38,7 +38,7 @@ pub fn render_palette(
                     Sense::hover(),
                 );
                 for color_number in vic::ALLOWED_CHAR_COLORS {
-                    let patch = PaintColor::CharColor(color_number as u8);
+                    let patch = PixelColor::CharColor(color_number as u8);
                     render_patch(ui, image, patch, primary_color, secondary_color);
                 }
             });
@@ -49,9 +49,9 @@ pub fn render_palette(
 fn render_patch(
     ui: &mut egui::Ui,
     image: &mut MutationMonitor<VicImage>,
-    patch: PaintColor,
-    primary_color: &mut PaintColor,
-    secondary_color: &mut PaintColor,
+    patch: PixelColor,
+    primary_color: &mut PixelColor,
+    secondary_color: &mut PixelColor,
 ) {
     let patch_size = patch_size(ui);
     let (patch_rect, response) = ui.allocate_exact_size(patch_size, Sense::click());
@@ -83,7 +83,7 @@ fn render_patch(
 fn render_special_color_label(
     ui: &mut egui::Ui,
     image: &mut MutationMonitor<VicImage>,
-    patch: PaintColor,
+    patch: PixelColor,
     label: &str,
     tooltip: &str,
 ) {
@@ -102,9 +102,9 @@ fn draw_patch(
     painter: &Painter,
     rect: &Rect,
     image: &VicImage,
-    patch: PaintColor,
-    primary_color: PaintColor,
-    secondary_color: PaintColor,
+    patch: PixelColor,
+    primary_color: PixelColor,
+    secondary_color: PixelColor,
 ) {
     let rgb = image.true_color_from_paint_color(&patch);
 
@@ -158,24 +158,24 @@ fn render_patch_popups(
     image: &mut MutationMonitor<VicImage>,
     _ui: &mut egui::Ui,
     response: egui::Response,
-    patch: PaintColor,
+    patch: PixelColor,
     selected_as_primary: bool,
     selected_as_secondary: bool,
 ) {
     let color_description = match patch {
-        PaintColor::Background => format!(
+        PixelColor::Background => format!(
             "Background ({})",
             VicPalette::name(image.colors[GlobalColors::BACKGROUND])
         ),
-        PaintColor::Border => format!(
+        PixelColor::Border => format!(
             "Border ({})",
             VicPalette::name(image.colors[GlobalColors::BORDER])
         ),
-        PaintColor::Aux => format!(
+        PixelColor::Aux => format!(
             "Auxiliary ({})",
             VicPalette::name(image.colors[GlobalColors::AUX])
         ),
-        PaintColor::CharColor(index) => {
+        PixelColor::CharColor(index) => {
             format!("Character color {}: {}", index, VicPalette::name(index))
         }
     };
@@ -193,7 +193,7 @@ fn render_color_popup(
     response: &egui::Response,
     popup_id: egui::Id,
     image: &mut MutationMonitor<VicImage>,
-    patch: PaintColor,
+    patch: PixelColor,
 ) {
     widgets::popup(ui, popup_id, response, |ui| {
         let patch_size = patch_size(ui);
@@ -211,12 +211,12 @@ fn render_color_popup(
                     response.clone().on_hover_text(label);
                     if response.clicked() {
                         match patch {
-                            PaintColor::Background => {
+                            PixelColor::Background => {
                                 image.colors[GlobalColors::BACKGROUND] = index
                             }
-                            PaintColor::Border => image.colors[GlobalColors::BORDER] = index,
-                            PaintColor::Aux => image.colors[GlobalColors::AUX] = index,
-                            PaintColor::CharColor(_) => {}
+                            PixelColor::Border => image.colors[GlobalColors::BORDER] = index,
+                            PixelColor::Aux => image.colors[GlobalColors::AUX] = index,
+                            PixelColor::CharColor(_) => {}
                         }
                     }
                 }

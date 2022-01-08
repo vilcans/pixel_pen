@@ -13,7 +13,7 @@ use crate::{
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     tool::{ImportTool, Tool},
     ui::{self, UiState, ViewSettings},
-    vic::{Char, PaintColor, VicImage},
+    vic::{Char, PixelColor, VicImage},
 };
 use eframe::{
     egui::{
@@ -744,8 +744,8 @@ impl Application {
                 mode: Mode::PixelPaint,
                 zoom: 2.0,
                 image_view_settings: ViewSettings::Normal,
-                primary_color: PaintColor::CharColor(7),
-                secondary_color: PaintColor::Background,
+                primary_color: PixelColor::CharColor(7),
+                secondary_color: PixelColor::Background,
                 char_brush: ImgVec::new(vec![Char::DEFAULT_BRUSH], 1, 1),
                 grid: false,
                 panning: false,

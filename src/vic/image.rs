@@ -1,4 +1,4 @@
-use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PaintColor, VicPalette};
+use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, VicPalette};
 use crate::{
     colors::TrueColor,
     coords::Point,
@@ -165,16 +165,16 @@ impl VicImage {
         }
     }
 
-    pub fn color_index_from_paint_color(&self, c: &PaintColor) -> u8 {
+    pub fn color_index_from_paint_color(&self, c: &PixelColor) -> u8 {
         match c {
-            PaintColor::Background => self.colors[GlobalColors::BACKGROUND],
-            PaintColor::Border => self.colors[GlobalColors::BORDER],
-            PaintColor::Aux => self.colors[GlobalColors::AUX],
-            PaintColor::CharColor(index) => *index,
+            PixelColor::Background => self.colors[GlobalColors::BACKGROUND],
+            PixelColor::Border => self.colors[GlobalColors::BORDER],
+            PixelColor::Aux => self.colors[GlobalColors::AUX],
+            PixelColor::CharColor(index) => *index,
         }
     }
 
-    pub fn true_color_from_paint_color(&self, c: &PaintColor) -> TrueColor {
+    pub fn true_color_from_paint_color(&self, c: &PixelColor) -> TrueColor {
         VicPalette::color(self.color_index_from_paint_color(c))
     }
 
@@ -211,7 +211,7 @@ impl VicImage {
         operation: F,
     ) -> Result<bool, Box<dyn DisallowedAction>>
     where
-        F: Fn(PaintColor) -> PaintColor,
+        F: Fn(PixelColor) -> PixelColor,
     {
         let mut changed = false;
         for ((column, row), mask) in self.cells_and_pixels(target) {
@@ -227,7 +227,7 @@ impl VicImage {
         operation: F,
     ) -> Result<bool, Box<dyn DisallowedAction>>
     where
-        F: Fn(PaintColor) -> PaintColor,
+        F: Fn(PixelColor) -> PixelColor,
     {
         let mut changed = false;
         let mask = BitVec::from_elem(Char::WIDTH * Char::HEIGHT, true);
@@ -242,7 +242,7 @@ impl VicImage {
     pub fn plot(
         &mut self,
         target: &UpdateArea,
-        color: PaintColor,
+        color: PixelColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         self.apply_operation_to_pixels(target, |_| color)
     }
@@ -251,7 +251,7 @@ impl VicImage {
     pub fn fill_cells(
         &mut self,
         target: &UpdateArea,
-        color: PaintColor,
+        color: PixelColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         self.apply_operation_to_cells(target, |_| color)
     }
@@ -260,8 +260,8 @@ impl VicImage {
     pub fn replace_color(
         &mut self,
         target: &UpdateArea,
-        to_replace: PaintColor,
-        replacement: PaintColor,
+        to_replace: PixelColor,
+        replacement: PixelColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         self.apply_operation_to_pixels(
             target,
@@ -273,8 +273,8 @@ impl VicImage {
     pub fn swap_colors(
         &mut self,
         target: &UpdateArea,
-        color_1: PaintColor,
-        color_2: PaintColor,
+        color_1: PixelColor,
+        color_2: PixelColor,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         self.apply_operation_to_pixels(target, |old| {
             if old == color_1 {
