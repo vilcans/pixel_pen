@@ -6,6 +6,7 @@
 ### Added
 - Possible to undo importing an image.
 - Grab tool for creating a brush from a part of an image, and Char Brush tool for drawing with it.
+- Selecting one of the global colors is now undoable.
 
 ## [0.10.0] - 2022-01-04
 ### Added

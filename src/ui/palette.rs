@@ -1,3 +1,4 @@
+use crate::actions::{Action, DocAction};
 use crate::mutation_monitor::MutationMonitor;
 use crate::vic::{self, GlobalColors, PixelColor, VicImage, VicPalette};
 use crate::widgets;
@@ -11,7 +12,9 @@ pub fn render_palette(
     primary_color: &mut PixelColor,
     secondary_color: &mut PixelColor,
     image: &mut MutationMonitor<VicImage>,
-) {
+) -> Option<Action> {
+    let mut action = None;
+
     let allocate = Vec2::new(0.0, ui.spacing().interact_size.y * 2.5);
     ui.horizontal_wrapped(|ui| {
         ui.vertical(|ui| {
@@ -21,12 +24,16 @@ pub fn render_palette(
                     allocate,
                     Sense::hover(),
                 );
-                render_special_color_label(ui, image, PixelColor::Background, "Background", "Can be used in any cell. Click to change.");
-                render_patch(ui, image, PixelColor::Background, primary_color, secondary_color);
-                render_special_color_label(ui, image, PixelColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change.");
-                render_patch(ui, image, PixelColor::Border, primary_color, secondary_color);
-                render_special_color_label(ui, image, PixelColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change.");
-                render_patch(ui, image, PixelColor::Aux, primary_color, secondary_color);
+                for (patch, label, tooltip) in [
+                    (PixelColor::Background, "Background", "Can be used in any cell. Click to change."),
+                    (PixelColor::Border, "Border", "Can be used as an additional color in a multicolor cell. Also the color of the screen border. Click to change."),
+                    (PixelColor::Aux, "Aux", "Can be used as an additional color in a multicolor cell. Click to change."),
+                ] {
+                    if let Some(a) = render_special_color_label(ui, patch, label, tooltip){
+                        action = Some(a);
+                    }
+                    render_patch(ui, image, patch, primary_color, secondary_color);
+                }
             });
         });
         ui.separator();
@@ -44,6 +51,7 @@ pub fn render_palette(
             });
         });
     });
+    action
 }
 
 fn render_patch(
@@ -82,11 +90,10 @@ fn render_patch(
 /// The clickable label for a special color. Shows a popup if clicked.
 fn render_special_color_label(
     ui: &mut egui::Ui,
-    image: &mut MutationMonitor<VicImage>,
     patch: PixelColor,
     label: &str,
     tooltip: &str,
-) {
+) -> Option<Action> {
     let response = ui.small_button(label);
     let popup_id = ui.make_persistent_id(format!("color_popup_{:?}", patch));
     if !ui.memory().is_popup_open(popup_id) {
@@ -95,7 +102,7 @@ fn render_special_color_label(
     if response.clicked() {
         ui.memory().open_popup(popup_id);
     }
-    render_color_popup(ui, &response, popup_id, image, patch);
+    render_color_popup(ui, &response, popup_id, patch)
 }
 
 fn draw_patch(
@@ -165,15 +172,15 @@ fn render_patch_popups(
     let color_description = match patch {
         PixelColor::Background => format!(
             "Background ({})",
-            VicPalette::name(image.colors[GlobalColors::BACKGROUND])
+            VicPalette::name(image.global_color(GlobalColors::BACKGROUND))
         ),
         PixelColor::Border => format!(
             "Border ({})",
-            VicPalette::name(image.colors[GlobalColors::BORDER])
+            VicPalette::name(image.global_color(GlobalColors::BORDER))
         ),
         PixelColor::Aux => format!(
             "Auxiliary ({})",
-            VicPalette::name(image.colors[GlobalColors::AUX])
+            VicPalette::name(image.global_color(GlobalColors::AUX))
         ),
         PixelColor::CharColor(index) => {
             format!("Character color {}: {}", index, VicPalette::name(index))
@@ -192,9 +199,9 @@ fn render_color_popup(
     ui: &mut egui::Ui,
     response: &egui::Response,
     popup_id: egui::Id,
-    image: &mut MutationMonitor<VicImage>,
     patch: PixelColor,
-) {
+) -> Option<Action> {
+    let mut action = None;
     widgets::popup(ui, popup_id, response, |ui| {
         let patch_size = patch_size(ui);
         for (_, indices) in patch.selectable_colors().group_by(|i| i / 8).into_iter() {
@@ -212,10 +219,23 @@ fn render_color_popup(
                     if response.clicked() {
                         match patch {
                             PixelColor::Background => {
-                                image.colors[GlobalColors::BACKGROUND] = index
+                                action = Some(Action::Document(DocAction::GlobalColor {
+                                    index: GlobalColors::BACKGROUND,
+                                    value: index,
+                                }))
                             }
-                            PixelColor::Border => image.colors[GlobalColors::BORDER] = index,
-                            PixelColor::Aux => image.colors[GlobalColors::AUX] = index,
+                            PixelColor::Border => {
+                                action = Some(Action::Document(DocAction::GlobalColor {
+                                    index: GlobalColors::BORDER,
+                                    value: index,
+                                }))
+                            }
+                            PixelColor::Aux => {
+                                action = Some(Action::Document(DocAction::GlobalColor {
+                                    index: GlobalColors::AUX,
+                                    value: index,
+                                }))
+                            }
                             PixelColor::CharColor(_) => {}
                         }
                     }
@@ -223,6 +243,7 @@ fn render_color_popup(
             });
         }
     });
+    action
 }
 
 fn patch_size(ui: &egui::Ui) -> Vec2 {

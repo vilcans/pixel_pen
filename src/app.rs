@@ -252,12 +252,14 @@ impl epi::App for Application {
                     };
                 });
                 ui.separator();
-                ui::palette::render_palette(
+                if let Some(action) = ui::palette::render_palette(
                     ui,
                     &mut ui_state.primary_color,
                     &mut ui_state.secondary_color,
                     &mut doc.image,
-                );
+                ) {
+                    apply_action(doc, history, ui_state, action);
+                }
             });
         });
 

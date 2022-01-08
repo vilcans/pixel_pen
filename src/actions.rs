@@ -31,6 +31,8 @@ pub enum Action {
 }
 
 pub enum DocAction {
+    /// Change one of the global colors.
+    GlobalColor { index: u32, value: u8 },
     /// Paste a true color image into the image
     PasteTrueColor {
         source: RgbaImage,

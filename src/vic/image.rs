@@ -19,7 +19,7 @@ pub struct VicImage {
     pub(super) columns: usize,
     pub(super) rows: usize,
 
-    pub colors: GlobalColors,
+    pub(super) colors: GlobalColors,
 
     /// The character at each position.
     /// Size: columns x rows.
@@ -101,6 +101,22 @@ impl VicImage {
         let mut image = VicImage::new(columns, rows);
         image.paste_image(source_image, 0, 0, ColorFormat::Multicolor);
         Ok(image)
+    }
+
+    /// Get one of the global colors.
+    pub fn global_color(&self, index: u32) -> u8 {
+        self.colors[index]
+    }
+
+    /// Set one of the global colors.
+    /// Return true if the value actually changed.
+    pub fn set_global_color(&mut self, index: u32, color: u8) -> bool {
+        if self.colors[index] != color {
+            self.colors[index] = color;
+            true
+        } else {
+            false
+        }
     }
 
     /// Paste a true color image into this image.

@@ -30,6 +30,7 @@ impl Document {
     pub fn apply(&mut self, action: &DocAction) -> Result<bool, Box<dyn DisallowedAction>> {
         let image = &mut self.image;
         match action {
+            DocAction::GlobalColor { index, value } => Ok(image.set_global_color(*index, *value)),
             DocAction::PasteTrueColor {
                 source,
                 target_x,
