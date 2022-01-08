@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, Painter, Response, Stroke};
+use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
 
 use crate::{
     actions::{Action, UiAction},
@@ -27,6 +27,7 @@ impl GrabTool {
         &mut self,
         painter: &Painter,
         pixel_transform: &PixelTransform,
+        cursor_icon: &mut Option<CursorIcon>,
         doc: &Document,
         hover_pos: Option<Point>,
         response: &Response,
@@ -35,6 +36,7 @@ impl GrabTool {
         match self.selection_start {
             None => {
                 if let Some(hover_pos) = hover_pos {
+                    *cursor_icon = Some(CursorIcon::Crosshair);
                     if let Some((column, row, _, _)) =
                         doc.image.char_coordinates(hover_pos.x, hover_pos.y)
                     {
@@ -54,6 +56,8 @@ impl GrabTool {
             }
             Some(selection_start) => {
                 if let Some(hover_pos) = hover_pos {
+                    *cursor_icon = Some(CursorIcon::Crosshair);
+
                     let (column, row, width, height) =
                         selection_to_cells(&doc.image, (selection_start, hover_pos));
 

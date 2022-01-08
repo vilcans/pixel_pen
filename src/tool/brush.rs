@@ -1,4 +1,4 @@
-use eframe::egui::{self, Color32, Painter, Response, Stroke};
+use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
 use imgref::ImgVec;
 
 use crate::{
@@ -17,16 +17,20 @@ const OUTLINE_STROKE: Stroke = Stroke {
 pub struct CharBrushTool {}
 
 impl CharBrushTool {
+    #[allow(clippy::too_many_arguments)] // Shut it up for now
     pub fn update_ui(
         &mut self,
         response: &Response,
         painter: &Painter,
         pixel_transform: &PixelTransform,
+        cursor_icon: &mut Option<CursorIcon>,
         brush: &ImgVec<Char>,
         cursor_pos: Option<Point>,
         doc: &Document,
     ) -> Option<Action> {
         let cursor_pos = cursor_pos?;
+        *cursor_icon = Some(CursorIcon::PointingHand);
+
         let (column, row, _, _) = doc.image.char_coordinates_unclipped(
             cursor_pos.x - (brush.width() * Char::WIDTH / 2) as i32,
             cursor_pos.y - (brush.height() * Char::HEIGHT / 2) as i32,

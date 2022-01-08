@@ -384,13 +384,19 @@ impl epi::App for Application {
                         &ui_state.mode,
                         (ui_state.primary_color, ui_state.secondary_color),
                     ),
-                    Tool::Grab(tool) => {
-                        tool.update_ui(&painter, &pixel_transform, doc, hover_pos, &response)
-                    }
+                    Tool::Grab(tool) => tool.update_ui(
+                        &painter,
+                        &pixel_transform,
+                        &mut cursor_icon,
+                        doc,
+                        hover_pos,
+                        &response,
+                    ),
                     Tool::CharBrush(tool) => tool.update_ui(
                         &response,
                         &painter,
                         &pixel_transform,
+                        &mut cursor_icon,
                         &ui_state.char_brush,
                         hover_pos,
                         doc,
