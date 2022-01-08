@@ -11,7 +11,7 @@ pub use self::{char::Char, image::VicImage};
 
 const PALETTE_SIZE: usize = 16;
 
-// From /usr/lib/vice/VIC20/vice.vpl
+// From /usr/lib/vice/VIC20/colodore_vic.vpl
 const PALETTE: [(u32, &str); PALETTE_SIZE] = [
     // 0xRRGGBB
     (0x000000, "Black"),
