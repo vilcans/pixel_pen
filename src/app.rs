@@ -387,9 +387,14 @@ impl epi::App for Application {
                     Tool::Grab(tool) => {
                         tool.update_ui(&painter, &pixel_transform, doc, hover_pos, &response)
                     }
-                    Tool::CharBrush(tool) => {
-                        tool.update_ui(&response, &ui_state.char_brush, hover_pos, doc)
-                    }
+                    Tool::CharBrush(tool) => tool.update_ui(
+                        &response,
+                        &painter,
+                        &pixel_transform,
+                        &ui_state.char_brush,
+                        hover_pos,
+                        doc,
+                    ),
                 };
                 if let Some(action) = action {
                     apply_action(doc, history, ui_state, action);
