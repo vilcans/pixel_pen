@@ -396,7 +396,9 @@ impl epi::App for Application {
 
             // Highlight character
             if let Some(pos) = hover_pos {
-                if let Some((top_left, w, h)) = doc.image.character_box(pos) {
+                if let Some((column, row, _, _)) = doc.image.char_coordinates(pos.x, pos.y) {
+                    let (top_left, bottom_right) =
+                        doc.image.cell_rectangle(column as i32, row as i32, 1, 1);
                     if let Some(stroke) = match ui_state.mode {
                         Mode::FillCell | Mode::CellColor => Some(Stroke {
                             width: 1.0,
@@ -412,8 +414,7 @@ impl epi::App for Application {
                         painter.rect_stroke(
                             Rect::from_min_max(
                                 pixel_transform.screen_pos(top_left),
-                                pixel_transform
-                                    .screen_pos(Point::new(top_left.x + w, top_left.y + h)),
+                                pixel_transform.screen_pos(bottom_right),
                             ),
                             0.0,
                             stroke,

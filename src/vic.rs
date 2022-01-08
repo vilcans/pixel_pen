@@ -776,18 +776,19 @@ impl VicImage {
         Ok(changed)
     }
 
-    /// Get the rectangle of the character at the given pixel coordinates.
-    /// Returns (top left, width, height), or None if the coordinate is outside the image.
-    pub fn character_box(&self, p: Point) -> Option<(Point, i32, i32)> {
-        let (column, row, _, _) = self.char_coordinates(p.x, p.y)?;
-        Some((
+    /// Get a rectangle in pixel coordinates from a rectangle in character cells.
+    /// Returns the top left, and bottom right (exclusive) of the rectangle in image pixels.
+    /// Accepts coordinates outside the image.
+    pub fn cell_rectangle(&self, column: i32, row: i32, width: u32, height: u32) -> (Point, Point) {
+        let x = column * Char::WIDTH as i32;
+        let y = row * Char::HEIGHT as i32;
+        (
+            Point { x, y },
             Point {
-                x: (column * Char::WIDTH) as i32,
-                y: (row * Char::HEIGHT) as i32,
+                x: x + Char::WIDTH as i32 * width as i32,
+                y: y + Char::HEIGHT as i32 * height as i32,
             },
-            Char::WIDTH as i32,
-            Char::HEIGHT as i32,
-        ))
+        )
     }
 
     /// Get at which pixel coordinates to dispay grid lines
