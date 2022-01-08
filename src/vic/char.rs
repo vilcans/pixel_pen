@@ -4,7 +4,7 @@ use bit_vec::BitVec;
 use imgref::ImgRef;
 
 use super::{
-    palette_color, DisallowedEdit, GlobalColors, PaintColor, ViewSettings, RAW_HIRES_BACKGROUND,
+    DisallowedEdit, GlobalColors, PaintColor, VicPalette, ViewSettings, RAW_HIRES_BACKGROUND,
     RAW_HIRES_CHAR_COLOR, RAW_MULTICOLOR_AUX, RAW_MULTICOLOR_BACKGROUND, RAW_MULTICOLOR_BORDER,
     RAW_MULTICOLOR_CHAR_COLOR,
 };
@@ -137,10 +137,10 @@ impl Char {
         if self.multicolor {
             let (background, border, aux, char_color) = match settings {
                 ViewSettings::Normal => (
-                    palette_color(colors[GlobalColors::BACKGROUND]),
-                    palette_color(colors[GlobalColors::BORDER]),
-                    palette_color(colors[GlobalColors::AUX]),
-                    palette_color(self.color),
+                    VicPalette::color(colors[GlobalColors::BACKGROUND]),
+                    VicPalette::color(colors[GlobalColors::BORDER]),
+                    VicPalette::color(colors[GlobalColors::AUX]),
+                    VicPalette::color(self.color),
                 ),
                 ViewSettings::Raw => (
                     RAW_MULTICOLOR_BACKGROUND,
@@ -153,8 +153,8 @@ impl Char {
         } else {
             let (background, char_color) = match settings {
                 ViewSettings::Normal => (
-                    palette_color(colors[GlobalColors::BACKGROUND]),
-                    palette_color(self.color),
+                    VicPalette::color(colors[GlobalColors::BACKGROUND]),
+                    VicPalette::color(self.color),
                 ),
                 ViewSettings::Raw => (RAW_HIRES_BACKGROUND, RAW_HIRES_CHAR_COLOR),
             };

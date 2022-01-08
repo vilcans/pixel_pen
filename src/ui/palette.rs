@@ -1,5 +1,5 @@
 use crate::mutation_monitor::MutationMonitor;
-use crate::vic::{self, GlobalColors, PaintColor, VicImage};
+use crate::vic::{self, GlobalColors, PaintColor, VicImage, VicPalette};
 use crate::widgets;
 use eframe::egui::{self, Color32, Painter, Rect, Sense, Shape, Vec2};
 use itertools::Itertools;
@@ -165,21 +165,19 @@ fn render_patch_popups(
     let color_description = match patch {
         PaintColor::Background => format!(
             "Background ({})",
-            vic::palette_entry_name(image.colors[GlobalColors::BACKGROUND])
+            VicPalette::name(image.colors[GlobalColors::BACKGROUND])
         ),
         PaintColor::Border => format!(
             "Border ({})",
-            vic::palette_entry_name(image.colors[GlobalColors::BORDER])
+            VicPalette::name(image.colors[GlobalColors::BORDER])
         ),
         PaintColor::Aux => format!(
             "Auxiliary ({})",
-            vic::palette_entry_name(image.colors[GlobalColors::AUX])
+            VicPalette::name(image.colors[GlobalColors::AUX])
         ),
-        PaintColor::CharColor(index) => format!(
-            "Character color {}: {}",
-            index,
-            vic::palette_entry_name(index)
-        ),
+        PaintColor::CharColor(index) => {
+            format!("Character color {}: {}", index, VicPalette::name(index))
+        }
     };
     let selected_text = match (selected_as_primary, selected_as_secondary) {
         (false, false) => "Left/right click to select as primary/secondary",
@@ -203,12 +201,12 @@ fn render_color_popup(
             ui.horizontal(|ui| {
                 for index in indices {
                     let index = index as u8;
-                    let label = vic::palette_entry_name(index);
+                    let label = VicPalette::name(index);
                     let (patch_rect, response) = ui.allocate_exact_size(patch_size, Sense::click());
                     ui.painter().rect_filled(
                         patch_rect,
                         patch_rect.size().y * PATCH_CORNER_RADIUS_FRACTION,
-                        vic::palette_color(index),
+                        VicPalette::color(index),
                     );
                     response.clone().on_hover_text(label);
                     if response.clicked() {

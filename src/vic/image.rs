@@ -1,4 +1,6 @@
-use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PaintColor, ViewSettings};
+use super::{
+    char::Char, ColorFormat, DisallowedEdit, GlobalColors, PaintColor, VicPalette, ViewSettings,
+};
 use crate::{
     colors::TrueColor,
     coords::Point,
@@ -174,7 +176,7 @@ impl VicImage {
     }
 
     pub fn true_color_from_paint_color(&self, c: &PaintColor) -> TrueColor {
-        super::palette_color(self.color_index_from_paint_color(c))
+        VicPalette::color(self.color_index_from_paint_color(c))
     }
 
     /// Get the width and height of the image in pixels.
@@ -418,7 +420,7 @@ impl VicImage {
 
     pub fn border(&self) -> TrueColor {
         let i = self.colors[GlobalColors::BORDER];
-        super::palette_color(i)
+        VicPalette::color(i)
     }
 
     /// Render true color pixels for this image.
@@ -524,7 +526,7 @@ pub fn optimized_image_highres(original: &RgbaImage, global_colors: &GlobalColor
         original,
         &fixed_colors,
         super::ALLOWED_CHAR_COLORS,
-        &super::true_color_palette(),
+        VicPalette::all_colors(),
     )
 }
 
@@ -544,6 +546,6 @@ pub fn optimized_image_multicolor(
         original,
         &fixed_colors,
         super::ALLOWED_CHAR_COLORS,
-        &super::true_color_palette(),
+        VicPalette::all_colors(),
     )
 }
