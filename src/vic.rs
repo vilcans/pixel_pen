@@ -776,18 +776,32 @@ impl VicImage {
         Ok(changed)
     }
 
+    /// Get the pixel coordinates of the top-left corner of a character cell.
+    /// Accepts coordinates outside the image.
+    pub fn cell_coordinates_unclipped(&self, column: i32, row: i32) -> Point {
+        Point {
+            x: column * Char::WIDTH as i32,
+            y: row * Char::HEIGHT as i32,
+        }
+    }
+
+    /// Get the pixel coordinates of the top-left corner of a character cell.
+    /// Returns None if the given cell coordinates are outside the image.
+    pub fn cell_coordinates(&self, column: i32, row: i32) -> Option<Point> {
+        if column < 0 || column >= self.columns as i32 || row < 0 || row >= self.rows as i32 {
+            None
+        } else {
+            Some(self.cell_coordinates_unclipped(column, row))
+        }
+    }
+
     /// Get a rectangle in pixel coordinates from a rectangle in character cells.
     /// Returns the top left, and bottom right (exclusive) of the rectangle in image pixels.
     /// Accepts coordinates outside the image.
     pub fn cell_rectangle(&self, column: i32, row: i32, width: u32, height: u32) -> (Point, Point) {
-        let x = column * Char::WIDTH as i32;
-        let y = row * Char::HEIGHT as i32;
         (
-            Point { x, y },
-            Point {
-                x: x + Char::WIDTH as i32 * width as i32,
-                y: y + Char::HEIGHT as i32 * height as i32,
-            },
+            self.cell_coordinates_unclipped(column, row),
+            self.cell_coordinates_unclipped(column + width as i32, row + height as i32),
         )
     }
 
