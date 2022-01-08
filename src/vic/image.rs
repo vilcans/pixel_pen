@@ -1,11 +1,10 @@
-use super::{
-    char::Char, ColorFormat, DisallowedEdit, GlobalColors, PaintColor, VicPalette, ViewSettings,
-};
+use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PaintColor, VicPalette};
 use crate::{
     colors::TrueColor,
     coords::Point,
     error::{DisallowedAction, Error},
     image_operations,
+    ui::ViewSettings,
     update_area::UpdateArea,
 };
 use bimap::BiMap;

@@ -1,13 +1,9 @@
 use super::ALLOWED_CHAR_COLORS;
-use crate::{colors::TrueColor, error::DisallowedAction};
+use crate::{colors::TrueColor, error::DisallowedAction, ui::ViewSettings};
 use bit_vec::BitVec;
 use imgref::ImgRef;
 
-use super::{
-    DisallowedEdit, GlobalColors, PaintColor, VicPalette, ViewSettings, RAW_HIRES_BACKGROUND,
-    RAW_HIRES_CHAR_COLOR, RAW_MULTICOLOR_AUX, RAW_MULTICOLOR_BACKGROUND, RAW_MULTICOLOR_BORDER,
-    RAW_MULTICOLOR_CHAR_COLOR,
-};
+use super::{DisallowedEdit, GlobalColors, PaintColor, VicPalette};
 
 #[derive(Clone, Copy, Hash)]
 pub struct Char {
@@ -142,12 +138,7 @@ impl Char {
                     VicPalette::color(colors[GlobalColors::AUX]),
                     VicPalette::color(self.color),
                 ),
-                ViewSettings::Raw => (
-                    RAW_MULTICOLOR_BACKGROUND,
-                    RAW_MULTICOLOR_BORDER,
-                    RAW_MULTICOLOR_AUX,
-                    RAW_MULTICOLOR_CHAR_COLOR,
-                ),
+                ViewSettings::Raw => ViewSettings::raw_colors(),
             };
             Self::render_multicolor(&self.bits, background, border, aux, char_color)
         } else {
@@ -156,7 +147,10 @@ impl Char {
                     VicPalette::color(colors[GlobalColors::BACKGROUND]),
                     VicPalette::color(self.color),
                 ),
-                ViewSettings::Raw => (RAW_HIRES_BACKGROUND, RAW_HIRES_CHAR_COLOR),
+                ViewSettings::Raw => (
+                    ViewSettings::raw_highres_background(),
+                    ViewSettings::raw_hires_char_color(),
+                ),
             };
             Self::render_hires(&self.bits, background, char_color)
         }

@@ -12,8 +12,8 @@ use crate::{
     storage,
     system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
     tool::{ImportTool, Tool},
-    ui::{self, UiState},
-    vic::{Char, PaintColor, VicImage, ViewSettings},
+    ui::{self, UiState, ViewSettings},
+    vic::{Char, PaintColor, VicImage},
 };
 use eframe::{
     egui::{
