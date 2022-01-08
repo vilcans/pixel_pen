@@ -5,6 +5,7 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - Possible to undo importing an image.
+- Grab tool for creating a brush from a part of an image, and Char Brush tool for drawing with it.
 
 ## [0.10.0] - 2022-01-04
 ### Added
