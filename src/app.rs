@@ -37,14 +37,6 @@ const BORDER_CORNER_RADIUS: f32 = 15.0;
 const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
 
 const GRID_COLOR: Color32 = Color32::GRAY;
-const MAKE_HIRES_HIGHLIGHT: Stroke = Stroke {
-    width: 2.0,
-    color: Color32::from_rgb(200, 200, 200),
-};
-const MAKE_MULTICOLOR_HIGHLIGHT: Stroke = Stroke {
-    width: 2.0,
-    color: Color32::from_rgb(255, 255, 255),
-};
 
 const GRID_TOOLTIP: &str = "Show character cell grid";
 
@@ -383,9 +375,12 @@ impl epi::App for Application {
                         hover_pos,
                         ui,
                         &response,
+                        &painter,
+                        &pixel_transform,
                         &mut cursor_icon,
                         &ui_state.mode,
                         (ui_state.primary_color, ui_state.secondary_color),
+                        doc,
                     ),
                     Tool::Grab(tool) => tool.update_ui(
                         &painter,
@@ -407,35 +402,6 @@ impl epi::App for Application {
                 };
                 if let Some(action) = action {
                     apply_action(doc, history, ui_state, action);
-                }
-            }
-
-            // Highlight character
-            if let Some(pos) = hover_pos {
-                if let Some((column, row, _, _)) = doc.image.char_coordinates(pos.x, pos.y) {
-                    let (top_left, bottom_right) =
-                        doc.image.cell_rectangle(column as i32, row as i32, 1, 1);
-                    if let Some(stroke) = match ui_state.mode {
-                        Mode::FillCell | Mode::CellColor => Some(Stroke {
-                            width: 1.0,
-                            color: doc
-                                .image
-                                .true_color_from_paint_color(&ui_state.primary_color)
-                                .into(),
-                        }),
-                        Mode::MakeHiRes => Some(MAKE_HIRES_HIGHLIGHT),
-                        Mode::MakeMulticolor => Some(MAKE_MULTICOLOR_HIGHLIGHT),
-                        _ => None,
-                    } {
-                        painter.rect_stroke(
-                            Rect::from_min_max(
-                                pixel_transform.screen_pos(top_left),
-                                pixel_transform.screen_pos(bottom_right),
-                            ),
-                            0.0,
-                            stroke,
-                        );
-                    }
                 }
             }
 
