@@ -647,13 +647,12 @@ fn apply_action(
         }
         Action::Ui(action) => match action {
             actions::UiAction::SelectTool(tool) => ui_state.tool = tool,
-            actions::UiAction::CreateCharBrush {
-                column,
-                row,
-                width,
-                height,
-            } => {
-                ui_state.char_brush = doc.image.grab_cells(column, row, width, height);
+            actions::UiAction::CreateCharBrush { pos, width, height } => {
+                ui_state.char_brush = doc.image.grab_cells(
+                    &pos.within_bounds(&doc.image.size_in_cells()).unwrap(),
+                    width,
+                    height,
+                );
                 ui_state.tool = Tool::CharBrush(Default::default());
             }
         },

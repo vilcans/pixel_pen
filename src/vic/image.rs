@@ -1,7 +1,7 @@
 use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, VicPalette};
 use crate::{
     colors::TrueColor,
-    coords::Point,
+    coords::{CellPos, Point, SizeInCells, WithinBounds},
     error::{DisallowedAction, Error},
     image_operations,
     ui::ViewSettings,
@@ -16,9 +16,7 @@ use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct VicImage {
-    pub(super) columns: usize,
-    pub(super) rows: usize,
-
+    pub(super) size: SizeInCells,
     pub(super) colors: GlobalColors,
 
     /// The character at each position.
@@ -36,6 +34,11 @@ impl Default for VicImage {
 }
 
 impl VicImage {
+    pub const MAX_SIZE: SizeInCells = SizeInCells {
+        width: 10000,
+        height: 10000,
+    };
+
     pub fn new(columns: usize, rows: usize) -> Self {
         let video = ImgVec::new(vec![Char::default(); columns * rows], columns, rows);
         Self::with_content(video)
@@ -43,18 +46,16 @@ impl VicImage {
 
     /// Create an image from video data.
     /// ## Arguments
-    /// `video_chars`:  The character at each position. Size: columns x rows.
-    /// `video_colors`: The color and multicolor bit at each position. Size: columns x rows.
+    /// `video_chars`:  The character at each position. Size: `size`.
+    /// `video_colors`: The color and multicolor bit at each position. Size: `size`.
     /// `characters`: Bitmap for each character.
     pub fn from_data(
-        columns: usize,
-        rows: usize,
+        size: SizeInCells,
         global_colors: GlobalColors,
         video_chars: Vec<usize>,
         video_colors: Vec<u8>,
         characters: HashMap<usize, [u8; Char::HEIGHT]>,
     ) -> Result<Self, Error> {
-        let size = columns * rows;
         let raw_video: Vec<Char> = video_chars
             .iter()
             .zip(video_colors)
@@ -68,15 +69,14 @@ impl VicImage {
             })
             // Add padding in case video_colors is too short
             .chain(std::iter::repeat(Char::default()))
-            .take(size)
+            .take(size.area() as usize)
             .collect();
-        assert_eq!(size, raw_video.len());
-        let video = ImgVec::new(raw_video, columns, rows);
+        assert_eq!(size.area() as usize, raw_video.len());
+        let video = ImgVec::new(raw_video, size.width as usize, size.height as usize);
         let mut bitmaps = BiMap::new();
         bitmaps.extend(characters);
         Ok(Self {
-            columns,
-            rows,
+            size,
             colors: global_colors,
             video,
             bitmaps,
@@ -84,11 +84,11 @@ impl VicImage {
     }
 
     pub fn with_content(video: ImgVec<Char>) -> Self {
-        let columns = video.width();
-        let rows = video.height();
         Self {
-            columns,
-            rows,
+            size: SizeInCells {
+                width: video.width() as u32,
+                height: video.height() as u32,
+            },
             colors: Default::default(),
             video,
             bitmaps: BiMap::new(),
@@ -101,6 +101,10 @@ impl VicImage {
         let mut image = VicImage::new(columns, rows);
         image.paste_image(source_image, 0, 0, ColorFormat::Multicolor);
         Ok(image)
+    }
+
+    pub fn size_in_cells(&self) -> SizeInCells {
+        self.size
     }
 
     /// Get one of the global colors.
@@ -131,10 +135,10 @@ impl VicImage {
         const CELL_H: i32 = Char::HEIGHT as i32;
         let start_column = (target_x / CELL_W as i32).max(0);
         let end_column =
-            ((target_x + source.width() as i32 + CELL_W - 1) / CELL_W).min(self.columns as i32);
+            ((target_x + source.width() as i32 + CELL_W - 1) / CELL_W).min(self.size.width as i32);
         let start_row = (target_y / CELL_H as i32).max(0);
-        let end_row =
-            ((target_y + source.height() as i32 + CELL_H - 1) / CELL_H).min(self.rows as i32);
+        let end_row = ((target_y + source.height() as i32 + CELL_H - 1) / CELL_H)
+            .min(self.size.height as i32);
 
         let global_colors = &self.colors;
 
@@ -196,25 +200,32 @@ impl VicImage {
 
     /// Get the width and height of the image in pixels.
     pub fn pixel_size(&self) -> (usize, usize) {
-        (self.columns * Char::WIDTH, self.rows * Char::HEIGHT)
+        (
+            self.size.width as usize * Char::WIDTH,
+            self.size.height as usize * Char::HEIGHT,
+        )
     }
 
     /// Paste characters into the image.
-    /// `target_column` and `target_row` is the top-left corner.
+    /// `target_pos` is the top-left corner.
     /// The extents of the pasted chars may be outside the image (they are clipped).
     pub fn paste_chars(
         &mut self,
-        target_column: i32,
-        target_row: i32,
+        target_pos: &CellPos,
         source: ImgRef<'_, Char>,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         let mut changed = false;
+        let source_size = SizeInCells {
+            width: source.width() as u32,
+            height: source.height() as u32,
+        };
         for (char, (r, c)) in source.pixels().zip(
-            (target_row..target_row + source.height() as i32)
-                .cartesian_product(target_column..target_column + source.width() as i32),
+            (target_pos.row..target_pos.row + source_size.height as i32)
+                .cartesian_product(target_pos.column..target_pos.column + source_size.width as i32),
         ) {
-            if (0..self.columns as i32).contains(&c) && (0..self.rows as i32).contains(&r) {
-                self.video[(c as usize, r as usize)] = char;
+            let p = CellPos { row: r, column: c };
+            if let Some(p) = p.within_bounds(&self.size) {
+                self.video[p.as_tuple()] = char;
                 changed = true;
             }
         }
@@ -230,8 +241,8 @@ impl VicImage {
         F: Fn(PixelColor) -> PixelColor,
     {
         let mut changed = false;
-        for ((column, row), mask) in self.cells_and_pixels(target) {
-            let char = &mut self.video[(column, row)];
+        for (cell, mask) in self.cells_and_pixels(target) {
+            let char = &mut self.video[cell.as_tuple()];
             changed |= char.mutate_pixels(&mask, &operation)?;
         }
         Ok(changed)
@@ -247,8 +258,8 @@ impl VicImage {
     {
         let mut changed = false;
         let mask = BitVec::from_elem(Char::WIDTH * Char::HEIGHT, true);
-        for (column, row) in self.target_cells(target) {
-            let char = &mut self.video[(column, row)];
+        for cell in self.target_cells(target) {
+            let char = &mut self.video[cell.as_tuple()];
             changed |= char.mutate_pixels(&mask, &operation)?;
         }
         Ok(changed)
@@ -313,8 +324,8 @@ impl VicImage {
             return Err(Box::new(DisallowedEdit::DisallowedCharacterColor));
         }
         let mut changed = false;
-        for (col, row) in self.target_cells(target) {
-            let cell = &mut self.video[(col, row)];
+        for cell in self.target_cells(target) {
+            let cell = &mut self.video[cell.as_tuple()];
             changed = cell.set_color(color);
         }
         Ok(changed)
@@ -325,8 +336,8 @@ impl VicImage {
         target: &UpdateArea,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         let mut changed = false;
-        for (column, row) in self.target_cells(target) {
-            changed |= self.video[(column, row)].make_high_res()?;
+        for cell in self.target_cells(target) {
+            changed |= self.video[cell.as_tuple()].make_high_res()?;
         }
         Ok(changed)
     }
@@ -336,49 +347,49 @@ impl VicImage {
         target: &UpdateArea,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         let mut changed = false;
-        for (column, row) in self.target_cells(target) {
-            changed |= self.video[(column, row)].make_multicolor()?;
+        for cell in self.target_cells(target) {
+            changed |= self.video[cell.as_tuple()].make_multicolor()?;
         }
         Ok(changed)
     }
 
     /// Get the pixel coordinates of the top-left corner of a character cell.
     /// Accepts coordinates outside the image.
-    pub fn cell_coordinates_unclipped(&self, column: i32, row: i32) -> Point {
+    pub fn cell_coordinates_unclipped(&self, cell: &CellPos) -> Point {
         Point {
-            x: column * Char::WIDTH as i32,
-            y: row * Char::HEIGHT as i32,
+            x: cell.column * Char::WIDTH as i32,
+            y: cell.row * Char::HEIGHT as i32,
         }
     }
 
     /// Get the pixel coordinates of the top-left corner of a character cell.
     /// Returns None if the given cell coordinates are outside the image.
-    pub fn cell_coordinates(&self, column: i32, row: i32) -> Option<Point> {
-        if column < 0 || column >= self.columns as i32 || row < 0 || row >= self.rows as i32 {
-            None
-        } else {
-            Some(self.cell_coordinates_unclipped(column, row))
-        }
+    pub fn cell_coordinates(&self, cell: &CellPos) -> Option<Point> {
+        let cell = cell.within_bounds(&self.size)?;
+        Some(self.cell_coordinates_unclipped(&cell))
     }
 
     /// Get a rectangle in pixel coordinates from a rectangle in character cells.
     /// Returns the top left, and bottom right (exclusive) of the rectangle in image pixels.
     /// Accepts coordinates outside the image.
-    pub fn cell_rectangle(&self, column: i32, row: i32, width: u32, height: u32) -> (Point, Point) {
+    pub fn cell_rectangle(&self, top_left: &CellPos, width: u32, height: u32) -> (Point, Point) {
         (
-            self.cell_coordinates_unclipped(column, row),
-            self.cell_coordinates_unclipped(column + width as i32, row + height as i32),
+            self.cell_coordinates_unclipped(top_left),
+            self.cell_coordinates_unclipped(&CellPos {
+                column: top_left.column + width as i32,
+                row: top_left.row + height as i32,
+            }),
         )
     }
 
     /// Get at which pixel coordinates to dispay grid lines
     pub fn vertical_grid_lines(&self) -> impl Iterator<Item = i32> {
-        (0..=self.columns).map(|c| (c * Char::WIDTH) as i32)
+        (0..=self.size.width).map(|c| (c * Char::WIDTH as u32) as i32)
     }
 
     /// Get at which pixel coordinates to dispay grid lines
     pub fn horizontal_grid_lines(&self) -> impl Iterator<Item = i32> {
-        (0..=self.rows).map(|r| (r * Char::HEIGHT) as i32)
+        (0..=self.size.height).map(|r| (r * Char::HEIGHT as u32) as i32)
     }
 
     /// General information about the image
@@ -388,14 +399,14 @@ impl VicImage {
 
     /// Information about the given pixel in the image
     pub fn pixel_info(&self, position: Point) -> String {
-        if let Some((column, row, _cx, _cy)) = self.char_coordinates(position.x, position.y) {
-            let char = &self.video[(column, row)];
+        if let Some((cell, _cx, _cy)) = self.char_coordinates(position.x, position.y) {
+            let char = &self.video[cell.as_tuple()];
             format!(
                 "({}, {}): column {}, row {} {} color {}",
                 position.x,
                 position.y,
-                column,
-                row,
+                cell.column,
+                cell.row,
                 if char.is_multicolor() {
                     "multicolor"
                 } else {
@@ -465,14 +476,13 @@ impl VicImage {
     /// Get a copy of the characters in a rectangular area.
     pub fn grab_cells(
         &self,
-        column: usize,
-        row: usize,
+        pos: &WithinBounds<CellPos>,
         width: usize,
         height: usize,
     ) -> ImgVec<Char> {
         let chars = self
             .video
-            .sub_image(column, row, width, height)
+            .sub_image(pos.column as usize, pos.row as usize, width, height)
             .pixels()
             .collect();
         ImgVec::new(chars, width, height)
@@ -480,21 +490,21 @@ impl VicImage {
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// May return coordinates outside the image.
-    pub fn char_coordinates_unclipped(&self, x: i32, y: i32) -> (i32, i32, i32, i32) {
+    pub fn char_coordinates_unclipped(&self, x: i32, y: i32) -> (CellPos, i32, i32) {
         let column = x.div_euclid(Char::WIDTH as i32);
         let cx = x.rem_euclid(Char::WIDTH as i32);
         let row = y.div_euclid(Char::HEIGHT as i32);
         let cy = y.rem_euclid(Char::HEIGHT as i32);
-        (column, row, cx, cy)
+        (CellPos { column, row }, cx, cy)
     }
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// Returns None if the coordinates are outside the image.
-    pub fn char_coordinates(&self, x: i32, y: i32) -> Option<(usize, usize, i32, i32)> {
+    pub fn char_coordinates(&self, x: i32, y: i32) -> Option<(WithinBounds<CellPos>, i32, i32)> {
         let (width, height) = self.pixel_size();
         if (0..width as i32).contains(&x) && (0..height as i32).contains(&y) {
-            let (column, row, cx, cy) = self.char_coordinates_unclipped(x, y);
-            Some((column as usize, row as usize, cx, cy))
+            let (cell, cx, cy) = self.char_coordinates_unclipped(x, y);
+            Some((cell.within_bounds(&self.size).unwrap(), cx, cy))
         } else {
             None
         }
@@ -502,18 +512,18 @@ impl VicImage {
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// If the arguments are outside the image, they are clamped to be inside it.
-    pub fn char_coordinates_clamped(&self, x: i32, y: i32) -> (usize, usize, i32, i32) {
+    pub fn char_coordinates_clamped(&self, x: i32, y: i32) -> (WithinBounds<CellPos>, i32, i32) {
         let (width, height) = self.pixel_size();
-        let (column, row, cx, cy) = self.char_coordinates_unclipped(
+        let (cell, cx, cy) = self.char_coordinates_unclipped(
             x.clamp(0, width as i32 - 1),
             y.clamp(0, height as i32 - 1),
         );
-        (column as usize, row as usize, cx, cy)
+        (cell.within_bounds(&self.size).unwrap(), cx, cy)
     }
 
     /// Get the character cells to update given an UpdateArea.
     /// Returns the columns and rows of the cells within this image's bounds.
-    fn target_cells(&self, target: &UpdateArea) -> Vec<(u32, u32)> {
+    fn target_cells(&self, target: &UpdateArea) -> Vec<WithinBounds<CellPos>> {
         self.cells_and_pixels(target)
             .iter()
             .map(|(cell, _)| cell)
@@ -522,13 +532,8 @@ impl VicImage {
     }
 
     /// Get the character cells to update, and which pixel in each cell to update.
-    fn cells_and_pixels(&self, target: &UpdateArea) -> HashMap<(u32, u32), BitVec> {
-        target.cells_and_pixels(
-            Char::WIDTH as u32,
-            Char::HEIGHT as u32,
-            self.columns as u32,
-            self.rows as u32,
-        )
+    fn cells_and_pixels(&self, target: &UpdateArea) -> HashMap<WithinBounds<CellPos>, BitVec> {
+        target.cells_and_pixels(Char::WIDTH as u32, Char::HEIGHT as u32, &self.size)
     }
 }
 

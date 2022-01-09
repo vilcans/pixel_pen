@@ -2,7 +2,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
 
 use crate::{
     actions::{Action, UiAction},
-    coords::{PixelTransform, Point},
+    coords::{CellPos, PixelTransform, Point},
     vic::VicImage,
     Document,
 };
@@ -37,14 +37,12 @@ impl GrabTool {
             None => {
                 if let Some(hover_pos) = hover_pos {
                     *cursor_icon = Some(CursorIcon::Crosshair);
-                    if let Some((column, row, _, _)) =
-                        doc.image.char_coordinates(hover_pos.x, hover_pos.y)
+                    if let Some((cell, _, _)) = doc.image.char_coordinates(hover_pos.x, hover_pos.y)
                     {
                         draw_crosshair(
                             painter,
                             pixel_transform,
-                            doc.image
-                                .cell_coordinates_unclipped(column as i32, row as i32),
+                            doc.image.cell_coordinates_unclipped(&cell),
                         )
                     }
                     if response.drag_started() {
@@ -58,15 +56,11 @@ impl GrabTool {
                 if let Some(hover_pos) = hover_pos {
                     *cursor_icon = Some(CursorIcon::Crosshair);
 
-                    let (column, row, width, height) =
+                    let (cell, width, height) =
                         selection_to_cells(&doc.image, (selection_start, hover_pos));
 
-                    let (top_left, bottom_right) = doc.image.cell_rectangle(
-                        column as i32,
-                        row as i32,
-                        width as u32,
-                        height as u32,
-                    );
+                    let (top_left, bottom_right) =
+                        doc.image.cell_rectangle(&cell, width as u32, height as u32);
                     painter.rect_stroke(
                         egui::Rect::from_min_max(
                             pixel_transform.screen_pos(top_left),
@@ -87,13 +81,8 @@ impl GrabTool {
             }
         }
         if let Some(selection) = selection {
-            let (column, row, width, height) = selection_to_cells(&doc.image, selection);
-            Some(Action::Ui(UiAction::CreateCharBrush {
-                column,
-                row,
-                width,
-                height,
-            }))
+            let (pos, width, height) = selection_to_cells(&doc.image, selection);
+            Some(Action::Ui(UiAction::CreateCharBrush { pos, width, height }))
         } else {
             None
         }
@@ -117,18 +106,22 @@ fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: Poin
     );
 }
 
-fn selection_to_cells(image: &VicImage, selection: (Point, Point)) -> (usize, usize, usize, usize) {
-    let (col0, row0, _, _) = image.char_coordinates_clamped(selection.0.x, selection.0.y);
-    let (col1, row1, _, _) = image.char_coordinates_clamped(selection.1.x, selection.1.y);
-    let (column, width) = if col1 >= col0 {
-        (col0, col1 - col0)
+fn selection_to_cells(image: &VicImage, selection: (Point, Point)) -> (CellPos, usize, usize) {
+    let (c0, _, _) = image.char_coordinates_clamped(selection.0.x, selection.0.y);
+    let (c1, _, _) = image.char_coordinates_clamped(selection.1.x, selection.1.y);
+    let (column, width) = if c1.column >= c0.column {
+        (c0.column, c1.column - c0.column)
     } else {
-        (col1, col0 - col1)
+        (c1.column, c0.column - c1.column)
     };
-    let (row, height) = if row1 >= row0 {
-        (row0, row1 - row0)
+    let (row, height) = if c1.row >= c0.row {
+        (c0.row, c1.row - c0.row)
     } else {
-        (row1, row0 - row1)
+        (c1.row, c0.row - c1.row)
     };
-    (column, row, width + 1, height + 1)
+    (
+        CellPos { column, row },
+        width as usize + 1,
+        height as usize + 1,
+    )
 }

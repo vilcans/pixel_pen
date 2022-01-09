@@ -4,6 +4,7 @@ use image::RgbaImage;
 use imgref::ImgVec;
 
 use crate::{
+    coords::CellPos,
     error::{DisallowedAction, Severity},
     tool::Tool,
     update_area::UpdateArea,
@@ -79,8 +80,7 @@ pub enum DocAction {
         color_2: PixelColor,
     },
     CharBrushPaint {
-        column: i32,
-        row: i32,
+        pos: CellPos,
         chars: ImgVec<Char>,
     },
 }
@@ -89,8 +89,7 @@ pub enum DocAction {
 pub enum UiAction {
     SelectTool(Tool),
     CreateCharBrush {
-        column: usize,
-        row: usize,
+        pos: CellPos,
         width: usize,
         height: usize,
     },

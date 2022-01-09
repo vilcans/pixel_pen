@@ -42,9 +42,8 @@ impl PaintTool {
         *cursor_icon = Some(CursorIcon::PointingHand);
 
         // Highlight character
-        if let Some((column, row, _, _)) = doc.image.char_coordinates(hover_pos.x, hover_pos.y) {
-            let (top_left, bottom_right) =
-                doc.image.cell_rectangle(column as i32, row as i32, 1, 1);
+        if let Some((cell, _, _)) = doc.image.char_coordinates(hover_pos.x, hover_pos.y) {
+            let (top_left, bottom_right) = doc.image.cell_rectangle(&cell, 1, 1);
             if let Some(stroke) = match mode {
                 Mode::FillCell | Mode::CellColor => Some(Stroke {
                     width: 1.0,

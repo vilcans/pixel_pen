@@ -58,9 +58,7 @@ impl Document {
                 color_1,
                 color_2,
             } => image.swap_colors(area, *color_1, *color_2),
-            DocAction::CharBrushPaint { column, row, chars } => {
-                image.paste_chars(*column, *row, chars.as_ref())
-            }
+            DocAction::CharBrushPaint { pos, chars } => image.paste_chars(pos, chars.as_ref()),
         }
     }
 }
