@@ -24,6 +24,28 @@ Background and Aux can be any of the Vic's 16 colors, while Border can only be o
 
 ## Tools
 
+There are a few tools that you can select.
+
+### Paint
+
+With this tool, you draw pixels. See Paint Modes below for information about how the Paint tool affects the pixels.
+
+### Grab
+
+When you have selected the Grab tool, you can click on a cell to copy it into a brush.
+You can also select several cells to create a brush from by holding the mouse button and dragging a rectangular selection.
+The brush you grab this way can then be used with the Char Brush tool.
+After you have grabbed a selection, Pixel Pen will switch to the Char Brush tool automatically.
+
+### Char Brush
+
+In the Char Brush mode, you can paint with a grabbed brush. Left click to draw with the brush on the image.
+
+## Paint Modes
+
+When using the Paint tool, it's possible to select which mode to draw in.
+This affects how the pixels change when you paint on them.
+
 ### Pixel Paint
 
 In this mode, select a color from the palette and left-click to paint with it.
