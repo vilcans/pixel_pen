@@ -32,8 +32,18 @@ impl CharBrushTool {
         *cursor_icon = Some(CursorIcon::PointingHand);
 
         let (column, row, _, _) = doc.image.char_coordinates_unclipped(
-            cursor_pos.x - (brush.width() * Char::WIDTH / 2) as i32,
-            cursor_pos.y - (brush.height() * Char::HEIGHT / 2) as i32,
+            cursor_pos.x - brush.width() as i32 / 2 * Char::WIDTH as i32
+                + if brush.width() % 2 == 1 {
+                    0
+                } else {
+                    Char::WIDTH as i32 / 2
+                },
+            cursor_pos.y - brush.height() as i32 / 2 * Char::HEIGHT as i32
+                + if brush.height() % 2 == 1 {
+                    0
+                } else {
+                    Char::HEIGHT as i32 / 2
+                },
         );
 
         let (top_left, bottom_right) = doc.image.cell_rectangle(
