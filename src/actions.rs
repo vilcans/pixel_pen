@@ -32,7 +32,10 @@ pub enum Action {
 
 pub enum DocAction {
     /// Change one of the global colors.
-    GlobalColor { index: u32, value: u8 },
+    GlobalColor {
+        index: u32,
+        value: u8,
+    },
     /// Paste a true color image into the image
     PasteTrueColor {
         source: RgbaImage,
@@ -41,15 +44,28 @@ pub enum DocAction {
         format: ColorFormat,
     },
     /// Change the color of single pixels
-    Plot { area: UpdateArea, color: PixelColor },
+    Plot {
+        area: UpdateArea,
+        color: PixelColor,
+    },
     /// Fill the whole character cell with a color
-    Fill { area: UpdateArea, color: PixelColor },
+    Fill {
+        area: UpdateArea,
+        color: PixelColor,
+    },
     /// Change the color of the cell
-    CellColor { area: UpdateArea, color: PixelColor },
+    CellColor {
+        area: UpdateArea,
+        color: PixelColor,
+    },
     /// Make the cell high-res
-    MakeHighRes { area: UpdateArea },
+    MakeHighRes {
+        area: UpdateArea,
+    },
     /// Make the cell multicolor
-    MakeMulticolor { area: UpdateArea },
+    MakeMulticolor {
+        area: UpdateArea,
+    },
     /// Replace one color with another.
     ReplaceColor {
         area: UpdateArea,
