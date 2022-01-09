@@ -2,7 +2,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
 
 use crate::{
     actions::{Action, UiAction},
-    coords::{CellPos, PixelTransform, Point},
+    coords::{CellPos, CellRect, PixelTransform, Point},
     vic::VicImage,
     Document,
 };
@@ -56,11 +56,9 @@ impl GrabTool {
                 if let Some(hover_pos) = hover_pos {
                     *cursor_icon = Some(CursorIcon::Crosshair);
 
-                    let (cell, width, height) =
-                        selection_to_cells(&doc.image, (selection_start, hover_pos));
+                    let cell_rect = selection_to_cells(&doc.image, (selection_start, hover_pos));
 
-                    let (top_left, bottom_right) =
-                        doc.image.cell_rectangle(&cell, width as u32, height as u32);
+                    let (top_left, bottom_right) = doc.image.cell_rectangle(&cell_rect);
                     painter.rect_stroke(
                         egui::Rect::from_min_max(
                             pixel_transform.screen_pos(top_left),
@@ -81,8 +79,9 @@ impl GrabTool {
             }
         }
         if let Some(selection) = selection {
-            let (pos, width, height) = selection_to_cells(&doc.image, selection);
-            Some(Action::Ui(UiAction::CreateCharBrush { pos, width, height }))
+            Some(Action::Ui(UiAction::CreateCharBrush {
+                rect: selection_to_cells(&doc.image, selection),
+            }))
         } else {
             None
         }
@@ -106,7 +105,7 @@ fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: Poin
     );
 }
 
-fn selection_to_cells(image: &VicImage, selection: (Point, Point)) -> (CellPos, usize, usize) {
+fn selection_to_cells(image: &VicImage, selection: (Point, Point)) -> CellRect {
     let (c0, _, _) = image.char_coordinates_clamped(selection.0.x, selection.0.y);
     let (c1, _, _) = image.char_coordinates_clamped(selection.1.x, selection.1.y);
     let (column, width) = if c1.column >= c0.column {
@@ -119,9 +118,5 @@ fn selection_to_cells(image: &VicImage, selection: (Point, Point)) -> (CellPos, 
     } else {
         (c1.row, c0.row - c1.row)
     };
-    (
-        CellPos { column, row },
-        width as usize + 1,
-        height as usize + 1,
-    )
+    CellRect::from_cell_width_height(CellPos { column, row }, width as u32 + 1, height as u32 + 1)
 }

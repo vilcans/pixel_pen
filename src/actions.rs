@@ -4,7 +4,7 @@ use image::RgbaImage;
 use imgref::ImgVec;
 
 use crate::{
-    coords::CellPos,
+    coords::{CellPos, CellRect},
     error::{DisallowedAction, Severity},
     tool::Tool,
     update_area::UpdateArea,
@@ -88,11 +88,7 @@ pub enum DocAction {
 /// An action that changes something in the user interface, not the document. Not undoable.
 pub enum UiAction {
     SelectTool(Tool),
-    CreateCharBrush {
-        pos: CellPos,
-        width: usize,
-        height: usize,
-    },
+    CreateCharBrush { rect: CellRect },
 }
 
 impl undo::Action for Undoable {

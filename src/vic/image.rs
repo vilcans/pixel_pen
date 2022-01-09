@@ -1,7 +1,7 @@
 use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, VicPalette};
 use crate::{
     colors::TrueColor,
-    coords::{CellPos, Point, SizeInCells, WithinBounds},
+    coords::{CellPos, CellRect, Point, SizeInCells, WithinBounds},
     error::{DisallowedAction, Error},
     image_operations,
     ui::ViewSettings,
@@ -372,13 +372,10 @@ impl VicImage {
     /// Get a rectangle in pixel coordinates from a rectangle in character cells.
     /// Returns the top left, and bottom right (exclusive) of the rectangle in image pixels.
     /// Accepts coordinates outside the image.
-    pub fn cell_rectangle(&self, top_left: &CellPos, width: u32, height: u32) -> (Point, Point) {
+    pub fn cell_rectangle(&self, rect: &CellRect) -> (Point, Point) {
         (
-            self.cell_coordinates_unclipped(top_left),
-            self.cell_coordinates_unclipped(&CellPos {
-                column: top_left.column + width as i32,
-                row: top_left.row + height as i32,
-            }),
+            self.cell_coordinates_unclipped(&rect.top_left),
+            self.cell_coordinates_unclipped(&(rect.top_left + rect.size)),
         )
     }
 
@@ -474,18 +471,18 @@ impl VicImage {
     }
 
     /// Get a copy of the characters in a rectangular area.
-    pub fn grab_cells(
-        &self,
-        pos: &WithinBounds<CellPos>,
-        width: usize,
-        height: usize,
-    ) -> ImgVec<Char> {
+    pub fn grab_cells(&self, rect: &WithinBounds<CellRect>) -> ImgVec<Char> {
         let chars = self
             .video
-            .sub_image(pos.column as usize, pos.row as usize, width, height)
+            .sub_image(
+                rect.left() as usize,
+                rect.top() as usize,
+                rect.width() as usize,
+                rect.height() as usize,
+            )
             .pixels()
             .collect();
-        ImgVec::new(chars, width, height)
+        ImgVec::new(chars, rect.width() as usize, rect.height() as usize)
     }
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.

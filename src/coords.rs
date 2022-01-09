@@ -26,13 +26,19 @@ impl Display for Point {
 }
 
 /// Width and height in character cells.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SizeInCells {
     pub width: u32,
     pub height: u32,
 }
 
 impl SizeInCells {
+    /// A 1 by 1 size.
+    pub const ONE: SizeInCells = SizeInCells {
+        width: 1,
+        height: 1,
+    };
+
     /// The total number of cells (width * height).
     pub fn area(&self) -> u32 {
         self.width * self.height
@@ -59,6 +65,70 @@ impl CellPos {
         } else {
             Some(WithinBounds(*self))
         }
+    }
+}
+
+impl std::ops::Add<SizeInCells> for CellPos {
+    type Output = CellPos;
+
+    fn add(self, rhs: SizeInCells) -> Self::Output {
+        CellPos {
+            column: self.column + rhs.width as i32,
+            row: self.row + rhs.height as i32,
+        }
+    }
+}
+
+/// A rectangle of character cells.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CellRect {
+    pub top_left: CellPos,
+    pub size: SizeInCells,
+}
+
+impl CellRect {
+    pub fn from_cell_width_height(top_left: CellPos, width: u32, height: u32) -> CellRect {
+        CellRect {
+            top_left,
+            size: SizeInCells { width, height },
+        }
+    }
+    /// Checks that this rectangle fits inside a certain size.
+    /// If it does, returns a `WithinBounds<CellRect>`, otherwise `None`.
+    pub fn within_size(&self, bounds: SizeInCells) -> Option<WithinBounds<CellRect>> {
+        if self.top_left.within_bounds(&bounds).is_none()
+            || self.right() > bounds.width as i32
+            || self.bottom() > bounds.height as i32
+        {
+            None
+        } else {
+            Some(WithinBounds(*self))
+        }
+    }
+
+    /// Get the leftmost column.
+    pub fn left(&self) -> i32 {
+        self.top_left.column
+    }
+    /// Get the column to the right of the rightmost one.
+    pub fn right(&self) -> i32 {
+        self.top_left.column + self.size.width as i32
+    }
+    /// Get the topmost row.
+    pub fn top(&self) -> i32 {
+        self.top_left.row
+    }
+    /// Get the row below the bottom one.
+    pub fn bottom(&self) -> i32 {
+        self.top_left.row + self.size.height as i32
+    }
+    /// Get the total width.
+    pub fn width(&self) -> u32 {
+        self.size.width
+    }
+    /// Get the total height.
+    pub fn height(&self) -> u32 {
+        self.size.height
     }
 }
 
@@ -108,5 +178,21 @@ mod test {
             height: 20,
         });
         assert!(v.is_none());
+    }
+
+    #[test]
+    fn add_pos_and_size() {
+        let c = CellPos { column: 5, row: 7 };
+        let s = SizeInCells {
+            width: 10,
+            height: 100,
+        };
+        assert_eq!(
+            CellPos {
+                column: 15,
+                row: 107
+            },
+            c + s
+        );
     }
 }

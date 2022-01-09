@@ -3,7 +3,7 @@ use imgref::ImgVec;
 
 use crate::{
     actions::{Action, DocAction},
-    coords::{PixelTransform, Point},
+    coords::{CellRect, PixelTransform, Point},
     vic::Char,
     Document,
 };
@@ -46,9 +46,11 @@ impl CharBrushTool {
                 },
         );
 
-        let (top_left, bottom_right) =
-            doc.image
-                .cell_rectangle(&cell, brush.width() as u32, brush.height() as u32);
+        let (top_left, bottom_right) = doc.image.cell_rectangle(&CellRect::from_cell_width_height(
+            cell,
+            brush.width() as u32,
+            brush.height() as u32,
+        ));
 
         painter.rect_stroke(
             egui::Rect::from_min_max(

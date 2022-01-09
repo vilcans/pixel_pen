@@ -2,7 +2,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, PointerButton, Stroke};
 
 use crate::{
     actions::Action,
-    coords::{PixelTransform, Point},
+    coords::{CellRect, PixelTransform, Point, SizeInCells},
     editing::Mode,
     update_area::UpdateArea,
     vic::PixelColor,
@@ -43,7 +43,10 @@ impl PaintTool {
 
         // Highlight character
         if let Some((cell, _, _)) = doc.image.char_coordinates(hover_pos.x, hover_pos.y) {
-            let (top_left, bottom_right) = doc.image.cell_rectangle(&cell, 1, 1);
+            let (top_left, bottom_right) = doc.image.cell_rectangle(&CellRect {
+                top_left: *cell,
+                size: SizeInCells::ONE,
+            });
             if let Some(stroke) = match mode {
                 Mode::FillCell | Mode::CellColor => Some(Stroke {
                     width: 1.0,
