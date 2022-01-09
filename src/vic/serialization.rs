@@ -45,8 +45,8 @@ impl VicImageFile {
             .map(|i| character_map.get_by_left(&i).map(hex::encode))
             .collect();
         let instance = Self {
-            columns: image.size.width as usize,
-            rows: image.size.height as usize,
+            columns: image.size_in_cells().width as usize,
+            rows: image.size_in_cells().height as usize,
             colors: image.colors.clone(),
             video_chars,
             video_colors,

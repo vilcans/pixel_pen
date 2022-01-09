@@ -4,7 +4,7 @@ use image::RgbaImage;
 use imgref::ImgVec;
 
 use crate::{
-    coords::{CellPos, CellRect},
+    coords::{CellPos, CellRect, Point},
     error::{DisallowedAction, Severity},
     tool::Tool,
     update_area::UpdateArea,
@@ -40,8 +40,7 @@ pub enum DocAction {
     /// Paste a true color image into the image
     PasteTrueColor {
         source: RgbaImage,
-        target_x: i32,
-        target_y: i32,
+        target: Point,
         format: ColorFormat,
     },
     /// Change the color of single pixels
