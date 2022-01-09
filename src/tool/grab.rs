@@ -78,13 +78,11 @@ impl GrabTool {
                 }
             }
         }
-        if let Some(selection) = selection {
-            Some(Action::Ui(UiAction::CreateCharBrush {
+        selection.map(|selection| {
+            Action::Ui(UiAction::CreateCharBrush {
                 rect: selection_to_cells(&doc.image, selection),
-            }))
-        } else {
-            None
-        }
+            })
+        })
     }
 }
 
