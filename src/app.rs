@@ -294,7 +294,10 @@ impl epi::App for Application {
                 if let Some(new_tool) = select_tool_ui(ui, &ui_state.tool) {
                     ui_state.tool = new_tool;
                 }
-                ui_state.mode = select_mode_ui(ui, &ui_state.mode);
+                if let Tool::Paint(_) = ui_state.tool {
+                    ui.separator();
+                    ui_state.mode = select_mode_ui(ui, &ui_state.mode);
+                }
             });
         });
 
