@@ -17,8 +17,8 @@ use crate::{
 };
 use eframe::{
     egui::{
-        self, paint::Mesh, Align2, Color32, CursorIcon, Label, Painter, PointerButton, Pos2, Rect,
-        Response, Rgba, Shape, Stroke, TextStyle, TextureId, Vec2,
+        self, paint::Mesh, Align, Align2, Color32, CursorIcon, Label, Painter, PointerButton, Pos2,
+        Rect, Response, Rgba, Shape, Stroke, TextStyle, TextureId, Vec2,
     },
     epi::{self, TextureAllocator},
 };
@@ -488,8 +488,9 @@ impl epi::App for Application {
 /// Returns which tool to switch to, or None if the user did not change tool.
 fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
     let mut new_tool = None;
-    ui.add(Label::new("Tool").strong());
-    ui.vertical_centered_justified(|ui| {
+    ui.with_layout(egui::Layout::top_down_justified(Align::LEFT), |ui| {
+        ui.style_mut().body_text_style = egui::TextStyle::Heading;
+        ui.label("Tool");
         if ui
             .selectable_label(matches!(current_tool, Tool::Paint(_)), "Paint")
             .on_hover_text("Paint pixels")
@@ -519,8 +520,9 @@ fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
 /// Returns which mode to use, which is the same as the current one passed in unless changed by the user.
 fn select_mode_ui(ui: &mut egui::Ui, current_mode: &Mode) -> Mode {
     let mut new_mode = current_mode.clone();
-    ui.add(Label::new("Mode").strong());
-    ui.vertical_centered_justified(|ui| {
+    ui.with_layout(egui::Layout::top_down_justified(Align::LEFT), |ui| {
+        ui.style_mut().body_text_style = egui::TextStyle::Heading;
+        ui.label("Mode");
         for mode in [
             Mode::PixelPaint,
             Mode::FillCell,
