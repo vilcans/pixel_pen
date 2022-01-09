@@ -78,7 +78,7 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import) -> Option<Act
         let source = &import.image;
         let target = &doc.image;
         let (source_width, source_height) = source.dimensions();
-        let (target_width, target_height) = target.pixel_size();
+        let (target_width, target_height) = target.size_in_pixels();
 
         ui.label("Source");
         ui.label(format!(

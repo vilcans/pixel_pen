@@ -105,7 +105,7 @@ impl VicImage {
     }
 
     /// Get the width and height of the image in pixels.
-    pub fn pixel_size(&self) -> (usize, usize) {
+    pub fn size_in_pixels(&self) -> (usize, usize) {
         let size = self.size_in_cells();
         (
             size.width as usize * Char::WIDTH,
@@ -444,7 +444,7 @@ impl VicImage {
     }
 
     pub fn render_with_settings(&self, settings: &ViewSettings) -> RgbaImage {
-        let (source_width, source_height) = self.pixel_size();
+        let (source_width, source_height) = self.size_in_pixels();
         let mut image = RgbaImage::new(source_width as u32, source_height as u32);
         for (row, chars) in self.video.rows().enumerate() {
             for (column, char) in chars.iter().enumerate() {
@@ -490,7 +490,7 @@ impl VicImage {
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// Returns None if the coordinates are outside the image.
     pub fn char_coordinates(&self, x: i32, y: i32) -> Option<(WithinBounds<CellPos>, i32, i32)> {
-        let (width, height) = self.pixel_size();
+        let (width, height) = self.size_in_pixels();
         if (0..width as i32).contains(&x) && (0..height as i32).contains(&y) {
             let (cell, cx, cy) = self.char_coordinates_unclipped(x, y);
             Some((cell.within_bounds(&self.size_in_cells()).unwrap(), cx, cy))
@@ -502,7 +502,7 @@ impl VicImage {
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// If the arguments are outside the image, they are clamped to be inside it.
     pub fn char_coordinates_clamped(&self, x: i32, y: i32) -> (WithinBounds<CellPos>, i32, i32) {
-        let (width, height) = self.pixel_size();
+        let (width, height) = self.size_in_pixels();
         let (cell, cx, cy) = self.char_coordinates_unclipped(
             x.clamp(0, width as i32 - 1),
             y.clamp(0, height as i32 - 1),
