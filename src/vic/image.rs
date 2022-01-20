@@ -354,13 +354,6 @@ impl VicImage {
         }
     }
 
-    /// Get the pixel coordinates of the top-left corner of a character cell.
-    /// Returns None if the given cell coordinates are outside the image.
-    pub fn cell_coordinates(&self, cell: &CellPos) -> Option<Point> {
-        let cell = cell.within_bounds(&self.size_in_cells())?;
-        Some(self.cell_coordinates_unclipped(&cell))
-    }
-
     /// Get a rectangle in pixel coordinates from a rectangle in character cells.
     /// Returns the top left, and bottom right (exclusive) of the rectangle in image pixels.
     /// Accepts coordinates outside the image.
