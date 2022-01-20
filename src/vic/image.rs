@@ -1,5 +1,6 @@
 use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, VicPalette};
 use crate::{
+    cell_image::{CellCoordinates, CellImageSize},
     colors::TrueColor,
     coords::{CellPos, CellRect, Point, SizeInCells, WithinBounds},
     error::{DisallowedAction, Error},
@@ -95,22 +96,6 @@ impl VicImage {
         let mut image = VicImage::new(columns, rows);
         image.paste_image(source_image, Point { x: 0, y: 0 }, ColorFormat::Multicolor);
         Ok(image)
-    }
-
-    pub fn size_in_cells(&self) -> SizeInCells {
-        SizeInCells {
-            width: self.video.width() as u32,
-            height: self.video.height() as u32,
-        }
-    }
-
-    /// Get the width and height of the image in pixels.
-    pub fn size_in_pixels(&self) -> (usize, usize) {
-        let size = self.size_in_cells();
-        (
-            size.width as usize * Char::WIDTH,
-            size.height as usize * Char::HEIGHT,
-        )
     }
 
     /// Get one of the global colors.
@@ -345,25 +330,6 @@ impl VicImage {
         Ok(changed)
     }
 
-    /// Get the pixel coordinates of the top-left corner of a character cell.
-    /// Accepts coordinates outside the image.
-    pub fn cell_coordinates_unclipped(&self, cell: &CellPos) -> Point {
-        Point {
-            x: cell.column * Char::WIDTH as i32,
-            y: cell.row * Char::HEIGHT as i32,
-        }
-    }
-
-    /// Get a rectangle in pixel coordinates from a rectangle in character cells.
-    /// Returns the top left, and bottom right (exclusive) of the rectangle in image pixels.
-    /// Accepts coordinates outside the image.
-    pub fn cell_rectangle(&self, rect: &CellRect) -> (Point, Point) {
-        (
-            self.cell_coordinates_unclipped(&rect.top_left),
-            self.cell_coordinates_unclipped(&(rect.top_left + rect.size)),
-        )
-    }
-
     /// Get at which pixel coordinates to dispay grid lines
     pub fn vertical_grid_lines(&self) -> impl Iterator<Item = i32> {
         (0..=self.size_in_cells().width).map(|c| (c * Char::WIDTH as u32) as i32)
@@ -470,33 +436,6 @@ impl VicImage {
         ImgVec::new(chars, rect.width() as usize, rect.height() as usize)
     }
 
-    /// Given pixel coordinates, return which cell that is, and x and y inside the cell.
-    /// May return coordinates outside the image.
-    pub fn cell_unclipped(&self, point: Point) -> (CellPos, i32, i32) {
-        let column = point.x.div_euclid(Char::WIDTH as i32);
-        let cx = point.x.rem_euclid(Char::WIDTH as i32);
-        let row = point.y.div_euclid(Char::HEIGHT as i32);
-        let cy = point.y.rem_euclid(Char::HEIGHT as i32);
-        (CellPos { column, row }, cx, cy)
-    }
-
-    /// Given pixel coordinates, return column, row, and x and y inside the character.
-    /// Returns None if the coordinates are outside the image.
-    pub fn cell(&self, point: Point) -> Option<(WithinBounds<CellPos>, i32, i32)> {
-        let (cell, cx, cy) = self.cell_unclipped(point);
-        let cell = cell.within_bounds(&self.size_in_cells())?;
-        Some((cell, cx, cy))
-    }
-
-    /// Given pixel coordinates, return column, row, and x and y inside the character.
-    /// If the arguments are outside the image, they are clamped to be inside it.
-    pub fn cell_clamped(&self, point: Point) -> (WithinBounds<CellPos>, i32, i32) {
-        let (width, height) = self.size_in_pixels();
-        let (cell, cx, cy) =
-            self.cell_unclipped(point.clamped(width as i32 - 1, height as i32 - 1));
-        (cell.within_bounds(&self.size_in_cells()).unwrap(), cx, cy)
-    }
-
     /// Get the character cells to update given an UpdateArea.
     /// Returns the columns and rows of the cells within this image's bounds.
     fn target_cells(&self, target: &UpdateArea) -> Vec<WithinBounds<CellPos>> {
@@ -515,6 +454,28 @@ impl VicImage {
             &self.size_in_cells(),
         )
     }
+}
+
+impl CellImageSize for VicImage {
+    fn size_in_cells(&self) -> SizeInCells {
+        SizeInCells {
+            width: self.video.width() as u32,
+            height: self.video.height() as u32,
+        }
+    }
+
+    fn size_in_pixels(&self) -> (usize, usize) {
+        let size = self.size_in_cells();
+        (
+            size.width as usize * Char::WIDTH,
+            size.height as usize * Char::HEIGHT,
+        )
+    }
+}
+
+impl CellCoordinates for VicImage {
+    const CELL_WIDTH: usize = Char::WIDTH;
+    const CELL_HEIGHT: usize = Char::HEIGHT;
 }
 
 /// Generates an optimized highres image using the given hardware palette colors.

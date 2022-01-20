@@ -3,6 +3,7 @@ use imgref::ImgVec;
 
 use crate::{
     actions::{Action, DocAction},
+    cell_image::CellCoordinates,
     coords::{CellRect, PixelTransform, Point},
     vic::Char,
     Document,

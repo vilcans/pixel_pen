@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{coords::SizeInCells, error::Error};
+use crate::{cell_image::CellImageSize, coords::SizeInCells, error::Error};
 
 use super::{Char, GlobalColors, VicImage};
 

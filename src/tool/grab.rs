@@ -2,6 +2,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
 
 use crate::{
     actions::{Action, UiAction},
+    cell_image::CellCoordinates,
     coords::{CellPos, CellRect, PixelTransform, Point},
     vic::VicImage,
     Document,

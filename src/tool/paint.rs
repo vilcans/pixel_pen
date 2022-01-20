@@ -2,6 +2,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, PointerButton, Stroke};
 
 use crate::{
     actions::Action,
+    cell_image::CellCoordinates,
     coords::{CellRect, PixelTransform, Point, SizeInCells},
     editing::Mode,
     update_area::UpdateArea,

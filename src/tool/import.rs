@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::actions::Action;
 use crate::actions::DocAction;
 use crate::actions::UiAction;
+use crate::cell_image::CellImageSize;
 use crate::coords::PixelTransform;
 use crate::coords::Point;
 use crate::import::Import;

@@ -2,6 +2,7 @@ use std::{path::Path, time::Instant};
 
 use crate::{
     actions::{self, Action, Undoable},
+    cell_image::CellImageSize,
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
