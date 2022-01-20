@@ -3,7 +3,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
 use crate::{
     actions::{Action, UiAction},
     cell_image::CellCoordinates,
-    coords::{CellPos, CellRect, PixelTransform, Point},
+    coords::{CellPos, CellRect, PixelPoint, PixelTransform},
     vic::VicImage,
     Document,
 };
@@ -20,7 +20,7 @@ const CROSSHAIR_STROKE: Stroke = Stroke {
 
 #[derive(Default, Debug)]
 pub struct GrabTool {
-    selection_start: Option<Point>,
+    selection_start: Option<PixelPoint>,
 }
 
 impl GrabTool {
@@ -30,7 +30,7 @@ impl GrabTool {
         pixel_transform: &PixelTransform,
         cursor_icon: &mut Option<CursorIcon>,
         doc: &Document,
-        hover_pos: Option<Point>,
+        hover_pos: Option<PixelPoint>,
         response: &Response,
     ) -> Option<Action> {
         let mut selection = None;
@@ -86,24 +86,24 @@ impl GrabTool {
     }
 }
 
-fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: Point) {
+fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: PixelPoint) {
     painter.line_segment(
         [
-            pixel_transform.screen_pos(Point::new(pos.x, 0)),
-            pixel_transform.screen_pos(Point::new(pos.x, pixel_transform.pixel_height)),
+            pixel_transform.screen_pos(PixelPoint::new(pos.x, 0)),
+            pixel_transform.screen_pos(PixelPoint::new(pos.x, pixel_transform.pixel_height)),
         ],
         CROSSHAIR_STROKE,
     );
     painter.line_segment(
         [
-            pixel_transform.screen_pos(Point::new(0, pos.y)),
-            pixel_transform.screen_pos(Point::new(pixel_transform.pixel_width, pos.y)),
+            pixel_transform.screen_pos(PixelPoint::new(0, pos.y)),
+            pixel_transform.screen_pos(PixelPoint::new(pixel_transform.pixel_width, pos.y)),
         ],
         CROSSHAIR_STROKE,
     );
 }
 
-fn selection_to_cells(image: &VicImage, selection: (Point, Point)) -> CellRect {
+fn selection_to_cells(image: &VicImage, selection: (PixelPoint, PixelPoint)) -> CellRect {
     let (c0, _, _) = image.cell_clamped(selection.0);
     let (c1, _, _) = image.cell_clamped(selection.1);
     let (column, width) = if c1.column >= c0.column {

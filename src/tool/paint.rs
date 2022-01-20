@@ -3,7 +3,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, PointerButton, Stroke};
 use crate::{
     actions::Action,
     cell_image::CellCoordinates,
-    coords::{CellRect, PixelTransform, Point, SizeInCells},
+    coords::{CellRect, PixelTransform, PixelPoint, SizeInCells},
     editing::Mode,
     update_area::UpdateArea,
     vic::PixelColor,
@@ -22,14 +22,14 @@ const MAKE_MULTICOLOR_HIGHLIGHT: Stroke = Stroke {
 #[derive(Debug, Default, Clone)]
 pub struct PaintTool {
     /// Where the user currently is painting
-    pub paint_position: Option<Point>,
+    pub paint_position: Option<PixelPoint>,
 }
 
 impl PaintTool {
     #[allow(clippy::too_many_arguments)] // Shut it up for now
     pub fn update_ui(
         &mut self,
-        pixel_pos: Option<Point>,
+        pixel_pos: Option<PixelPoint>,
         ui: &mut egui::Ui,
         response: &egui::Response,
         painter: &Painter,

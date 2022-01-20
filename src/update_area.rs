@@ -3,24 +3,24 @@ use std::collections::HashMap;
 use bit_vec::BitVec;
 
 use crate::{
-    coords::{CellPos, Point, SizeInCells, WithinBounds},
+    coords::{CellPos, PixelPoint, SizeInCells, WithinBounds},
     line,
 };
 
 /// Pixels or cells that are affected by an update
 pub struct UpdateArea {
-    pixels: Vec<Point>,
+    pixels: Vec<PixelPoint>,
 }
 
 impl UpdateArea {
-    pub fn from_pixel(p: Point) -> Self {
+    pub fn from_pixel(p: PixelPoint) -> Self {
         Self { pixels: vec![p] }
     }
 
     /// Create an UpdateArea from a line between two pixels.
     /// To avoid overdrawing the ending point of a previous line,
     /// the starting pixel `p0` is not included in the line.
-    pub fn pixel_line(p0: Point, p1: Point) -> Self {
+    pub fn pixel_line(p0: PixelPoint, p1: PixelPoint) -> Self {
         UpdateArea {
             pixels: line::line(p0, p1).skip(1).collect(),
         }
@@ -38,7 +38,7 @@ impl UpdateArea {
         size_in_cells: &SizeInCells,
     ) -> HashMap<WithinBounds<CellPos>, BitVec> {
         let mut cells = HashMap::new();
-        for Point { x, y } in self.pixels.iter().copied() {
+        for PixelPoint { x, y } in self.pixels.iter().copied() {
             if let Some(cell) = (CellPos {
                 column: x.div_euclid(cell_width as i32),
                 row: y.div_euclid(cell_height as i32),

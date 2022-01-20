@@ -10,27 +10,27 @@ mod transform;
 
 /// Integer point, e.g. pixel coordinates.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct Point {
+pub struct PixelPoint {
     pub x: i32,
     pub y: i32,
 }
 
-impl Point {
+impl PixelPoint {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
 }
 
-impl Display for Point {
+impl Display for PixelPoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
     }
 }
 
-impl Point {
+impl PixelPoint {
     /// Clamp this point have coordinates between 0 and the given x and y values (inclusive).
-    pub fn clamped(&self, max_x: i32, max_y: i32) -> Point {
-        Point {
+    pub fn clamped(&self, max_x: i32, max_y: i32) -> PixelPoint {
+        PixelPoint {
             x: self.x.clamp(0, max_x),
             y: self.y.clamp(0, max_y),
         }

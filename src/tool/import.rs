@@ -6,8 +6,8 @@ use crate::actions::Action;
 use crate::actions::DocAction;
 use crate::actions::UiAction;
 use crate::cell_image::CellImageSize;
+use crate::coords::PixelPoint;
 use crate::coords::PixelTransform;
-use crate::coords::Point;
 use crate::import::Import;
 use crate::import::ImportSettings;
 use crate::import::PixelAspectRatio;
@@ -62,8 +62,8 @@ fn image_ui(painter: &Painter, import: &mut Import, transform: &PixelTransform) 
         ..
     } = import.settings;
     let rect = egui::Rect::from_min_max(
-        transform.screen_pos(Point::new(left, top)),
-        transform.screen_pos(Point::new(left + width as i32, top + height as i32)),
+        transform.screen_pos(PixelPoint::new(left, top)),
+        transform.screen_pos(PixelPoint::new(left + width as i32, top + height as i32)),
     );
     let stroke = Stroke::new(1.0, IMPORT_IMAGE_EXTENTS_COLOR);
     painter.rect_stroke(rect, 0.0, stroke);
@@ -212,7 +212,7 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import) -> Option<Act
             let scaled = import.scale_image();
             action = Some(Action::Document(DocAction::PasteTrueColor {
                 source: scaled,
-                target: Point {
+                target: PixelPoint {
                     x: import.settings.left,
                     y: import.settings.top,
                 },

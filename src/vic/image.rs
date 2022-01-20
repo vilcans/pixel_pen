@@ -2,7 +2,7 @@ use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, V
 use crate::{
     cell_image::{CellCoordinates, CellImageSize},
     colors::TrueColor,
-    coords::{CellPos, CellRect, Point, SizeInCells, WithinBounds},
+    coords::{CellPos, CellRect, PixelPoint, SizeInCells, WithinBounds},
     error::{DisallowedAction, Error},
     image_operations,
     ui::ViewSettings,
@@ -91,7 +91,11 @@ impl VicImage {
         let columns = (source_image.width() as usize + Char::WIDTH - 1) / Char::WIDTH;
         let rows = (source_image.height() as usize + Char::HEIGHT - 1) / Char::HEIGHT;
         let mut image = VicImage::new(columns, rows);
-        image.paste_image(source_image, Point { x: 0, y: 0 }, ColorFormat::Multicolor);
+        image.paste_image(
+            source_image,
+            PixelPoint { x: 0, y: 0 },
+            ColorFormat::Multicolor,
+        );
         Ok(image)
     }
 
@@ -112,7 +116,7 @@ impl VicImage {
     }
 
     /// Paste a true color image into this image.
-    pub fn paste_image(&mut self, source: &RgbaImage, target: Point, format: ColorFormat) {
+    pub fn paste_image(&mut self, source: &RgbaImage, target: PixelPoint, format: ColorFormat) {
         const CELL_W: i32 = Char::WIDTH as i32;
         const CELL_H: i32 = Char::HEIGHT as i32;
         let start_column = (target.x / CELL_W as i32).max(0);
@@ -341,7 +345,7 @@ impl VicImage {
     }
 
     /// Information about the given pixel in the image
-    pub fn pixel_info(&self, position: Point) -> String {
+    pub fn pixel_info(&self, position: PixelPoint) -> String {
         if let Some((cell, _cx, _cy)) = self.cell(position) {
             let char = &self.video[cell.as_tuple()];
             format!(
