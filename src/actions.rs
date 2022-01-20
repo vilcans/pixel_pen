@@ -4,6 +4,7 @@ use image::RgbaImage;
 use imgref::ImgVec;
 
 use crate::{
+    coords::{CellPos, CellRect, Point},
     error::{DisallowedAction, Severity},
     tool::Tool,
     update_area::UpdateArea,
@@ -39,8 +40,7 @@ pub enum DocAction {
     /// Paste a true color image into the image
     PasteTrueColor {
         source: RgbaImage,
-        target_x: i32,
-        target_y: i32,
+        target: Point,
         format: ColorFormat,
     },
     /// Change the color of single pixels
@@ -79,8 +79,7 @@ pub enum DocAction {
         color_2: PixelColor,
     },
     CharBrushPaint {
-        column: i32,
-        row: i32,
+        pos: CellPos,
         chars: ImgVec<Char>,
     },
 }
@@ -88,12 +87,7 @@ pub enum DocAction {
 /// An action that changes something in the user interface, not the document. Not undoable.
 pub enum UiAction {
     SelectTool(Tool),
-    CreateCharBrush {
-        column: usize,
-        row: usize,
-        width: usize,
-        height: usize,
-    },
+    CreateCharBrush { rect: CellRect },
 }
 
 impl undo::Action for Undoable {

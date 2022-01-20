@@ -33,11 +33,10 @@ impl Document {
             DocAction::GlobalColor { index, value } => Ok(image.set_global_color(*index, *value)),
             DocAction::PasteTrueColor {
                 source,
-                target_x,
-                target_y,
+                target,
                 format,
             } => {
-                image.paste_image(source, *target_x, *target_y, *format);
+                image.paste_image(source, *target, *format);
                 Ok(true)
             }
             DocAction::Plot { area, color } => image.plot(area, *color),
@@ -58,9 +57,7 @@ impl Document {
                 color_1,
                 color_2,
             } => image.swap_colors(area, *color_1, *color_2),
-            DocAction::CharBrushPaint { column, row, chars } => {
-                image.paste_chars(*column, *row, chars.as_ref())
-            }
+            DocAction::CharBrushPaint { pos, chars } => image.paste_chars(pos, chars.as_ref()),
         }
     }
 }

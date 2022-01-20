@@ -5,6 +5,7 @@ use std::path::Path;
 use crate::actions::Action;
 use crate::actions::DocAction;
 use crate::actions::UiAction;
+use crate::cell_image::CellImageSize;
 use crate::coords::PixelTransform;
 use crate::coords::Point;
 use crate::import::Import;
@@ -78,7 +79,7 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import) -> Option<Act
         let source = &import.image;
         let target = &doc.image;
         let (source_width, source_height) = source.dimensions();
-        let (target_width, target_height) = target.pixel_size();
+        let (target_width, target_height) = target.size_in_pixels();
 
         ui.label("Source");
         ui.label(format!(
@@ -211,8 +212,10 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import) -> Option<Act
             let scaled = import.scale_image();
             action = Some(Action::Document(DocAction::PasteTrueColor {
                 source: scaled,
-                target_x: import.settings.left,
-                target_y: import.settings.top,
+                target: Point {
+                    x: import.settings.left,
+                    y: import.settings.top,
+                },
                 format: import.settings.format,
             }));
         } else if ui.button("Close").clicked() {

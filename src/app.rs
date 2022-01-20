@@ -2,6 +2,7 @@ use std::{path::Path, time::Instant};
 
 use crate::{
     actions::{self, Action, Undoable},
+    cell_image::CellImageSize,
     colors::TrueColor,
     coords::{PixelTransform, Point},
     document::Document,
@@ -109,7 +110,7 @@ impl epi::App for Application {
         let undo_available = history.can_undo();
         let redo_available = history.can_redo();
 
-        let (width, height) = doc.image.pixel_size();
+        let (width, height) = doc.image.size_in_pixels();
         let mut new_doc = None;
         let mut cursor_icon = None;
 
@@ -582,14 +583,14 @@ fn start_import_mode(
     ui_state: &mut UiState,
 ) -> Result<(), Error> {
     let mut i = Import::load(filename)?;
-    i.settings.width = i.settings.width.min(doc.image.pixel_size().0 as u32);
-    i.settings.height = i.settings.height.min(doc.image.pixel_size().1 as u32);
+    i.settings.width = i.settings.width.min(doc.image.size_in_pixels().0 as u32);
+    i.settings.height = i.settings.height.min(doc.image.size_in_pixels().1 as u32);
     ui_state.tool = Tool::Import(ImportTool::new(i));
     Ok(())
 }
 
 fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransform) {
-    let (width, height) = image.pixel_size();
+    let (width, height) = image.size_in_pixels();
     let stroke = Stroke {
         width: 1.0,
         color: GRID_COLOR,
@@ -647,14 +648,13 @@ fn apply_action(
         }
         Action::Ui(action) => match action {
             actions::UiAction::SelectTool(tool) => ui_state.tool = tool,
-            actions::UiAction::CreateCharBrush {
-                column,
-                row,
-                width,
-                height,
-            } => {
-                ui_state.char_brush = doc.image.grab_cells(column, row, width, height);
-                ui_state.tool = Tool::CharBrush(Default::default());
+            actions::UiAction::CreateCharBrush { rect } => {
+                if let Some(rect) = rect.within_size(doc.image.size_in_cells()) {
+                    ui_state.char_brush = doc.image.grab_cells(&rect);
+                    ui_state.tool = Tool::CharBrush(Default::default());
+                } else {
+                    println!("Rect {:?} did not fit inside image", rect);
+                }
             }
         },
     }
@@ -672,7 +672,7 @@ fn update_texture(
 ) -> TextureId {
     let scale_x = ((par * zoom).ceil() as u32).max(1).min(MAX_SCALE);
     let scale_y = (zoom.ceil() as u32).max(1).min(MAX_SCALE);
-    let (source_width, source_height) = image.pixel_size();
+    let (source_width, source_height) = image.size_in_pixels();
     let texture_width = source_width * scale_x as usize;
     let texture_height = source_height * scale_y as usize;
 

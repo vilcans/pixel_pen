@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
+use crate::{cell_image::CellImageSize, coords::SizeInCells, error::Error};
 
 use super::{Char, GlobalColors, VicImage};
 
@@ -45,8 +45,8 @@ impl VicImageFile {
             .map(|i| character_map.get_by_left(&i).map(hex::encode))
             .collect();
         let instance = Self {
-            columns: image.columns,
-            rows: image.rows,
+            columns: image.size_in_cells().width as usize,
+            rows: image.size_in_cells().height as usize,
             colors: image.colors.clone(),
             video_chars,
             video_colors,
@@ -57,7 +57,6 @@ impl VicImageFile {
     }
 
     pub fn into_image(self) -> Result<VicImage, Error> {
-        let VicImageFile { columns, rows, .. } = self;
         let characters = self
             .characters
             .iter()
@@ -70,8 +69,10 @@ impl VicImageFile {
             })
             .collect::<Result<HashMap<usize, [u8; Char::HEIGHT]>, Error>>()?;
         VicImage::from_data(
-            columns,
-            rows,
+            SizeInCells {
+                width: self.columns as u32,
+                height: self.rows as u32,
+            },
             self.colors,
             self.video_chars,
             self.video_colors,
@@ -80,7 +81,11 @@ impl VicImageFile {
     }
 
     pub fn verify(&self) -> Result<(), Error> {
-        if self.columns == 0 || self.rows == 0 {
+        if self.columns == 0
+            || self.rows == 0
+            || self.columns >= VicImage::MAX_SIZE.width as usize
+            || self.rows >= VicImage::MAX_SIZE.height as usize
+        {
             Err(Error::InvalidSize(self.columns, self.rows))
         } else if self.characters.is_empty() {
             Err(Error::NoCharacters)

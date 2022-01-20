@@ -3,7 +3,8 @@ use imgref::ImgVec;
 
 use crate::{
     actions::{Action, DocAction},
-    coords::{PixelTransform, Point},
+    cell_image::CellCoordinates,
+    coords::{CellRect, PixelTransform, Point},
     vic::Char,
     Document,
 };
@@ -31,27 +32,26 @@ impl CharBrushTool {
         let cursor_pos = cursor_pos?;
         *cursor_icon = Some(CursorIcon::PointingHand);
 
-        let (column, row, _, _) = doc.image.char_coordinates_unclipped(
-            cursor_pos.x - brush.width() as i32 / 2 * Char::WIDTH as i32
+        let (cell, _, _) = doc.image.cell_unclipped(Point {
+            x: cursor_pos.x - brush.width() as i32 / 2 * Char::WIDTH as i32
                 + if brush.width() % 2 == 1 {
                     0
                 } else {
                     Char::WIDTH as i32 / 2
                 },
-            cursor_pos.y - brush.height() as i32 / 2 * Char::HEIGHT as i32
+            y: cursor_pos.y - brush.height() as i32 / 2 * Char::HEIGHT as i32
                 + if brush.height() % 2 == 1 {
                     0
                 } else {
                     Char::HEIGHT as i32 / 2
                 },
-        );
+        });
 
-        let (top_left, bottom_right) = doc.image.cell_rectangle(
-            column as i32,
-            row as i32,
+        let (top_left, bottom_right) = doc.image.cell_rectangle(&CellRect::from_cell_width_height(
+            cell,
             brush.width() as u32,
             brush.height() as u32,
-        );
+        ));
 
         painter.rect_stroke(
             egui::Rect::from_min_max(
@@ -64,8 +64,7 @@ impl CharBrushTool {
 
         if response.clicked() {
             Some(Action::Document(DocAction::CharBrushPaint {
-                column,
-                row,
+                pos: cell,
                 chars: brush.clone(),
             }))
         } else {

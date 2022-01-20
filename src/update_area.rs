@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use bit_vec::BitVec;
 
-use crate::{coords::Point, line};
+use crate::{
+    coords::{CellPos, Point, SizeInCells, WithinBounds},
+    line,
+};
 
 /// Pixels or cells that are affected by an update
 pub struct UpdateArea {
@@ -32,21 +35,21 @@ impl UpdateArea {
         &self,
         cell_width: u32,
         cell_height: u32,
-        columns: u32,
-        rows: u32,
-    ) -> HashMap<(u32, u32), BitVec> {
-        let x_range = 0..(columns * cell_width) as i32;
-        let y_range = 0..(rows * cell_height) as i32;
+        size_in_cells: &SizeInCells,
+    ) -> HashMap<WithinBounds<CellPos>, BitVec> {
         let mut cells = HashMap::new();
         for Point { x, y } in self.pixels.iter().copied() {
-            if x_range.contains(&x) && y_range.contains(&y) {
+            if let Some(cell) = (CellPos {
+                column: x.div_euclid(cell_width as i32),
+                row: y.div_euclid(cell_height as i32),
+            })
+            .within_bounds(size_in_cells)
+            {
                 let (x, y) = (x as u32, y as u32);
-                let col = x / cell_width;
-                let row = y / cell_height;
-                let cx = x % cell_width;
-                let cy = y % cell_height;
+                let cx = x.rem_euclid(cell_width);
+                let cy = y.rem_euclid(cell_height);
                 cells
-                    .entry((col, row))
+                    .entry(cell)
                     .or_insert_with(|| {
                         BitVec::from_elem(cell_width as usize * cell_height as usize, false)
                     })
