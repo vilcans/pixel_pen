@@ -381,7 +381,7 @@ impl VicImage {
 
     /// Information about the given pixel in the image
     pub fn pixel_info(&self, position: Point) -> String {
-        if let Some((cell, _cx, _cy)) = self.char_coordinates(position) {
+        if let Some((cell, _cx, _cy)) = self.cell(position) {
             let char = &self.video[cell.as_tuple()];
             format!(
                 "({}, {}): column {}, row {} {} color {}",
@@ -470,9 +470,9 @@ impl VicImage {
         ImgVec::new(chars, rect.width() as usize, rect.height() as usize)
     }
 
-    /// Given pixel coordinates, return column, row, and x and y inside the character.
+    /// Given pixel coordinates, return which cell that is, and x and y inside the cell.
     /// May return coordinates outside the image.
-    pub fn char_coordinates_unclipped(&self, point: Point) -> (CellPos, i32, i32) {
+    pub fn cell_unclipped(&self, point: Point) -> (CellPos, i32, i32) {
         let column = point.x.div_euclid(Char::WIDTH as i32);
         let cx = point.x.rem_euclid(Char::WIDTH as i32);
         let row = point.y.div_euclid(Char::HEIGHT as i32);
@@ -482,18 +482,18 @@ impl VicImage {
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// Returns None if the coordinates are outside the image.
-    pub fn char_coordinates(&self, point: Point) -> Option<(WithinBounds<CellPos>, i32, i32)> {
-        let (cell, cx, cy) = self.char_coordinates_unclipped(point);
+    pub fn cell(&self, point: Point) -> Option<(WithinBounds<CellPos>, i32, i32)> {
+        let (cell, cx, cy) = self.cell_unclipped(point);
         let cell = cell.within_bounds(&self.size_in_cells())?;
         Some((cell, cx, cy))
     }
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// If the arguments are outside the image, they are clamped to be inside it.
-    pub fn char_coordinates_clamped(&self, point: Point) -> (WithinBounds<CellPos>, i32, i32) {
+    pub fn cell_clamped(&self, point: Point) -> (WithinBounds<CellPos>, i32, i32) {
         let (width, height) = self.size_in_pixels();
         let (cell, cx, cy) =
-            self.char_coordinates_unclipped(point.clamped(width as i32 - 1, height as i32 - 1));
+            self.cell_unclipped(point.clamped(width as i32 - 1, height as i32 - 1));
         (cell.within_bounds(&self.size_in_cells()).unwrap(), cx, cy)
     }
 

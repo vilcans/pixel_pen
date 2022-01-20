@@ -31,7 +31,7 @@ impl CharBrushTool {
         let cursor_pos = cursor_pos?;
         *cursor_icon = Some(CursorIcon::PointingHand);
 
-        let (cell, _, _) = doc.image.char_coordinates_unclipped(Point {
+        let (cell, _, _) = doc.image.cell_unclipped(Point {
             x: cursor_pos.x - brush.width() as i32 / 2 * Char::WIDTH as i32
                 + if brush.width() % 2 == 1 {
                     0

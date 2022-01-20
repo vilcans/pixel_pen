@@ -37,7 +37,7 @@ impl GrabTool {
             None => {
                 if let Some(hover_pos) = hover_pos {
                     *cursor_icon = Some(CursorIcon::Crosshair);
-                    if let Some((cell, _, _)) = doc.image.char_coordinates(hover_pos) {
+                    if let Some((cell, _, _)) = doc.image.cell(hover_pos) {
                         draw_crosshair(
                             painter,
                             pixel_transform,
@@ -103,8 +103,8 @@ fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: Poin
 }
 
 fn selection_to_cells(image: &VicImage, selection: (Point, Point)) -> CellRect {
-    let (c0, _, _) = image.char_coordinates_clamped(selection.0);
-    let (c1, _, _) = image.char_coordinates_clamped(selection.1);
+    let (c0, _, _) = image.cell_clamped(selection.0);
+    let (c1, _, _) = image.cell_clamped(selection.1);
     let (column, width) = if c1.column >= c0.column {
         (c0.column, c1.column - c0.column)
     } else {
