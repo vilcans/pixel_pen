@@ -34,10 +34,7 @@ impl Default for VicImage {
 }
 
 impl VicImage {
-    pub const MAX_SIZE: SizeInCells = SizeInCells {
-        width: 10000,
-        height: 10000,
-    };
+    pub const MAX_SIZE: SizeInCells = SizeInCells::new(10000, 10000);
 
     pub fn new(columns: usize, rows: usize) -> Self {
         let video = ImgVec::new(vec![Char::default(); columns * rows], columns, rows);
@@ -72,7 +69,7 @@ impl VicImage {
             .take(size.area() as usize)
             .collect();
         assert_eq!(size.area() as usize, raw_video.len());
-        let video = ImgVec::new(raw_video, size.width as usize, size.height as usize);
+        let video = ImgVec::new(raw_video, size.width() as usize, size.height() as usize);
         let mut bitmaps = BiMap::new();
         bitmaps.extend(characters);
         Ok(Self {
@@ -120,10 +117,10 @@ impl VicImage {
         const CELL_H: i32 = Char::HEIGHT as i32;
         let start_column = (target.x / CELL_W as i32).max(0);
         let end_column = ((target.x + source.width() as i32 + CELL_W - 1) / CELL_W)
-            .min(self.size_in_cells().width as i32);
+            .min(self.size_in_cells().width() as i32);
         let start_row = (target.y / CELL_H as i32).max(0);
         let end_row = ((target.y + source.height() as i32 + CELL_H - 1) / CELL_H)
-            .min(self.size_in_cells().height as i32);
+            .min(self.size_in_cells().height() as i32);
 
         let global_colors = &self.colors;
 
@@ -192,13 +189,11 @@ impl VicImage {
         source: ImgRef<'_, Char>,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         let mut changed = false;
-        let source_size = SizeInCells {
-            width: source.width() as u32,
-            height: source.height() as u32,
-        };
+        let source_size = SizeInCells::new(source.width() as u32, source.height() as u32);
         for (char, (r, c)) in source.pixels().zip(
-            (target_pos.row..target_pos.row + source_size.height as i32)
-                .cartesian_product(target_pos.column..target_pos.column + source_size.width as i32),
+            (target_pos.row..target_pos.row + source_size.height() as i32).cartesian_product(
+                target_pos.column..target_pos.column + source_size.width() as i32,
+            ),
         ) {
             let p = CellPos { row: r, column: c };
             if let Some(p) = p.within_bounds(&self.size_in_cells()) {
@@ -332,12 +327,12 @@ impl VicImage {
 
     /// Get at which pixel coordinates to dispay grid lines
     pub fn vertical_grid_lines(&self) -> impl Iterator<Item = i32> {
-        (0..=self.size_in_cells().width).map(|c| (c * Char::WIDTH as u32) as i32)
+        (0..=self.size_in_cells().width()).map(|c| (c * Char::WIDTH as u32) as i32)
     }
 
     /// Get at which pixel coordinates to dispay grid lines
     pub fn horizontal_grid_lines(&self) -> impl Iterator<Item = i32> {
-        (0..=self.size_in_cells().height).map(|r| (r * Char::HEIGHT as u32) as i32)
+        (0..=self.size_in_cells().height()).map(|r| (r * Char::HEIGHT as u32) as i32)
     }
 
     /// General information about the image
@@ -458,17 +453,14 @@ impl VicImage {
 
 impl CellImageSize for VicImage {
     fn size_in_cells(&self) -> SizeInCells {
-        SizeInCells {
-            width: self.video.width() as u32,
-            height: self.video.height() as u32,
-        }
+        SizeInCells::new(self.video.width() as u32, self.video.height() as u32)
     }
 
     fn size_in_pixels(&self) -> (usize, usize) {
         let size = self.size_in_cells();
         (
-            size.width as usize * Char::WIDTH,
-            size.height as usize * Char::HEIGHT,
+            size.width() as usize * Char::WIDTH,
+            size.height() as usize * Char::HEIGHT,
         )
     }
 }

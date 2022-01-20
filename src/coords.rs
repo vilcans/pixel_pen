@@ -38,8 +38,8 @@ impl Point {
 /// Width and height in character cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SizeInCells {
-    pub width: u32,
-    pub height: u32,
+    width: u32,
+    height: u32,
 }
 
 impl SizeInCells {
@@ -49,9 +49,21 @@ impl SizeInCells {
         height: 1,
     };
 
+    pub const fn new(width: u32, height: u32) -> Self {
+        Self { width, height }
+    }
+
     /// The total number of cells (width * height).
     pub fn area(&self) -> u32 {
         self.width * self.height
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
     }
 }
 
