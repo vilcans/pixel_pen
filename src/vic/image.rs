@@ -381,7 +381,7 @@ impl VicImage {
 
     /// Information about the given pixel in the image
     pub fn pixel_info(&self, position: Point) -> String {
-        if let Some((cell, _cx, _cy)) = self.char_coordinates(position.x, position.y) {
+        if let Some((cell, _cx, _cy)) = self.char_coordinates(position) {
             let char = &self.video[cell.as_tuple()];
             format!(
                 "({}, {}): column {}, row {} {} color {}",
@@ -472,34 +472,28 @@ impl VicImage {
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// May return coordinates outside the image.
-    pub fn char_coordinates_unclipped(&self, x: i32, y: i32) -> (CellPos, i32, i32) {
-        let column = x.div_euclid(Char::WIDTH as i32);
-        let cx = x.rem_euclid(Char::WIDTH as i32);
-        let row = y.div_euclid(Char::HEIGHT as i32);
-        let cy = y.rem_euclid(Char::HEIGHT as i32);
+    pub fn char_coordinates_unclipped(&self, point: Point) -> (CellPos, i32, i32) {
+        let column = point.x.div_euclid(Char::WIDTH as i32);
+        let cx = point.x.rem_euclid(Char::WIDTH as i32);
+        let row = point.y.div_euclid(Char::HEIGHT as i32);
+        let cy = point.y.rem_euclid(Char::HEIGHT as i32);
         (CellPos { column, row }, cx, cy)
     }
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// Returns None if the coordinates are outside the image.
-    pub fn char_coordinates(&self, x: i32, y: i32) -> Option<(WithinBounds<CellPos>, i32, i32)> {
-        let (width, height) = self.size_in_pixels();
-        if (0..width as i32).contains(&x) && (0..height as i32).contains(&y) {
-            let (cell, cx, cy) = self.char_coordinates_unclipped(x, y);
-            Some((cell.within_bounds(&self.size_in_cells()).unwrap(), cx, cy))
-        } else {
-            None
-        }
+    pub fn char_coordinates(&self, point: Point) -> Option<(WithinBounds<CellPos>, i32, i32)> {
+        let (cell, cx, cy) = self.char_coordinates_unclipped(point);
+        let cell = cell.within_bounds(&self.size_in_cells())?;
+        Some((cell, cx, cy))
     }
 
     /// Given pixel coordinates, return column, row, and x and y inside the character.
     /// If the arguments are outside the image, they are clamped to be inside it.
-    pub fn char_coordinates_clamped(&self, x: i32, y: i32) -> (WithinBounds<CellPos>, i32, i32) {
+    pub fn char_coordinates_clamped(&self, point: Point) -> (WithinBounds<CellPos>, i32, i32) {
         let (width, height) = self.size_in_pixels();
-        let (cell, cx, cy) = self.char_coordinates_unclipped(
-            x.clamp(0, width as i32 - 1),
-            y.clamp(0, height as i32 - 1),
-        );
+        let (cell, cx, cy) =
+            self.char_coordinates_unclipped(point.clamped(width as i32 - 1, height as i32 - 1));
         (cell.within_bounds(&self.size_in_cells()).unwrap(), cx, cy)
     }
 

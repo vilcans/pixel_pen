@@ -42,7 +42,7 @@ impl PaintTool {
         *cursor_icon = Some(CursorIcon::PointingHand);
 
         // Highlight character
-        if let Some((cell, _, _)) = doc.image.char_coordinates(hover_pos.x, hover_pos.y) {
+        if let Some((cell, _, _)) = doc.image.char_coordinates(hover_pos) {
             let (top_left, bottom_right) = doc.image.cell_rectangle(&CellRect {
                 top_left: *cell,
                 size: SizeInCells::ONE,

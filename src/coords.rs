@@ -25,6 +25,16 @@ impl Display for Point {
     }
 }
 
+impl Point {
+    /// Clamp this point have coordinates between 0 and the given x and y values (inclusive).
+    pub fn clamped(&self, max_x: i32, max_y: i32) -> Point {
+        Point {
+            x: self.x.clamp(0, max_x),
+            y: self.y.clamp(0, max_y),
+        }
+    }
+}
+
 /// Width and height in character cells.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SizeInCells {

@@ -31,20 +31,20 @@ impl CharBrushTool {
         let cursor_pos = cursor_pos?;
         *cursor_icon = Some(CursorIcon::PointingHand);
 
-        let (cell, _, _) = doc.image.char_coordinates_unclipped(
-            cursor_pos.x - brush.width() as i32 / 2 * Char::WIDTH as i32
+        let (cell, _, _) = doc.image.char_coordinates_unclipped(Point {
+            x: cursor_pos.x - brush.width() as i32 / 2 * Char::WIDTH as i32
                 + if brush.width() % 2 == 1 {
                     0
                 } else {
                     Char::WIDTH as i32 / 2
                 },
-            cursor_pos.y - brush.height() as i32 / 2 * Char::HEIGHT as i32
+            y: cursor_pos.y - brush.height() as i32 / 2 * Char::HEIGHT as i32
                 + if brush.height() % 2 == 1 {
                     0
                 } else {
                     Char::HEIGHT as i32 / 2
                 },
-        );
+        });
 
         let (top_left, bottom_right) = doc.image.cell_rectangle(&CellRect::from_cell_width_height(
             cell,
