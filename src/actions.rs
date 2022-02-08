@@ -7,6 +7,7 @@ use crate::{
     coords::{CellPos, CellRect, PixelPoint},
     error::{DisallowedAction, Severity},
     tool::Tool,
+    ui::ViewSettings,
     update_area::UpdateArea,
     vic::{Char, ColorFormat, PixelColor},
     Document,
@@ -86,8 +87,19 @@ pub enum DocAction {
 
 /// An action that changes something in the user interface, not the document. Not undoable.
 pub enum UiAction {
+    Undo,
+    Redo,
+    /// Select a tool
     SelectTool(Tool),
-    CreateCharBrush { rect: CellRect },
+    CreateCharBrush {
+        rect: CellRect,
+    },
+    ZoomIn,
+    ZoomOut,
+    SetZoom(f32),
+    ToggleGrid,
+    ToggleRaw,
+    ViewSettings(ViewSettings),
 }
 
 impl undo::Action for Undoable {

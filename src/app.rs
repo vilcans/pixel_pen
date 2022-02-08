@@ -1,7 +1,7 @@
 use std::{path::Path, time::Instant};
 
 use crate::{
-    actions::{self, Action, Undoable},
+    actions::{self, Action, UiAction, Undoable},
     cell_image::CellImageSize,
     colors::TrueColor,
     coords::{PixelPoint, PixelTransform},
@@ -55,29 +55,6 @@ struct Texture {
     pub height: usize,
 }
 
-#[derive(Default)]
-struct UserActions {
-    pub zoom_in: bool,
-    pub zoom_out: bool,
-    pub toggle_grid: bool,
-    pub toggle_raw: bool,
-    pub undo: bool,
-    pub redo: bool,
-}
-impl UserActions {
-    pub fn update_from_text(&mut self, t: &str) {
-        match t {
-            "+" => self.zoom_in = true,
-            "-" => self.zoom_out = true,
-            "g" => self.toggle_grid = true,
-            "w" => self.toggle_raw = true,
-            "z" => self.undo = true,
-            "y" => self.redo = true,
-            _ => (),
-        }
-    }
-}
-
 pub struct Application {
     doc: Document,
     ui_state: UiState,
@@ -101,6 +78,7 @@ impl epi::App for Application {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+        let mut user_actions = Vec::new();
         let Application {
             doc,
             ui_state,
@@ -116,11 +94,10 @@ impl epi::App for Application {
         let mut new_doc = None;
         let mut cursor_icon = None;
 
-        let mut user_actions = UserActions::default();
         for e in ctx.input().events.iter() {
             if !ctx.wants_keyboard_input() {
                 if let egui::Event::Text(t) = e {
-                    user_actions.update_from_text(t)
+                    create_actions_from_keyboard(t, &mut user_actions);
                 }
             }
         }
@@ -213,11 +190,11 @@ impl epi::App for Application {
                 egui::menu::menu(ui, "Edit", |ui| {
                     ui.set_enabled(undo_available);
                     if ui.button("Undo").clicked() {
-                        user_actions.undo = true;
+                        user_actions.push(Action::Ui(UiAction::Undo));
                     }
                     ui.set_enabled(redo_available);
                     if ui.button("Redo").clicked() {
-                        user_actions.redo = true;
+                        user_actions.push(Action::Ui(UiAction::Redo));
                     }
                 });
             });
@@ -226,25 +203,34 @@ impl epi::App for Application {
             ui.vertical(|ui| {
                 ui.horizontal_wrapped(|ui| {
                     ui.label("Zoom:");
-                    user_actions.zoom_out |= ui.button("-").on_hover_text("Zoom out").clicked();
+                    if ui.button("-").on_hover_text("Zoom out").clicked() {
+                        user_actions.push(Action::Ui(UiAction::ZoomOut));
+                    }
                     if ui
                         .button(format!("{:0.0}x", ui_state.zoom))
                         .on_hover_text("Set to 2x")
                         .clicked()
                     {
-                        ui_state.zoom = 2.0;
+                        user_actions.push(Action::Ui(UiAction::SetZoom(2.0)));
                     }
-                    user_actions.zoom_in |= ui.button("+").on_hover_text("Zoom in").clicked();
+                    if ui.button("+").on_hover_text("Zoom in").clicked() {
+                        user_actions.push(Action::Ui(UiAction::ZoomIn));
+                    }
                     ui.separator();
                     ui.checkbox(&mut ui_state.grid, "Grid")
                         .on_hover_text(GRID_TOOLTIP);
                     let mut raw_mode = ui_state.image_view_settings == ViewSettings::Raw;
-                    ui.checkbox(&mut raw_mode, "Raw").on_hover_text(RAW_TOOLTIP);
-                    ui_state.image_view_settings = if raw_mode {
-                        ViewSettings::Raw
-                    } else {
-                        ViewSettings::Normal
-                    };
+                    if ui
+                        .checkbox(&mut raw_mode, "Raw")
+                        .on_hover_text(RAW_TOOLTIP)
+                        .changed()
+                    {
+                        user_actions.push(Action::Ui(UiAction::ViewSettings(if raw_mode {
+                            ViewSettings::Raw
+                        } else {
+                            ViewSettings::Normal
+                        })))
+                    }
                 });
                 ui.separator();
                 if let Some(action) = ui::palette::render_palette(
@@ -318,9 +304,9 @@ impl epi::App for Application {
             let input = ui.input();
             if input.modifiers.command {
                 if input.scroll_delta.y < 0.0 {
-                    user_actions.zoom_out = true;
+                    user_actions.push(Action::Ui(UiAction::ZoomOut));
                 } else if input.scroll_delta.y > 0.0 {
-                    user_actions.zoom_in = true;
+                    user_actions.push(Action::Ui(UiAction::ZoomIn));
                 }
             } else {
                 ui_state.pan += input.scroll_delta;
@@ -425,30 +411,9 @@ impl epi::App for Application {
             );
         });
 
-        if user_actions.zoom_in && ui_state.zoom < 16.0 {
-            ui_state.zoom *= 2.0
+        for action in user_actions {
+            apply_action(doc, history, ui_state, action);
         }
-        if user_actions.zoom_out && ui_state.zoom > 1.0 {
-            ui_state.zoom /= 2.0
-        }
-        if user_actions.toggle_grid {
-            ui_state.grid = !ui_state.grid;
-        }
-        if user_actions.toggle_raw {
-            ui_state.image_view_settings = match ui_state.image_view_settings {
-                ViewSettings::Normal => ViewSettings::Raw,
-                ViewSettings::Raw => ViewSettings::Normal,
-            }
-        }
-        if user_actions.undo && undo_available {
-            history.undo(doc);
-            doc.image.dirty = true;
-        }
-        if user_actions.redo && redo_available {
-            history.redo(doc);
-            doc.image.dirty = true;
-        }
-
         if let Some(doc) = new_doc {
             self.doc = doc;
         }
@@ -655,6 +620,18 @@ fn apply_action(
             }
         }
         Action::Ui(action) => match action {
+            UiAction::Undo => {
+                if history.can_undo() {
+                    history.undo(doc);
+                    doc.image.dirty = true;
+                }
+            }
+            UiAction::Redo => {
+                if history.can_redo() {
+                    history.redo(doc);
+                    doc.image.dirty = true;
+                }
+            }
             actions::UiAction::SelectTool(tool) => ui_state.tool = tool,
             actions::UiAction::CreateCharBrush { rect } => {
                 if let Some(rect) = rect.within_size(doc.image.size_in_cells()) {
@@ -663,6 +640,29 @@ fn apply_action(
                 } else {
                     println!("Rect {:?} did not fit inside image", rect);
                 }
+            }
+            UiAction::ZoomIn => {
+                if ui_state.zoom < 16.0 {
+                    ui_state.zoom *= 2.0;
+                }
+            }
+            UiAction::ZoomOut => {
+                if ui_state.zoom > 1.0 {
+                    ui_state.zoom /= 2.0;
+                }
+            }
+            UiAction::SetZoom(amount) => {
+                ui_state.zoom = amount;
+            }
+            UiAction::ToggleGrid => ui_state.grid = !ui_state.grid,
+            UiAction::ToggleRaw => {
+                ui_state.image_view_settings = match ui_state.image_view_settings {
+                    ViewSettings::Normal => ViewSettings::Raw,
+                    ViewSettings::Raw => ViewSettings::Normal,
+                }
+            }
+            UiAction::ViewSettings(settings) => {
+                ui_state.image_view_settings = settings;
             }
         },
     }
@@ -724,6 +724,19 @@ fn update_texture(
     };
     image.dirty = false;
     texture
+}
+
+fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
+    let action = match keypress {
+        "+" => Action::Ui(UiAction::ZoomIn),
+        "-" => Action::Ui(UiAction::ZoomOut),
+        "g" => Action::Ui(UiAction::ToggleGrid),
+        "w" => Action::Ui(UiAction::ToggleRaw),
+        "z" => Action::Ui(UiAction::Undo),
+        "y" => Action::Ui(UiAction::Redo),
+        _ => return,
+    };
+    actions.push(action);
 }
 
 impl Application {
