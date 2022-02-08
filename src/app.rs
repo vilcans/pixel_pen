@@ -60,6 +60,7 @@ struct UserActions {
     pub zoom_in: bool,
     pub zoom_out: bool,
     pub toggle_grid: bool,
+    pub toggle_raw: bool,
     pub undo: bool,
     pub redo: bool,
 }
@@ -69,6 +70,7 @@ impl UserActions {
             "+" => self.zoom_in = true,
             "-" => self.zoom_out = true,
             "g" => self.toggle_grid = true,
+            "w" => self.toggle_raw = true,
             "z" => self.undo = true,
             "y" => self.redo = true,
             _ => (),
@@ -431,6 +433,12 @@ impl epi::App for Application {
         }
         if user_actions.toggle_grid {
             ui_state.grid = !ui_state.grid;
+        }
+        if user_actions.toggle_raw {
+            ui_state.image_view_settings = match ui_state.image_view_settings {
+                ViewSettings::Normal => ViewSettings::Raw,
+                ViewSettings::Raw => ViewSettings::Normal,
+            }
         }
         if user_actions.undo && undo_available {
             history.undo(doc);

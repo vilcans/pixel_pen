@@ -112,11 +112,11 @@ The Raw checkbox changes the display mode to "raw". This mode is useful to "debu
 | Z                                   | Undo
 | Y                                   | Redo
 | G                                   | Grid on/off
+| W                                   | Raw display on/off
 | Scroll wheel                        | Scroll
 | Ctrl + scroll wheel                 | Zoom
 | Hold middle mouse button            | Pan
 | Hold shift + right mouse button     | Pan (for systems without a middle mouse button or where it scrolls instead)
-
 On a Mac, substitute Ctrl for ⌘.
 
 ## Command-line interface
