@@ -88,7 +88,6 @@ impl epi::App for Application {
             ..
         } = self;
         let (width, height) = doc.image.size_in_pixels();
-        let mut new_doc = None;
         let mut cursor_icon = None;
 
         for e in ctx.input().events.iter() {
@@ -108,12 +107,17 @@ impl epi::App for Application {
                             .open_file_dialog(OpenFileOptions::for_open(doc.filename.as_deref()))
                         {
                             Ok(Some(filename)) => {
-                                match storage::load_any_file(std::path::Path::new(&filename)) {
-                                    Ok(doc) => {
-                                        new_doc = Some(doc);
-                                    }
-                                    Err(e) => {
-                                        system.show_error(&format!("Failed to load: {:?}", e));
+                                if history.is_saved()
+                                    || check_open(system.as_mut(), doc.filename.as_deref())
+                                {
+                                    match storage::load_any_file(std::path::Path::new(&filename)) {
+                                        Ok(doc) => {
+                                            user_actions
+                                                .push(Action::Ui(UiAction::NewDocument(doc)));
+                                        }
+                                        Err(e) => {
+                                            system.show_error(&format!("Failed to load: {:?}", e));
+                                        }
                                     }
                                 }
                             }
@@ -411,9 +415,6 @@ impl epi::App for Application {
         for action in user_actions {
             apply_action(doc, history, ui_state, action);
         }
-        if let Some(doc) = new_doc {
-            self.doc = doc;
-        }
 
         if let Some(icon) = cursor_icon {
             ctx.output().cursor_icon = icon;
@@ -547,6 +548,17 @@ fn check_quit(system: &mut dyn SystemFunctions, filename: Option<&Path>) -> bool
         .unwrap_or(false)
 }
 
+fn check_open(system: &mut dyn SystemFunctions, filename: Option<&Path>) -> bool {
+    system
+        .request_confirmation(&format!(
+            "File is not saved: \"{}\". Are you sure you want to open a new file?",
+            filename
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_else(|| "Untitled".to_string())
+        ))
+        .unwrap_or(false)
+}
+
 fn start_import_mode(
     filename: &Path,
     doc: &mut Document,
@@ -628,6 +640,9 @@ fn apply_action(
                     history.redo(doc);
                     doc.image.dirty = true;
                 }
+            }
+            UiAction::NewDocument(new_doc) => {
+                *doc = new_doc;
             }
             UiAction::SelectTool(tool) => ui_state.tool = tool,
             UiAction::SelectMode(mode) => ui_state.mode = mode,

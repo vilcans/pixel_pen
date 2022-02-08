@@ -90,6 +90,7 @@ pub enum DocAction {
 pub enum UiAction {
     Undo,
     Redo,
+    NewDocument(Document),
     SelectTool(Tool),
     SelectMode(Mode),
     CreateCharBrush { rect: CellRect },
