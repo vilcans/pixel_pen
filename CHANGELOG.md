@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- Keyboard shortcuts for many functions. See [README](README.md).
 
 ## [0.11.0] - 2022-01-09
 ### Added

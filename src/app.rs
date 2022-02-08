@@ -632,8 +632,9 @@ fn apply_action(
                     doc.image.dirty = true;
                 }
             }
-            actions::UiAction::SelectTool(tool) => ui_state.tool = tool,
-            actions::UiAction::CreateCharBrush { rect } => {
+            UiAction::SelectTool(tool) => ui_state.tool = tool,
+            UiAction::SelectMode(mode) => ui_state.mode = mode,
+            UiAction::CreateCharBrush { rect } => {
                 if let Some(rect) = rect.within_size(doc.image.size_in_cells()) {
                     ui_state.char_brush = doc.image.grab_cells(&rect);
                     ui_state.tool = Tool::CharBrush(Default::default());
@@ -730,10 +731,19 @@ fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
     let action = match keypress {
         "+" => Action::Ui(UiAction::ZoomIn),
         "-" => Action::Ui(UiAction::ZoomOut),
+        "b" => Action::Ui(UiAction::SelectTool(Tool::CharBrush(Default::default()))),
+        "c" => Action::Ui(UiAction::SelectMode(Mode::CellColor)),
+        "d" => Action::Ui(UiAction::SelectTool(Tool::Paint(Default::default()))),
+        "f" => Action::Ui(UiAction::SelectMode(Mode::FillCell)),
         "g" => Action::Ui(UiAction::ToggleGrid),
+        "h" => Action::Ui(UiAction::SelectMode(Mode::MakeHiRes)),
+        "H" => Action::Ui(UiAction::SelectMode(Mode::MakeMulticolor)),
+        "r" => Action::Ui(UiAction::SelectMode(Mode::ReplaceColor)),
+        "R" => Action::Ui(UiAction::SelectMode(Mode::SwapColors)),
         "w" => Action::Ui(UiAction::ToggleRaw),
-        "z" => Action::Ui(UiAction::Undo),
-        "y" => Action::Ui(UiAction::Redo),
+        "u" => Action::Ui(UiAction::Undo),
+        "U" => Action::Ui(UiAction::Redo),
+        "v" => Action::Ui(UiAction::SelectTool(Tool::Grab(Default::default()))),
         _ => return,
     };
     actions.push(action);

@@ -5,6 +5,7 @@ use imgref::ImgVec;
 
 use crate::{
     coords::{CellPos, CellRect, PixelPoint},
+    editing::Mode,
     error::{DisallowedAction, Severity},
     tool::Tool,
     ui::ViewSettings,
@@ -89,11 +90,9 @@ pub enum DocAction {
 pub enum UiAction {
     Undo,
     Redo,
-    /// Select a tool
     SelectTool(Tool),
-    CreateCharBrush {
-        rect: CellRect,
-    },
+    SelectMode(Mode),
+    CreateCharBrush { rect: CellRect },
     ZoomIn,
     ZoomOut,
     SetZoom(f32),

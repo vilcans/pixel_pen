@@ -109,14 +109,24 @@ The Raw checkbox changes the display mode to "raw". This mode is useful to "debu
 | Right mouse button                  | Paint with background color
 | +                                   | Zoom in
 | -                                   | Zoom out
-| Z                                   | Undo
-| Y                                   | Redo
+| B                                   | Character Brush tool
+| C                                   | Cell Color mode
+| D                                   | Paint tool
+| F                                   | Fill Cell mode
 | G                                   | Grid on/off
+| H                                   | Make High-res mode
+| Shift+H                             | Make Multicolor mode
+| R                                   | Replace Color mode
+| Shift+R                             | Swap Colors mode
+| U                                   | Undo
+| Shift+U                             | Redo
+| V                                   | Grab Brush mode
 | W                                   | Raw display on/off
 | Scroll wheel                        | Scroll
 | Ctrl + scroll wheel                 | Zoom
 | Hold middle mouse button            | Pan
 | Hold shift + right mouse button     | Pan (for systems without a middle mouse button or where it scrolls instead)
+
 On a Mac, substitute Ctrl for ⌘.
 
 ## Command-line interface
