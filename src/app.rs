@@ -87,9 +87,6 @@ impl epi::App for Application {
             history,
             ..
         } = self;
-        let undo_available = history.can_undo();
-        let redo_available = history.can_redo();
-
         let (width, height) = doc.image.size_in_pixels();
         let mut new_doc = None;
         let mut cursor_icon = None;
@@ -188,11 +185,11 @@ impl epi::App for Application {
                     }
                 });
                 egui::menu::menu(ui, "Edit", |ui| {
-                    ui.set_enabled(undo_available);
+                    ui.set_enabled(history.can_undo());
                     if ui.button("Undo").clicked() {
                         user_actions.push(Action::Ui(UiAction::Undo));
                     }
-                    ui.set_enabled(redo_available);
+                    ui.set_enabled(history.can_redo());
                     if ui.button("Redo").clicked() {
                         user_actions.push(Action::Ui(UiAction::Redo));
                     }
