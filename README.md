@@ -4,6 +4,8 @@
 
 This is still early in development.
 
+Download binaries from the [releases page](https://github.com/vilcans/pixel_pen/releases/).
+
 You can load images in typical image file formats, which Pixel Pen will convert to Vic-20 format.
 If you use the "Open" menu to open an image file, make sure it's not very high resolution. You can use the Import menu instead to load an image and scale it down at the same time.
 
