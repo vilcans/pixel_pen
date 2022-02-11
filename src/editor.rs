@@ -132,11 +132,9 @@ impl Editor {
         });
     }
 
-    pub fn update_left_toolbar(&mut self, ui: &mut Ui) {
+    pub fn update_left_toolbar(&mut self, ui: &mut Ui, user_actions: &mut Vec<Action>) {
         egui::ScrollArea::vertical().show(ui, |ui| {
-            if let Some(new_tool) = select_tool_ui(ui, &self.ui_state.tool) {
-                self.ui_state.tool = new_tool;
-            }
+            select_tool_ui(ui, &self.ui_state.tool, user_actions);
             if let Tool::Paint(_) = self.ui_state.tool {
                 ui.separator();
                 self.ui_state.mode = select_mode_ui(ui, &self.ui_state.mode);
@@ -227,9 +225,9 @@ impl Editor {
 
         // Tool UI
         if !self.ui_state.panning {
-            let action = match &mut self.ui_state.tool {
+            match &mut self.ui_state.tool {
                 Tool::Import(tool) => {
-                    tool.update_ui(ctx, ui, &painter, &self.doc, &pixel_transform)
+                    tool.update_ui(ctx, ui, &painter, &self.doc, &pixel_transform, user_actions)
                 }
                 Tool::Paint(tool) => tool.update_ui(
                     hover_pos,
@@ -241,6 +239,7 @@ impl Editor {
                     &self.ui_state.mode,
                     (self.ui_state.primary_color, self.ui_state.secondary_color),
                     &self.doc,
+                    user_actions,
                 ),
                 Tool::Grab(tool) => tool.update_ui(
                     &painter,
@@ -249,6 +248,7 @@ impl Editor {
                     &self.doc,
                     hover_pos,
                     &response,
+                    user_actions,
                 ),
                 Tool::CharBrush(tool) => tool.update_ui(
                     &response,
@@ -258,11 +258,9 @@ impl Editor {
                     &self.ui_state.char_brush,
                     hover_pos,
                     &self.doc,
+                    user_actions,
                 ),
             };
-            if let Some(action) = action {
-                user_actions.push(action);
-            }
         }
 
         let info_text = {
@@ -382,7 +380,7 @@ fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransfo
 
 /// Renders the UI for tool selection.
 /// Returns which tool to switch to, or None if the user did not change tool.
-fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
+fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool, user_actions: &mut Vec<Action>) {
     let mut new_tool = None;
     ui.with_layout(egui::Layout::top_down_justified(Align::LEFT), |ui| {
         ui.style_mut().body_text_style = egui::TextStyle::Heading;
@@ -409,7 +407,9 @@ fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
             new_tool = Some(Tool::CharBrush(Default::default()));
         }
     });
-    new_tool
+    if let Some(t) = new_tool {
+        user_actions.push(Action::Ui(UiAction::SelectTool(t)));
+    }
 }
 
 /// Renders the UI for mode selection.

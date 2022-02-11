@@ -24,6 +24,7 @@ pub struct GrabTool {
 }
 
 impl GrabTool {
+    #[allow(clippy::too_many_arguments)]
     pub fn update_ui(
         &mut self,
         painter: &Painter,
@@ -32,7 +33,8 @@ impl GrabTool {
         doc: &Document,
         hover_pos: Option<PixelPoint>,
         response: &Response,
-    ) -> Option<Action> {
+        user_actions: &mut Vec<Action>,
+    ) {
         let mut selection = None;
         match self.selection_start {
             None => {
@@ -78,11 +80,11 @@ impl GrabTool {
                 }
             }
         }
-        selection.map(|selection| {
-            Action::Ui(UiAction::CreateCharBrush {
+        if let Some(selection) = selection {
+            user_actions.push(Action::Ui(UiAction::CreateCharBrush {
                 rect: selection_to_cells(&doc.image, selection),
-            })
-        })
+            }))
+        }
     }
 }
 

@@ -4,7 +4,7 @@ use imgref::ImgVec;
 use crate::{
     actions::{Action, DocAction},
     cell_image::CellCoordinates,
-    coords::{CellRect, PixelTransform, PixelPoint},
+    coords::{CellRect, PixelPoint, PixelTransform},
     vic::Char,
     Document,
 };
@@ -28,8 +28,12 @@ impl CharBrushTool {
         brush: &ImgVec<Char>,
         cursor_pos: Option<PixelPoint>,
         doc: &Document,
-    ) -> Option<Action> {
-        let cursor_pos = cursor_pos?;
+        user_actions: &mut Vec<Action>,
+    ) {
+        let cursor_pos = match cursor_pos {
+            None => return,
+            Some(p) => p,
+        };
         *cursor_icon = Some(CursorIcon::PointingHand);
 
         let (cell, _, _) = doc.image.cell_unclipped(PixelPoint {
@@ -63,12 +67,10 @@ impl CharBrushTool {
         );
 
         if response.clicked() {
-            Some(Action::Document(DocAction::CharBrushPaint {
+            user_actions.push(Action::Document(DocAction::CharBrushPaint {
                 pos: cell,
                 chars: brush.clone(),
-            }))
-        } else {
-            None
+            }));
         }
     }
 }

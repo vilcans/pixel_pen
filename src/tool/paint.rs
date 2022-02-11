@@ -38,8 +38,12 @@ impl PaintTool {
         mode: &Mode,
         colors: (PixelColor, PixelColor),
         doc: &Document,
-    ) -> Option<Action> {
-        let hover_pos = pixel_pos?;
+        user_actions: &mut Vec<Action>,
+    ) {
+        let hover_pos = match pixel_pos {
+            Some(p) => p,
+            None => return,
+        };
         *cursor_icon = Some(CursorIcon::PointingHand);
 
         // Highlight character
@@ -81,7 +85,7 @@ impl PaintTool {
         let secondary = match pressed {
             None => {
                 self.paint_position = None;
-                return None;
+                return;
             }
             Some(v) => v,
         };
@@ -90,7 +94,7 @@ impl PaintTool {
             Some(p) => {
                 if p == hover_pos {
                     // Mouse is held and hasn't moved
-                    return None;
+                    return;
                 }
                 UpdateArea::pixel_line(p, hover_pos)
             }
@@ -98,12 +102,11 @@ impl PaintTool {
         };
         self.paint_position = Some(hover_pos);
 
-        let action = if secondary {
+        user_actions.push(Action::Document(if secondary {
             // Used secondary mouse button - swap colors
             mode.paint_action(area, colors.1, colors.0)
         } else {
             mode.paint_action(area, colors.0, colors.1)
-        };
-        Some(Action::Document(action))
+        }));
     }
 }

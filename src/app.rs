@@ -152,7 +152,7 @@ impl epi::App for Application {
 
         // Left toolbar
         egui::SidePanel::left("toolbar").show(ctx, |ui| {
-            ed.update_left_toolbar(ui);
+            ed.update_left_toolbar(ui, &mut user_actions);
         });
 
         let mut cursor_icon = None;
