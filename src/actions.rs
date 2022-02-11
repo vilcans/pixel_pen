@@ -5,8 +5,8 @@ use imgref::ImgVec;
 
 use crate::{
     coords::{CellPos, CellRect, PixelPoint},
-    editing::Mode,
     error::{DisallowedAction, Severity},
+    mode::Mode,
     tool::Tool,
     ui::ViewSettings,
     update_area::UpdateArea,

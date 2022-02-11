@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use crate::{
     colors::TrueColor,
-    editing::Mode,
+    mode::Mode,
     tool::Tool,
     vic::{Char, PixelColor},
 };

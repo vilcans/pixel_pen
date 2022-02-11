@@ -3,7 +3,7 @@ mod grab;
 mod import;
 mod paint;
 
-use crate::editing::Mode;
+use crate::mode::Mode;
 pub use brush::CharBrushTool;
 pub use grab::GrabTool;
 pub use import::ImportTool;

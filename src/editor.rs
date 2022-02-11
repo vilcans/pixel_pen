@@ -10,7 +10,7 @@ use crate::{
     actions::{self, Action, UiAction},
     cell_image::CellImageSize,
     coords::{PixelPoint, PixelTransform},
-    editing::Mode,
+    mode::Mode,
     storage,
     system::{SaveFileOptions, SystemFunctions},
     texture::{self, Texture},

@@ -3,8 +3,8 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, PointerButton, Stroke};
 use crate::{
     actions::Action,
     cell_image::CellCoordinates,
-    coords::{CellRect, PixelTransform, PixelPoint, SizeInCells},
-    editing::Mode,
+    coords::{CellRect, PixelPoint, PixelTransform, SizeInCells},
+    mode::Mode,
     update_area::UpdateArea,
     vic::PixelColor,
     Document,
