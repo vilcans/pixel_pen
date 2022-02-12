@@ -3,12 +3,11 @@ use crate::{
     cell_image::CellImageSize,
     document::Document,
     editor::Editor,
-    error::{Error, Severity},
-    import::Import,
+    error::Severity,
     mode::Mode,
     storage,
     system::{self, OpenFileOptions, SystemFunctions},
-    tool::{ImportTool, Tool},
+    tool::Tool,
     ui::{UiState, ViewSettings},
 };
 use eframe::{
@@ -82,29 +81,6 @@ impl epi::App for Application {
                             Ok(None) => {}
                             Err(e) => {
                                 system.show_error(&format!("Could not get file name: {:?}", e));
-                            }
-                        }
-                    }
-                    if system.has_open_file_dialog() && ui.button("Import...").clicked() {
-                        match system.open_file_dialog(OpenFileOptions::for_import(
-                            match &ed.ui_state.tool {
-                                Tool::Import(tool) => tool.filename(),
-                                _ => None,
-                            },
-                        )) {
-                            Ok(Some(filename)) => {
-                                match start_import_mode(&filename, &mut ed.doc, &mut ed.ui_state) {
-                                    Ok(()) => {}
-                                    Err(e) => system.show_error(&format!(
-                                        "Could not import file {}: {:?}",
-                                        filename.display(),
-                                        e
-                                    )),
-                                }
-                            }
-                            Ok(None) => {}
-                            Err(e) => {
-                                system.show_error(&format!("Could not get file name: {:?}", e))
                             }
                         }
                     }
@@ -192,18 +168,6 @@ fn check_open(system: &mut dyn SystemFunctions, filename: Option<&Path>) -> bool
                 .unwrap_or_else(|| "Untitled".to_string())
         ))
         .unwrap_or(false)
-}
-
-fn start_import_mode(
-    filename: &Path,
-    doc: &mut Document,
-    ui_state: &mut UiState,
-) -> Result<(), Error> {
-    let mut i = Import::load(filename)?;
-    i.settings.width = i.settings.width.min(doc.image.size_in_pixels().0 as u32);
-    i.settings.height = i.settings.height.min(doc.image.size_in_pixels().1 as u32);
-    ui_state.tool = Tool::Import(ImportTool::new(i));
-    Ok(())
 }
 
 /// Apply an action and record it in the history. Show any error to the user.
@@ -313,7 +277,7 @@ impl Application {
         self.editor = Editor::with_doc(doc);
     }
 
-    pub fn start_import_mode(&mut self, filename: &Path) -> Result<(), Error> {
-        start_import_mode(filename, &mut self.editor.doc, &mut self.editor.ui_state)
+    pub fn editor_mut(&mut self) -> &mut Editor {
+        &mut self.editor
     }
 }

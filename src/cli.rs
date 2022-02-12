@@ -46,7 +46,7 @@ pub fn main() -> Result<Option<Application>, i32> {
             let mut app = Application::new();
             app.add_editor(doc.unwrap_or_default());
             if let Some(filename) = opts.import_file {
-                match app.start_import_mode(&filename) {
+                match app.editor_mut().start_import_mode(&filename) {
                     Ok(_) => Ok(Some(app)),
                     Err(e) => {
                         eprintln!("Failed to open {:?} for import: {}", filename, e);

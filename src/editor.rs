@@ -10,11 +10,13 @@ use crate::{
     actions::{self, Action, UiAction},
     cell_image::CellImageSize,
     coords::{PixelPoint, PixelTransform},
+    error::Error,
+    import::Import,
     mode::Mode,
     storage,
-    system::{SaveFileOptions, SystemFunctions},
+    system::{OpenFileOptions, SaveFileOptions, SystemFunctions},
     texture::{self, Texture},
-    tool::Tool,
+    tool::{ImportTool, Tool},
     ui::{self, text, UiState, ViewSettings},
     vic::VicImage,
     Document,
@@ -42,11 +44,41 @@ impl Editor {
         }
     }
 
+    pub fn start_import_mode(&mut self, filename: &Path) -> Result<(), Error> {
+        let mut i = Import::load(filename)?;
+        i.settings.width = i
+            .settings
+            .width
+            .min(self.doc.image.size_in_pixels().0 as u32);
+        i.settings.height = i
+            .settings
+            .height
+            .min(self.doc.image.size_in_pixels().1 as u32);
+        self.ui_state.tool = Tool::Import(ImportTool::new(i));
+        Ok(())
+    }
+
     pub fn update_file_menu(&mut self, ui: &mut Ui, system: &mut dyn SystemFunctions) {
-        let doc = &mut self.doc;
+        if system.has_open_file_dialog() && ui.button("Import...").clicked() {
+            match system.open_file_dialog(OpenFileOptions::for_import(match &self.ui_state.tool {
+                Tool::Import(tool) => tool.filename(),
+                _ => None,
+            })) {
+                Ok(Some(filename)) => match self.start_import_mode(&filename) {
+                    Ok(()) => {}
+                    Err(e) => system.show_error(&format!(
+                        "Could not import file {}: {:?}",
+                        filename.display(),
+                        e
+                    )),
+                },
+                Ok(None) => {}
+                Err(e) => system.show_error(&format!("Could not get file name: {:?}", e)),
+            }
+        }
         if system.has_save_file_dialog() {
             ui.separator();
-            match doc.filename.clone() {
+            match self.doc.filename.clone() {
                 Some(filename) => {
                     if ui
                         .button(format!(
