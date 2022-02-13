@@ -164,12 +164,12 @@ impl Editor {
         });
     }
 
-    pub fn update_left_toolbar(&mut self, ui: &mut Ui, user_actions: &mut Vec<Action>) {
+    pub fn update_left_toolbar(&self, ui: &mut Ui, user_actions: &mut Vec<Action>) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             select_tool_ui(ui, &self.ui_state.tool, user_actions);
             if let Tool::Paint(_) = self.ui_state.tool {
                 ui.separator();
-                self.ui_state.mode = select_mode_ui(ui, &self.ui_state.mode);
+                select_mode_ui(ui, &self.ui_state.mode, user_actions);
             }
         });
     }
@@ -445,9 +445,7 @@ fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool, user_actions: &mut Vec
 }
 
 /// Renders the UI for mode selection.
-/// Returns which mode to use, which is the same as the current one passed in unless changed by the user.
-fn select_mode_ui(ui: &mut egui::Ui, current_mode: &Mode) -> Mode {
-    let mut new_mode = current_mode.clone();
+fn select_mode_ui(ui: &mut egui::Ui, current_mode: &Mode, user_actions: &mut Vec<Action>) {
     ui.with_layout(egui::Layout::top_down_justified(Align::LEFT), |ui| {
         ui.style_mut().body_text_style = egui::TextStyle::Heading;
         ui.label("Mode");
@@ -465,9 +463,8 @@ fn select_mode_ui(ui: &mut egui::Ui, current_mode: &Mode) -> Mode {
                 .on_hover_text(mode.tip())
                 .clicked()
             {
-                new_mode = mode;
+                user_actions.push(Action::Ui(UiAction::SelectMode(mode)));
             }
         }
     });
-    new_mode
 }
