@@ -33,7 +33,10 @@ impl Editors {
     pub fn len(&self) -> usize {
         self.list.len()
     }
-    pub fn set_active(&mut self, index: usize) {
+    pub fn active_index(&self) -> usize {
+        self.active
+    }
+    pub fn set_active_index(&mut self, index: usize) {
         assert!(index < self.list.len());
         self.active = index;
     }
@@ -192,6 +195,29 @@ fn update_with_editor(
             });
         });
 
+        // Document selector
+        {
+            let mut selected_index = editors.active_index();
+            ui.horizontal_wrapped(|ui| {
+                for (index, ed) in editors.iter().enumerate() {
+                    if ui
+                        .selectable_label(
+                            selected_index == index,
+                            ed.doc
+                                .filename
+                                .as_ref()
+                                .map(|n| n.display().to_string())
+                                .unwrap_or_else(|| format!("Untitled {}", index)),
+                        )
+                        .clicked()
+                    {
+                        selected_index = index;
+                    }
+                }
+            });
+            editors.set_active_index(selected_index);
+        }
+
         // Top toolbar
         let ed = editors.active_mut().unwrap();
         ed.update_top_toolbar(ui, user_actions);
@@ -263,7 +289,7 @@ impl Application {
     pub fn add_editor(&mut self, doc: Document) -> usize {
         let editor = Editor::with_doc(doc);
         let i = self.editors.add(editor);
-        self.editors.set_active(i);
+        self.editors.set_active_index(i);
         i
     }
 
