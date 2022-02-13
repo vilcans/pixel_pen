@@ -7,10 +7,10 @@ use eframe::egui::{
 use undo::Record;
 
 use crate::{
-    actions::{self, Action, UiAction},
+    actions::{self, Action, UiAction, Undoable},
     cell_image::CellImageSize,
     coords::{PixelPoint, PixelTransform},
-    error::Error,
+    error::{Error, Severity},
     import::Import,
     mode::Mode,
     storage,
@@ -314,6 +314,83 @@ impl Editor {
         if let Some(icon) = cursor_icon {
             ctx.output().cursor_icon = *icon;
         }
+    }
+
+    /// Apply an action and record it in the history. Show any error to the user.
+    /// If the action was not handled, returns the action to the caller.
+    pub fn apply_action(&mut self, action: Action) -> Option<Action> {
+        let Editor {
+            doc,
+            history,
+            ui_state,
+            ..
+        } = self;
+
+        match action {
+            Action::Document(action) => {
+                let was_dirty = doc.image.dirty;
+                match history.apply(doc, Undoable::new(action)) {
+                    Ok(true) => (),
+                    Ok(false) => doc.image.dirty = was_dirty,
+                    Err(e) => match e.severity() {
+                        Severity::Silent => {}
+                        Severity::Notification => ui_state.show_warning(e.to_string()),
+                    },
+                }
+            }
+            Action::Ui(ref ui_action) => match ui_action {
+                UiAction::Undo => {
+                    if history.can_undo() {
+                        history.undo(doc);
+                        doc.image.dirty = true;
+                    }
+                }
+                UiAction::Redo => {
+                    if history.can_redo() {
+                        history.redo(doc);
+                        doc.image.dirty = true;
+                    }
+                }
+                UiAction::SelectTool(tool) => ui_state.tool = tool.clone(),
+                UiAction::SelectMode(mode) => ui_state.mode = mode.clone(),
+                UiAction::CreateCharBrush { rect } => {
+                    if let Some(rect) = rect.within_size(doc.image.size_in_cells()) {
+                        ui_state.char_brush = doc.image.grab_cells(&rect);
+                        ui_state.tool = Tool::CharBrush(Default::default());
+                    } else {
+                        println!("Rect {:?} did not fit inside image", rect);
+                    }
+                }
+                UiAction::ZoomIn => {
+                    if ui_state.zoom < 16.0 {
+                        ui_state.zoom *= 2.0;
+                    }
+                }
+                UiAction::ZoomOut => {
+                    if ui_state.zoom > 1.0 {
+                        ui_state.zoom /= 2.0;
+                    }
+                }
+                UiAction::SetZoom(amount) => {
+                    ui_state.zoom = *amount;
+                }
+                UiAction::ToggleGrid => ui_state.grid = !ui_state.grid,
+                UiAction::ToggleRaw => {
+                    ui_state.image_view_settings = match ui_state.image_view_settings {
+                        ViewSettings::Normal => ViewSettings::Raw,
+                        ViewSettings::Raw => ViewSettings::Normal,
+                    }
+                }
+                UiAction::ViewSettings(settings) => {
+                    ui_state.image_view_settings = settings.clone();
+                }
+                // Not handled by Editor
+                UiAction::NewDocument(_) => {
+                    return Some(action);
+                }
+            },
+        }
+        None
     }
 }
 

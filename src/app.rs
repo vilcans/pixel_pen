@@ -1,21 +1,17 @@
 use crate::{
-    actions::{Action, UiAction, Undoable},
-    cell_image::CellImageSize,
+    actions::{Action, UiAction},
     document::Document,
     editor::Editor,
-    error::Severity,
     mode::Mode,
     storage,
     system::{self, OpenFileOptions, SystemFunctions},
     tool::Tool,
-    ui::{UiState, ViewSettings},
 };
 use eframe::{
     egui::{self, Label, Rgba},
     epi,
 };
 use std::time::Instant;
-use undo::Record;
 
 const POPUP_MESSAGE_TIME: f32 = 3.0;
 const POPUP_HIGHLIGHT_TIME: f32 = 0.4;
@@ -92,13 +88,17 @@ impl epi::App for Application {
         }
 
         if self.editors.has_active() {
-            update_with_editor(
+            let actions = update_with_editor(
                 ctx,
                 frame,
                 &mut self.editors,
                 self.system.as_mut(),
                 &mut user_actions,
             );
+            // Apply the actions the editor did not handle
+            for action in actions.into_iter() {
+                self.apply_action(action);
+            }
         }
     }
 }
@@ -124,78 +124,6 @@ fn check_quit(system: &mut dyn SystemFunctions, editors: &Editors) -> bool {
         .unwrap_or(false)
 }
 
-/// Apply an action and record it in the history. Show any error to the user.
-fn apply_action(
-    doc: &mut Document,
-    history: &mut Record<Undoable>,
-    ui_state: &mut UiState,
-    action: Action,
-) {
-    match action {
-        Action::Document(action) => {
-            let was_dirty = doc.image.dirty;
-            match history.apply(doc, Undoable::new(action)) {
-                Ok(true) => (),
-                Ok(false) => doc.image.dirty = was_dirty,
-                Err(e) => match e.severity() {
-                    Severity::Silent => {}
-                    Severity::Notification => ui_state.show_warning(e.to_string()),
-                },
-            }
-        }
-        Action::Ui(action) => match action {
-            UiAction::Undo => {
-                if history.can_undo() {
-                    history.undo(doc);
-                    doc.image.dirty = true;
-                }
-            }
-            UiAction::Redo => {
-                if history.can_redo() {
-                    history.redo(doc);
-                    doc.image.dirty = true;
-                }
-            }
-            UiAction::NewDocument(new_doc) => {
-                *doc = new_doc;
-            }
-            UiAction::SelectTool(tool) => ui_state.tool = tool,
-            UiAction::SelectMode(mode) => ui_state.mode = mode,
-            UiAction::CreateCharBrush { rect } => {
-                if let Some(rect) = rect.within_size(doc.image.size_in_cells()) {
-                    ui_state.char_brush = doc.image.grab_cells(&rect);
-                    ui_state.tool = Tool::CharBrush(Default::default());
-                } else {
-                    println!("Rect {:?} did not fit inside image", rect);
-                }
-            }
-            UiAction::ZoomIn => {
-                if ui_state.zoom < 16.0 {
-                    ui_state.zoom *= 2.0;
-                }
-            }
-            UiAction::ZoomOut => {
-                if ui_state.zoom > 1.0 {
-                    ui_state.zoom /= 2.0;
-                }
-            }
-            UiAction::SetZoom(amount) => {
-                ui_state.zoom = amount;
-            }
-            UiAction::ToggleGrid => ui_state.grid = !ui_state.grid,
-            UiAction::ToggleRaw => {
-                ui_state.image_view_settings = match ui_state.image_view_settings {
-                    ViewSettings::Normal => ViewSettings::Raw,
-                    ViewSettings::Raw => ViewSettings::Normal,
-                }
-            }
-            UiAction::ViewSettings(settings) => {
-                ui_state.image_view_settings = settings;
-            }
-        },
-    }
-}
-
 fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
     let action = match keypress {
         "+" => Action::Ui(UiAction::ZoomIn),
@@ -218,25 +146,6 @@ fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
     actions.push(action);
 }
 
-impl Application {
-    pub fn new() -> Self {
-        let system = Box::new(system::DummySystemFunctions {});
-        Self {
-            editors: Default::default(),
-            system,
-        }
-    }
-
-    pub fn add_editor(&mut self, doc: Document) -> usize {
-        let editor = Editor::with_doc(doc);
-        self.editors.add(editor)
-    }
-
-    pub fn editor_mut(&mut self, index: usize) -> Option<&mut Editor> {
-        self.editors.get_mut(index)
-    }
-}
-
 /// UI for when there is an active editor.
 fn update_with_editor(
     ctx: &egui::CtxRef,
@@ -244,7 +153,7 @@ fn update_with_editor(
     editors: &mut Editors,
     system: &mut dyn SystemFunctions,
     user_actions: &mut Vec<Action>,
-) {
+) -> Vec<Action> {
     egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
         // Menu bar
         let doc_filename = editors.active_mut().unwrap().doc.filename.clone();
@@ -328,11 +237,51 @@ fn update_with_editor(
     });
 
     let ed = editors.active_mut().unwrap();
+    let mut unhandled_actions = Vec::new();
     for action in user_actions.drain(..) {
-        apply_action(&mut ed.doc, &mut ed.history, &mut ed.ui_state, action);
+        if let Some(action) = ed.apply_action(action) {
+            unhandled_actions.push(action);
+        }
     }
 
     if let Some(icon) = cursor_icon {
         ctx.output().cursor_icon = icon;
+    }
+
+    unhandled_actions
+}
+
+impl Application {
+    pub fn new() -> Self {
+        let system = Box::new(system::DummySystemFunctions {});
+        Self {
+            editors: Default::default(),
+            system,
+        }
+    }
+
+    pub fn add_editor(&mut self, doc: Document) -> usize {
+        let editor = Editor::with_doc(doc);
+        let i = self.editors.add(editor);
+        self.editors.set_active(i);
+        i
+    }
+
+    pub fn editor_mut(&mut self, index: usize) -> Option<&mut Editor> {
+        self.editors.get_mut(index)
+    }
+
+    fn apply_action(&mut self, action: Action) {
+        match action {
+            Action::Document(_) => eprintln!("Unhandled Document action"),
+            Action::Ui(ui_action) => match ui_action {
+                UiAction::NewDocument(doc) => {
+                    self.add_editor(doc);
+                }
+                _action => {
+                    eprintln!("Unhandled UiAction");
+                }
+            },
+        }
     }
 }

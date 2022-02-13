@@ -18,7 +18,7 @@ const CROSSHAIR_STROKE: Stroke = Stroke {
     color: Color32::from_rgb(200, 200, 200),
 };
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct GrabTool {
     selection_start: Option<PixelPoint>,
 }

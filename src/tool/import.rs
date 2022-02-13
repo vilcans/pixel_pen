@@ -27,6 +27,7 @@ use image::GenericImageView;
 const IMPORT_IMAGE_EXTENTS_COLOR: Color32 = Color32::GRAY;
 const UNKNOWN_SOURCE_TEXT: &str = "unknown source";
 
+#[derive(Clone)]
 pub struct ImportTool {
     import: Import,
 }

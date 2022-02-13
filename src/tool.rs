@@ -9,6 +9,7 @@ pub use grab::GrabTool;
 pub use import::ImportTool;
 pub use paint::PaintTool;
 
+#[derive(Clone)]
 pub enum Tool {
     Import(ImportTool),
     Paint(PaintTool),
