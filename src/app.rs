@@ -164,6 +164,10 @@ fn update_with_editor(
         let doc_filename = editors.active_mut().unwrap().doc.filename.clone();
         egui::menu::bar(ui, |ui| {
             egui::menu::menu_button(ui, "File", |ui| {
+                if ui.button("New").clicked() {
+                    let doc = Document::new();
+                    user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
+                }
                 if system.has_open_file_dialog() && ui.button("Open...").clicked() {
                     match system
                         .open_file_dialog(OpenFileOptions::for_open(doc_filename.as_deref()))

@@ -5,6 +5,7 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - Keyboard shortcuts for many functions. See [README](README.md).
+- File->New menu item creates a new document.
 
 ## [0.11.0] - 2022-01-09
 ### Added
