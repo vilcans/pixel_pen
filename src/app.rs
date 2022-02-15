@@ -18,8 +18,8 @@ use crate::{
 };
 use eframe::{
     egui::{
-        self, paint::Mesh, Align, Align2, Color32, CursorIcon, Label, Painter, PointerButton, Pos2,
-        Rect, Response, Rgba, Shape, Stroke, TextStyle, TextureId, Vec2,
+        self, epaint::Mesh, Align, Align2, Color32, CursorIcon, Label, Painter, PointerButton,
+        Pos2, Rect, Response, Rgba, RichText, Shape, Stroke, TextStyle, TextureId, Vec2,
     },
     epi::{self, TextureAllocator},
 };
@@ -77,7 +77,7 @@ impl epi::App for Application {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
         let mut user_actions = Vec::new();
         let Application {
             doc,
@@ -102,7 +102,7 @@ impl epi::App for Application {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             // Menu bar
             egui::menu::bar(ui, |ui| {
-                egui::menu::menu(ui, "File", |ui| {
+                egui::menu::menu_button(ui, "File", |ui| {
                     if system.has_open_file_dialog() && ui.button("Open...").clicked() {
                         match system
                             .open_file_dialog(OpenFileOptions::for_open(doc.filename.as_deref()))
@@ -184,7 +184,7 @@ impl epi::App for Application {
                         frame.quit();
                     }
                 });
-                egui::menu::menu(ui, "Edit", |ui| {
+                egui::menu::menu_button(ui, "Edit", |ui| {
                     ui.set_enabled(history.can_undo());
                     if ui.button("Undo").clicked() {
                         user_actions.push(Action::Ui(UiAction::Undo));
@@ -251,11 +251,11 @@ impl epi::App for Application {
                 let bg_color = Rgba::RED * highlight;
                 let text_color = (Rgba::WHITE * highlight)
                     + (Rgba::from(ctx.style().visuals.text_color()) * (1.0 - highlight));
-                ui.add(
-                    Label::new(message)
-                        .text_color(text_color)
+                ui.add(Label::new(
+                    RichText::new(message)
+                        .color(text_color)
                         .background_color(bg_color),
-                );
+                ));
                 if age >= POPUP_MESSAGE_TIME {
                     ui_state.message = None;
                 } else if highlight > 0.0 {
@@ -335,7 +335,7 @@ impl epi::App for Application {
             let texture = update_texture(
                 &mut doc.image,
                 image_texture,
-                frame.tex_allocator(),
+                frame as &dyn TextureAllocator,
                 par,
                 ui_state.zoom,
                 &ui_state.image_view_settings,
@@ -671,7 +671,7 @@ fn apply_action(
 fn update_texture(
     image: &mut MutationMonitor<VicImage>,
     image_texture: &mut Option<Texture>,
-    tex_allocator: &mut dyn TextureAllocator,
+    tex_allocator: &dyn TextureAllocator,
     par: f32,
     zoom: f32,
     settings: &ViewSettings,
@@ -710,8 +710,11 @@ fn update_texture(
             .pixels()
             .map(|p| (<image::Rgba<u8> as Into<TrueColor>>::into(*p)).into())
             .collect();
-        let texture_id =
-            tex_allocator.alloc_srgba_premultiplied((texture_width, texture_height), &pixels);
+        let image = epi::Image {
+            size: [texture_width, texture_height],
+            pixels,
+        };
+        let texture_id = tex_allocator.alloc(image);
         *image_texture = Some(Texture {
             id: texture_id,
             settings: settings.clone(),
