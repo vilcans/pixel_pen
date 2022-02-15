@@ -8,7 +8,7 @@ use crate::{
     Document,
 };
 use eframe::{
-    egui::{self, Label, Rgba, RichText},
+    egui::{self, Color32, Label, Rgba, RichText, Sense, Shape, Stroke},
     epi,
 };
 use std::time::Instant;
@@ -16,6 +16,12 @@ use std::time::Instant;
 const POPUP_MESSAGE_TIME: f32 = 3.0;
 const POPUP_HIGHLIGHT_TIME: f32 = 0.4;
 const POPUP_FADE_OUT_TIME: f32 = 0.8;
+
+const TAB_SPACING: f32 = 5.0;
+const TAB_STROKE: Stroke = Stroke {
+    width: 0.1,
+    color: Color32::LIGHT_GRAY,
+};
 
 /// All open editors, and the currently active one.
 #[derive(Default)]
@@ -204,16 +210,55 @@ fn update_with_editor(
         // Document selector
         {
             let mut selected_index = editors.active_index();
-            ui.horizontal_wrapped(|ui| {
-                for (index, ed) in editors.iter().enumerate() {
-                    if ui
-                        .selectable_label(selected_index == index, ed.doc.short_name())
-                        .clicked()
-                    {
-                        selected_index = index;
+            let mut selected_rect = egui::Rect::NOTHING;
+            egui::ScrollArea::horizontal().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    for (index, ed) in editors.iter().enumerate() {
+                        let selected = selected_index == index;
+                        let name = ed.doc.short_name();
+                        let response = if selected {
+                            ui.add_space(TAB_SPACING);
+                            let response = ui.add(
+                                Label::new(RichText::new(name).strong()).sense(Sense::click()),
+                            );
+                            selected_rect = response.rect;
+                            response
+                        } else {
+                            ui.add_space(TAB_SPACING);
+                            let response = ui
+                                .add(Label::new(RichText::new(name).weak()).sense(Sense::click()));
+                            let rect = response.rect;
+                            ui.painter().add(Shape::line(
+                                vec![
+                                    rect.left_bottom() - egui::Vec2::new(TAB_SPACING, 0.0),
+                                    rect.left_top(),
+                                    rect.right_top(),
+                                    rect.right_bottom() + egui::Vec2::new(TAB_SPACING, 0.0),
+                                ],
+                                TAB_STROKE,
+                            ));
+                            if response.clicked() {
+                                selected_index = index;
+                            }
+                            response
+                        };
+                        if let Some(filename) = &ed.doc.filename {
+                            response.on_hover_text(filename.to_string_lossy().to_string());
+                        }
                     }
-                }
+                });
             });
+            ui.painter().add(Shape::line(
+                vec![
+                    egui::Pos2::new(0.0, selected_rect.max.y),
+                    selected_rect.left_bottom() - egui::Vec2::new(TAB_SPACING, 0.0),
+                    selected_rect.left_top(),
+                    selected_rect.right_top(),
+                    selected_rect.right_bottom() + egui::Vec2::new(TAB_SPACING, 0.0),
+                    egui::Pos2::new(10000.0, selected_rect.max.y),
+                ],
+                TAB_STROKE,
+            ));
             editors.set_active_index(selected_index);
         }
 
