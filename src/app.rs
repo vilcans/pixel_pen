@@ -1,14 +1,14 @@
 use crate::{
     actions::{Action, UiAction},
-    document::Document,
     editor::Editor,
     mode::Mode,
     storage,
     system::{self, OpenFileOptions, SystemFunctions},
     tool::Tool,
+    Document,
 };
 use eframe::{
-    egui::{self, Label, Rgba},
+    egui::{self, Label, Rgba, RichText},
     epi,
 };
 use std::time::Instant;
@@ -81,7 +81,7 @@ impl epi::App for Application {
 
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
         let mut user_actions = Vec::new();
 
         for e in ctx.input().events.iter() {
@@ -154,7 +154,7 @@ fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
 /// UI for when there is an active editor.
 fn update_with_editor(
     ctx: &egui::CtxRef,
-    frame: &mut epi::Frame<'_>,
+    frame: &epi::Frame,
     editors: &mut Editors,
     system: &mut dyn SystemFunctions,
     user_actions: &mut Vec<Action>,
@@ -163,7 +163,7 @@ fn update_with_editor(
         // Menu bar
         let doc_filename = editors.active_mut().unwrap().doc.filename.clone();
         egui::menu::bar(ui, |ui| {
-            egui::menu::menu(ui, "File", |ui| {
+            egui::menu::menu_button(ui, "File", |ui| {
                 if system.has_open_file_dialog() && ui.button("Open...").clicked() {
                     match system
                         .open_file_dialog(OpenFileOptions::for_open(doc_filename.as_deref()))
@@ -191,7 +191,7 @@ fn update_with_editor(
                     frame.quit();
                 }
             });
-            egui::menu::menu(ui, "Edit", |ui| {
+            egui::menu::menu_button(ui, "Edit", |ui| {
                 let ed = editors.active_mut().unwrap();
                 ed.update_edit_menu(ui, user_actions);
             });
@@ -228,11 +228,11 @@ fn update_with_editor(
             let bg_color = Rgba::RED * highlight;
             let text_color = (Rgba::WHITE * highlight)
                 + (Rgba::from(ctx.style().visuals.text_color()) * (1.0 - highlight));
-            ui.add(
-                Label::new(message)
-                    .text_color(text_color)
+            ui.add(Label::new(
+                RichText::new(message)
+                    .color(text_color)
                     .background_color(bg_color),
-            );
+            ));
             if age >= POPUP_MESSAGE_TIME {
                 ed.ui_state.message = None;
             } else if highlight > 0.0 {

@@ -1,8 +1,11 @@
 use std::path::Path;
 
-use eframe::egui::{
-    self, epaint::Mesh, Align, Align2, Color32, CursorIcon, Painter, PointerButton, Pos2, Rect,
-    Response, Shape, Stroke, TextStyle, Ui, Vec2,
+use eframe::{
+    egui::{
+        self, epaint::Mesh, Align, Align2, Color32, CursorIcon, Painter, PointerButton, Pos2, Rect,
+        Response, Shape, Stroke, TextStyle, Ui, Vec2,
+    },
+    epi::TextureAllocator,
 };
 use undo::Record;
 
@@ -178,7 +181,7 @@ impl Editor {
     pub fn update_central_panel(
         &mut self,
         ui: &mut Ui,
-        frame: &mut eframe::epi::Frame<'_>,
+        frame: &eframe::epi::Frame,
         ctx: &egui::CtxRef,
         cursor_icon: &mut Option<CursorIcon>,
         user_actions: &mut Vec<Action>,
@@ -238,7 +241,7 @@ impl Editor {
         let texture = texture::update_texture(
             &mut self.doc.image,
             &mut self.image_texture,
-            frame.tex_allocator(),
+            frame as &dyn TextureAllocator,
             par,
             self.ui_state.zoom,
             &self.ui_state.image_view_settings,

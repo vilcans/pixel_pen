@@ -2,7 +2,7 @@
 
 use eframe::{
     egui::{Color32, TextureId},
-    epi::TextureAllocator,
+    epi::{self, TextureAllocator},
 };
 use image::imageops::FilterType;
 
@@ -26,7 +26,7 @@ pub struct Texture {
 pub fn update_texture(
     image: &mut MutationMonitor<VicImage>,
     image_texture: &mut Option<Texture>,
-    tex_allocator: &mut dyn TextureAllocator,
+    tex_allocator: &dyn TextureAllocator,
     par: f32,
     zoom: f32,
     settings: &ViewSettings,
@@ -65,8 +65,11 @@ pub fn update_texture(
             .pixels()
             .map(|p| (<image::Rgba<u8> as Into<TrueColor>>::into(*p)).into())
             .collect();
-        let texture_id =
-            tex_allocator.alloc_srgba_premultiplied((texture_width, texture_height), &pixels);
+        let image = epi::Image {
+            size: [texture_width, texture_height],
+            pixels,
+        };
+        let texture_id = tex_allocator.alloc(image);
         *image_texture = Some(Texture {
             id: texture_id,
             settings: settings.clone(),
