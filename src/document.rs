@@ -15,14 +15,38 @@ use crate::{
 pub struct Document {
     #[serde(skip)]
     pub filename: Option<PathBuf>,
+    /// Number for the document. For generating "Untitled-X" temporary name for unsaved files.
+    #[serde(skip)]
+    pub index_number: u32,
     pub image: MutationMonitor<VicImage>,
 }
 
 impl Document {
+    pub fn new() -> Self {
+        Self {
+            filename: None,
+            index_number: 0,
+            image: MutationMonitor::new_dirty(VicImage::default()),
+        }
+    }
+
     pub fn from_image(image: VicImage) -> Self {
         Self {
+            filename: None,
+            index_number: 0,
             image: MutationMonitor::new_dirty(image),
-            ..Default::default()
+        }
+    }
+
+    /// A name for this document.
+    /// If it has a file name, only return the file name part of it, not the complete path.
+    pub fn short_name(&self) -> String {
+        match &self.filename {
+            None => format!("Untitled-{}", self.index_number),
+            Some(path) => path
+                .file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or(format!("?")),
         }
     }
 
@@ -58,16 +82,6 @@ impl Document {
                 color_2,
             } => image.swap_colors(area, *color_1, *color_2),
             DocAction::CharBrushPaint { pos, chars } => image.paste_chars(pos, chars.as_ref()),
-        }
-    }
-}
-
-impl Default for Document {
-    fn default() -> Self {
-        let image = VicImage::default();
-        Self {
-            filename: None,
-            image: MutationMonitor::new_dirty(image),
         }
     }
 }

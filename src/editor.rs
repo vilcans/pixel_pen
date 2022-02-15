@@ -28,7 +28,6 @@ const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
 const GRID_COLOR: Color32 = Color32::GRAY;
 
 /// An open document and its state.
-#[derive(Default)]
 pub struct Editor {
     pub doc: Document,
     pub ui_state: UiState,
@@ -40,7 +39,9 @@ impl Editor {
     pub fn with_doc(doc: Document) -> Self {
         Self {
             doc,
-            ..Default::default()
+            ui_state: Default::default(),
+            image_texture: None,
+            history: Default::default(),
         }
     }
 

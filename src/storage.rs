@@ -11,8 +11,6 @@ use std::{
 use crate::{
     error::Error,
     image_io::{self, FileFormat},
-    mutation_monitor::MutationMonitor,
-    vic::VicImage,
     Document,
 };
 
@@ -26,10 +24,7 @@ pub fn load_any_file(filename: &Path) -> Result<Document, Error> {
         format => {
             //println!("Loading \"{}\" in format {:?}", filename.display(), format);
             let image = image_io::load_file(filename, format)?;
-            Ok(Document {
-                image: MutationMonitor::<VicImage>::new_dirty(image),
-                ..Default::default()
-            })
+            Ok(Document::from_image(image))
         }
     }
 }

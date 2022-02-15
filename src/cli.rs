@@ -44,7 +44,9 @@ pub fn main() -> Result<Option<Application>, i32> {
         Ok(true) => Ok(None),
         Ok(false) => {
             let mut app = Application::new();
-            let editor_index = app.add_editor(doc.unwrap_or_default());
+            let mut doc = doc.unwrap_or_else(Document::new);
+            doc.index_number = 1;
+            let editor_index = app.add_editor(doc);
             if let Some(filename) = opts.import_file {
                 match app
                     .editor_mut(editor_index)

@@ -64,6 +64,8 @@ impl Editors {
 pub struct Application {
     editors: Editors,
     pub system: Box<dyn SystemFunctions>,
+    /// For giving each new document its own number
+    next_document_index: u32,
 }
 
 impl Default for Application {
@@ -201,14 +203,7 @@ fn update_with_editor(
             ui.horizontal_wrapped(|ui| {
                 for (index, ed) in editors.iter().enumerate() {
                     if ui
-                        .selectable_label(
-                            selected_index == index,
-                            ed.doc
-                                .filename
-                                .as_ref()
-                                .map(|n| n.display().to_string())
-                                .unwrap_or_else(|| format!("Untitled {}", index)),
-                        )
+                        .selectable_label(selected_index == index, ed.doc.short_name())
                         .clicked()
                     {
                         selected_index = index;
@@ -283,6 +278,7 @@ impl Application {
         Self {
             editors: Default::default(),
             system,
+            next_document_index: 1,
         }
     }
 
@@ -301,7 +297,9 @@ impl Application {
         match action {
             Action::Document(_) => eprintln!("Unhandled Document action"),
             Action::Ui(ui_action) => match ui_action {
-                UiAction::NewDocument(doc) => {
+                UiAction::NewDocument(mut doc) => {
+                    self.next_document_index += 1;
+                    doc.index_number = self.next_document_index;
                     self.add_editor(doc);
                 }
                 _action => {
