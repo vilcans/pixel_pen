@@ -23,6 +23,12 @@ pub struct Document {
     pub image: MutationMonitor<VicImage>,
 }
 
+impl Default for Document {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Document {
     pub fn new() -> Self {
         Self {
