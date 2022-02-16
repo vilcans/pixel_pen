@@ -389,7 +389,7 @@ impl Editor {
                     ui_state.image_view_settings = settings.clone();
                 }
                 // Not handled by Editor
-                UiAction::NewDocument(_) => {
+                UiAction::NewDocument(_) | UiAction::CloseEditor(_) => {
                     return Some(action);
                 }
             },

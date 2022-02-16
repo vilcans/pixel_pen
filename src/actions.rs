@@ -91,6 +91,7 @@ pub enum UiAction {
     Undo,
     Redo,
     NewDocument(Document),
+    CloseEditor(usize),
     SelectTool(Tool),
     SelectMode(Mode),
     CreateCharBrush { rect: CellRect },

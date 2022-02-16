@@ -9,6 +9,8 @@ use crate::{
     actions::DocAction, error::DisallowedAction, mutation_monitor::MutationMonitor, vic::VicImage,
 };
 
+const ERROR_FILENAME: &str = "INVALID FILENAME";
+
 /// A "document" the user is working on.
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -46,7 +48,15 @@ impl Document {
             Some(path) => path
                 .file_name()
                 .map(|f| f.to_string_lossy().to_string())
-                .unwrap_or(format!("?")),
+                .unwrap_or_else(|| ERROR_FILENAME.to_string()),
+        }
+    }
+
+    /// Full name for this document to show where there is space for the full path.
+    pub fn visible_name(&self) -> String {
+        match &self.filename {
+            None => format!("Untitled-{}", self.index_number),
+            Some(path) => path.to_string_lossy().to_string(),
         }
     }
 

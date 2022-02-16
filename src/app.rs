@@ -64,6 +64,12 @@ impl Editors {
     pub fn iter(&self) -> impl Iterator<Item = &Editor> {
         self.list.iter()
     }
+    fn remove(&mut self, index: usize) {
+        self.list.remove(index);
+        if self.active > index || self.active == index && self.active == self.list.len() {
+            self.active = self.active.saturating_sub(1);
+        }
+    }
 }
 
 /// State of the whole application.
@@ -114,15 +120,24 @@ impl epi::App for Application {
     }
 }
 
+fn check_close(system: &mut dyn SystemFunctions, ed: &Editor) -> bool {
+    if ed.history.is_saved() {
+        true
+    } else {
+        system
+            .request_confirmation(&format!(
+                "This file is not saved:\n\n{}\n\nAre you sure you want to close it?",
+                ed.doc.visible_name()
+            ))
+            .unwrap_or(false)
+    }
+}
+
 fn check_quit(system: &mut dyn SystemFunctions, editors: &Editors) -> bool {
     let unsaved: Vec<String> = editors
         .iter()
-        .enumerate()
-        .filter(|(_, ed)| !ed.history.is_saved())
-        .map(|(i, ed)| match &ed.doc.filename {
-            Some(f) => f.display().to_string(),
-            None => format!("Untitled {}", i),
-        })
+        .filter(|ed| !ed.history.is_saved())
+        .map(|ed| ed.doc.visible_name())
         .collect();
     if unsaved.is_empty() {
         return true;
@@ -194,8 +209,15 @@ fn update_with_editor(
                         }
                     }
                 }
-                let ed = editors.active_mut().unwrap();
-                ed.update_file_menu(ui, system);
+                editors.active_mut().unwrap().update_file_menu(ui, system);
+                ui.separator();
+                ui.add_enabled_ui(editors.has_active() && editors.len() > 1, |ui| {
+                    let ed = editors.active_mut().unwrap();
+                    if ui.button("Close").clicked() && check_close(system, ed) {
+                        user_actions
+                            .push(Action::Ui(UiAction::CloseEditor(editors.active_index())));
+                    }
+                });
                 ui.separator();
                 if ui.button("Quit").clicked() && check_quit(system, editors) {
                     frame.quit();
@@ -350,6 +372,9 @@ impl Application {
                     self.next_document_index += 1;
                     doc.index_number = self.next_document_index;
                     self.add_editor(doc);
+                }
+                UiAction::CloseEditor(index) => {
+                    self.editors.remove(index);
                 }
                 _action => {
                     eprintln!("Unhandled UiAction");
