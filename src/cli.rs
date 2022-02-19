@@ -43,10 +43,16 @@ pub fn main() -> Result<Option<Application>, i32> {
         }
         Ok(true) => Ok(None),
         Ok(false) => {
-            let doc = doc.unwrap_or_default();
-            let mut app = Application::with_doc(doc);
+            let mut app = Application::new();
+            let mut doc = doc.unwrap_or_else(Document::new);
+            doc.index_number = 1;
+            let editor_index = app.add_editor(doc);
             if let Some(filename) = opts.import_file {
-                match app.start_import_mode(&filename) {
+                match app
+                    .editor_mut(editor_index)
+                    .unwrap()
+                    .start_import_mode(&filename)
+                {
                     Ok(_) => Ok(Some(app)),
                     Err(e) => {
                         eprintln!("Failed to open {:?} for import: {}", filename, e);

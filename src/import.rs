@@ -21,7 +21,7 @@ enum FilterTypeForSerialization {
     Lanczos3,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Copy, Clone)]
 pub enum PixelAspectRatio {
     Square,
     Target,
@@ -42,7 +42,7 @@ impl Display for PixelAspectRatio {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub struct ImportSettings {
     #[serde(default)]
@@ -64,7 +64,7 @@ pub struct ImportSettings {
 }
 
 /// State of an ongoing import.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Import {
     pub settings: ImportSettings,
     pub image: DynamicImage,

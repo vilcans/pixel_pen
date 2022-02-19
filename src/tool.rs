@@ -3,12 +3,13 @@ mod grab;
 mod import;
 mod paint;
 
-use crate::editing::Mode;
+use crate::mode::Mode;
 pub use brush::CharBrushTool;
 pub use grab::GrabTool;
 pub use import::ImportTool;
 pub use paint::PaintTool;
 
+#[derive(Clone)]
 pub enum Tool {
     Import(ImportTool),
     Paint(PaintTool),

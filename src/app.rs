@@ -1,72 +1,88 @@
-use std::{path::Path, time::Instant};
-
 use crate::{
-    actions::{self, Action, UiAction, Undoable},
-    cell_image::CellImageSize,
-    colors::TrueColor,
-    coords::{PixelPoint, PixelTransform},
-    document::Document,
-    editing::Mode,
-    error::{Error, Severity},
-    import::Import,
-    mutation_monitor::MutationMonitor,
+    actions::{Action, UiAction},
+    editor::Editor,
+    mode::Mode,
     storage,
-    system::{self, OpenFileOptions, SaveFileOptions, SystemFunctions},
-    tool::{ImportTool, Tool},
-    ui::{self, UiState, ViewSettings},
-    vic::{Char, PixelColor, VicImage},
+    system::{self, OpenFileOptions, SystemFunctions},
+    tool::Tool,
+    Document,
 };
 use eframe::{
-    egui::{
-        self, epaint::Mesh, Align, Align2, Color32, CursorIcon, Label, Painter, PointerButton,
-        Pos2, Rect, Response, Rgba, RichText, Shape, Stroke, TextStyle, TextureId, Vec2,
-    },
-    epi::{self, TextureAllocator},
+    egui::{self, Color32, Label, Rgba, RichText, Sense, Shape, Stroke},
+    epi,
 };
-use image::imageops::FilterType;
-use imgref::ImgVec;
-use undo::Record;
-
-// Don't scale the texture more than this to avoid huge textures when zooming.
-const MAX_SCALE: u32 = 8;
+use std::time::Instant;
 
 const POPUP_MESSAGE_TIME: f32 = 3.0;
 const POPUP_HIGHLIGHT_TIME: f32 = 0.4;
 const POPUP_FADE_OUT_TIME: f32 = 0.8;
 
-const BORDER_CORNER_RADIUS: f32 = 15.0;
-const BORDER_SIZE: Vec2 = Vec2::new(25.0, 20.0);
+const TAB_SPACING: f32 = 5.0;
+const TAB_STROKE: Stroke = Stroke {
+    width: 0.1,
+    color: Color32::LIGHT_GRAY,
+};
 
-const GRID_COLOR: Color32 = Color32::GRAY;
-
-const GRID_TOOLTIP: &str = "Show character cell grid";
-
-const RAW_TOOLTIP: &str = "Show image with fixed colors:
-• Gray = background color in hi-res cells
-• Black = background color in multicolor cells
-• White = character color
-• Blue = border color in multicolor cells
-• Red = aux color in multicolor cells";
-
-struct Texture {
-    pub id: TextureId,
-    pub settings: ViewSettings,
-    pub width: usize,
-    pub height: usize,
+/// All open editors, and the currently active one.
+#[derive(Default)]
+struct Editors {
+    list: Vec<Editor>,
+    active: usize,
+}
+#[allow(dead_code)] // not all methods are currently used
+impl Editors {
+    pub fn add(&mut self, ed: Editor) -> usize {
+        let i = self.list.len();
+        self.list.push(ed);
+        i
+    }
+    pub fn len(&self) -> usize {
+        self.list.len()
+    }
+    pub fn active_index(&self) -> usize {
+        self.active
+    }
+    pub fn set_active_index(&mut self, index: usize) {
+        assert!(index < self.list.len());
+        self.active = index;
+    }
+    pub fn has_active(&self) -> bool {
+        !self.list.is_empty()
+    }
+    pub fn active(&self) -> Option<&Editor> {
+        self.list.get(self.active)
+    }
+    pub fn active_mut(&mut self) -> Option<&mut Editor> {
+        self.list.get_mut(self.active)
+    }
+    pub fn get(&self, index: usize) -> Option<&Editor> {
+        self.list.get(index)
+    }
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut Editor> {
+        self.list.get_mut(index)
+    }
+    pub fn iter(&self) -> impl Iterator<Item = &Editor> {
+        self.list.iter()
+    }
+    fn remove(&mut self, index: usize) {
+        self.list.remove(index);
+        if self.active > index || self.active == index && self.active == self.list.len() {
+            self.active = self.active.saturating_sub(1);
+        }
+    }
 }
 
+/// State of the whole application.
 pub struct Application {
-    doc: Document,
-    ui_state: UiState,
-    image_texture: Option<Texture>,
-    history: Record<actions::Undoable>,
+    editors: Editors,
     pub system: Box<dyn SystemFunctions>,
+    /// For giving each new document its own number
+    next_document_index: u32,
 }
 
 impl Default for Application {
     fn default() -> Self {
-        let doc = Document::default();
-        Self::with_doc(doc)
+        Application::new()
     }
 }
 
@@ -79,17 +95,6 @@ impl epi::App for Application {
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &epi::Frame) {
         let mut user_actions = Vec::new();
-        let Application {
-            doc,
-            ui_state,
-            image_texture,
-            system,
-            history,
-            ..
-        } = self;
-        let (width, height) = doc.image.size_in_pixels();
-        let mut new_doc = None;
-        let mut cursor_icon = None;
 
         for e in ctx.input().events.iter() {
             if !ctx.wants_keyboard_input() {
@@ -99,632 +104,50 @@ impl epi::App for Application {
             }
         }
 
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-            // Menu bar
-            egui::menu::bar(ui, |ui| {
-                egui::menu::menu_button(ui, "File", |ui| {
-                    if system.has_open_file_dialog() && ui.button("Open...").clicked() {
-                        match system
-                            .open_file_dialog(OpenFileOptions::for_open(doc.filename.as_deref()))
-                        {
-                            Ok(Some(filename)) => {
-                                match storage::load_any_file(std::path::Path::new(&filename)) {
-                                    Ok(doc) => {
-                                        new_doc = Some(doc);
-                                    }
-                                    Err(e) => {
-                                        system.show_error(&format!("Failed to load: {:?}", e));
-                                    }
-                                }
-                            }
-                            Ok(None) => {}
-                            Err(e) => {
-                                system.show_error(&format!("Could not get file name: {:?}", e));
-                            }
-                        }
-                    }
-                    if system.has_open_file_dialog() && ui.button("Import...").clicked() {
-                        match system.open_file_dialog(OpenFileOptions::for_import(match &ui_state
-                            .tool
-                        {
-                            Tool::Import(tool) => tool.filename(),
-                            _ => None,
-                        })) {
-                            Ok(Some(filename)) => {
-                                match start_import_mode(&filename, doc, ui_state) {
-                                    Ok(()) => {}
-                                    Err(e) => system.show_error(&format!(
-                                        "Could not import file {}: {:?}",
-                                        filename.display(),
-                                        e
-                                    )),
-                                }
-                            }
-                            Ok(None) => {}
-                            Err(e) => {
-                                system.show_error(&format!("Could not get file name: {:?}", e))
-                            }
-                        }
-                    }
-                    if system.has_save_file_dialog() {
-                        ui.separator();
-                        match doc.filename.clone() {
-                            Some(filename) => {
-                                if ui
-                                    .button(format!(
-                                        "Save {}",
-                                        filename
-                                            .file_name()
-                                            .map(|s| s.to_string_lossy())
-                                            .unwrap_or_default()
-                                    ))
-                                    .clicked()
-                                {
-                                    save(history, doc, &filename, system);
-                                }
-                            }
-                            None => {
-                                if ui.button("Save").clicked() {
-                                    save_as(history, doc, system);
-                                }
-                            }
-                        }
-                        if ui.button("Save As...").clicked() {
-                            save_as(history, doc, system);
-                        }
-                        if ui.button("Export...").clicked() {
-                            export(doc, system);
-                        }
-                    }
-                    ui.separator();
-                    if ui.button("Quit").clicked()
-                        && (history.is_saved()
-                            || check_quit(system.as_mut(), doc.filename.as_deref()))
-                    {
-                        frame.quit();
-                    }
-                });
-                egui::menu::menu_button(ui, "Edit", |ui| {
-                    ui.set_enabled(history.can_undo());
-                    if ui.button("Undo").clicked() {
-                        user_actions.push(Action::Ui(UiAction::Undo));
-                    }
-                    ui.set_enabled(history.can_redo());
-                    if ui.button("Redo").clicked() {
-                        user_actions.push(Action::Ui(UiAction::Redo));
-                    }
-                });
-            });
-
-            // Top toolbar
-            ui.vertical(|ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.label("Zoom:");
-                    if ui.button("-").on_hover_text("Zoom out").clicked() {
-                        user_actions.push(Action::Ui(UiAction::ZoomOut));
-                    }
-                    if ui
-                        .button(format!("{:0.0}x", ui_state.zoom))
-                        .on_hover_text("Set to 2x")
-                        .clicked()
-                    {
-                        user_actions.push(Action::Ui(UiAction::SetZoom(2.0)));
-                    }
-                    if ui.button("+").on_hover_text("Zoom in").clicked() {
-                        user_actions.push(Action::Ui(UiAction::ZoomIn));
-                    }
-                    ui.separator();
-                    ui.checkbox(&mut ui_state.grid, "Grid")
-                        .on_hover_text(GRID_TOOLTIP);
-                    let mut raw_mode = ui_state.image_view_settings == ViewSettings::Raw;
-                    if ui
-                        .checkbox(&mut raw_mode, "Raw")
-                        .on_hover_text(RAW_TOOLTIP)
-                        .changed()
-                    {
-                        user_actions.push(Action::Ui(UiAction::ViewSettings(if raw_mode {
-                            ViewSettings::Raw
-                        } else {
-                            ViewSettings::Normal
-                        })))
-                    }
-                });
-                ui.separator();
-                if let Some(action) = ui::palette::render_palette(
-                    ui,
-                    &mut ui_state.primary_color,
-                    &mut ui_state.secondary_color,
-                    &mut doc.image,
-                ) {
-                    apply_action(doc, history, ui_state, action);
-                }
-            });
-        });
-
-        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
-            if let Some((time, message)) = ui_state.message.as_ref() {
-                let age = Instant::now()
-                    .saturating_duration_since(*time)
-                    .as_secs_f32();
-                let highlight =
-                    1.0 - ((age - POPUP_HIGHLIGHT_TIME) / POPUP_FADE_OUT_TIME).clamp(0.0, 1.0);
-                let bg_color = Rgba::RED * highlight;
-                let text_color = (Rgba::WHITE * highlight)
-                    + (Rgba::from(ctx.style().visuals.text_color()) * (1.0 - highlight));
-                ui.add(Label::new(
-                    RichText::new(message)
-                        .color(text_color)
-                        .background_color(bg_color),
-                ));
-                if age >= POPUP_MESSAGE_TIME {
-                    ui_state.message = None;
-                } else if highlight > 0.0 {
-                    ctx.request_repaint(); // to animate color highlight
-                }
-            } else {
-                ui.label(ui_state.tool.instructions(&ui_state.mode));
-            }
-        });
-
-        // Left toolbar
-        egui::SidePanel::left("toolbar").show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                if let Some(new_tool) = select_tool_ui(ui, &ui_state.tool) {
-                    ui_state.tool = new_tool;
-                }
-                if let Tool::Paint(_) = ui_state.tool {
-                    ui.separator();
-                    ui_state.mode = select_mode_ui(ui, &ui_state.mode);
-                }
-            });
-        });
-
-        // Main image.
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let par = doc.image.pixel_aspect_ratio();
-            let (response, painter) = image_painter(ui);
-            let pixel_transform = PixelTransform {
-                screen_rect: Rect::from_center_size(
-                    response.rect.center() + ui_state.pan,
-                    Vec2::new(
-                        width as f32 * par * ui_state.zoom,
-                        height as f32 * ui_state.zoom,
-                    ),
-                ),
-                pixel_width: width as i32,
-                pixel_height: height as i32,
-            };
-
-            let hover_pos_screen = ui.input().pointer.hover_pos();
-            let hover_pos = hover_pos_screen.map(|p| pixel_transform.pixel_pos(p));
-
-            let input = ui.input();
-            if input.modifiers.command {
-                if input.scroll_delta.y < 0.0 {
-                    user_actions.push(Action::Ui(UiAction::ZoomOut));
-                } else if input.scroll_delta.y > 0.0 {
-                    user_actions.push(Action::Ui(UiAction::ZoomIn));
-                }
-            } else {
-                ui_state.pan += input.scroll_delta;
-            }
-
-            if response.drag_started() && input.pointer.button_down(PointerButton::Middle)
-                || (input.pointer.button_down(PointerButton::Secondary) && input.modifiers.shift)
-            {
-                ui_state.panning = true;
-            }
-            if ui_state.panning {
-                ui_state.pan += input.pointer.delta();
-                cursor_icon = Some(CursorIcon::Grabbing);
-            }
-            if response.drag_released() {
-                ui_state.panning = false;
-            }
-
-            // Draw border
-            painter.rect_filled(
-                pixel_transform
-                    .screen_rect
-                    .expand2(BORDER_SIZE * ui_state.zoom),
-                BORDER_CORNER_RADIUS * ui_state.zoom,
-                doc.image.border(),
+        if self.editors.has_active() {
+            let actions = update_with_editor(
+                ctx,
+                frame,
+                &mut self.editors,
+                self.system.as_mut(),
+                &mut user_actions,
             );
-
-            // Draw the main image
-            let texture = update_texture(
-                &mut doc.image,
-                image_texture,
-                frame as &dyn TextureAllocator,
-                par,
-                ui_state.zoom,
-                &ui_state.image_view_settings,
-            );
-            let mut mesh = Mesh::with_texture(texture);
-            mesh.add_rect_with_uv(
-                pixel_transform.screen_rect,
-                Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
-                Color32::WHITE,
-            );
-            painter.add(Shape::Mesh(mesh));
-
-            // Grid lines
-            if ui_state.grid {
-                draw_grid(&doc.image, &painter, &pixel_transform);
+            // Apply the actions the editor did not handle
+            for action in actions.into_iter() {
+                self.apply_action(action);
             }
-
-            // Tool UI
-            if !ui_state.panning {
-                let action = match &mut ui_state.tool {
-                    Tool::Import(tool) => tool.update_ui(ctx, ui, &painter, doc, &pixel_transform),
-                    Tool::Paint(tool) => tool.update_ui(
-                        hover_pos,
-                        ui,
-                        &response,
-                        &painter,
-                        &pixel_transform,
-                        &mut cursor_icon,
-                        &ui_state.mode,
-                        (ui_state.primary_color, ui_state.secondary_color),
-                        doc,
-                    ),
-                    Tool::Grab(tool) => tool.update_ui(
-                        &painter,
-                        &pixel_transform,
-                        &mut cursor_icon,
-                        doc,
-                        hover_pos,
-                        &response,
-                    ),
-                    Tool::CharBrush(tool) => tool.update_ui(
-                        &response,
-                        &painter,
-                        &pixel_transform,
-                        &mut cursor_icon,
-                        &ui_state.char_brush,
-                        hover_pos,
-                        doc,
-                    ),
-                };
-                if let Some(action) = action {
-                    apply_action(doc, history, ui_state, action);
-                }
-            }
-
-            let info_text = {
-                let t = doc.image.image_info();
-                if let Some(p) = hover_pos {
-                    format!("{}\n{}", doc.image.pixel_info(p), t)
-                } else {
-                    t
-                }
-            };
-            painter.text(
-                response.rect.left_bottom(),
-                Align2::LEFT_BOTTOM,
-                &info_text,
-                TextStyle::Monospace,
-                Color32::from_rgb(0x88, 0x88, 0x88),
-            );
-        });
-
-        for action in user_actions {
-            apply_action(doc, history, ui_state, action);
-        }
-        if let Some(doc) = new_doc {
-            self.doc = doc;
-        }
-
-        if let Some(icon) = cursor_icon {
-            ctx.output().cursor_icon = icon;
         }
     }
 }
 
-/// Renders the UI for tool selection.
-/// Returns which tool to switch to, or None if the user did not change tool.
-fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool) -> Option<Tool> {
-    let mut new_tool = None;
-    ui.with_layout(egui::Layout::top_down_justified(Align::LEFT), |ui| {
-        ui.style_mut().body_text_style = egui::TextStyle::Heading;
-        ui.label("Tool");
-        if ui
-            .selectable_label(matches!(current_tool, Tool::Paint(_)), "Paint")
-            .on_hover_text("Paint pixels")
-            .clicked()
-        {
-            new_tool = Some(Tool::Paint(Default::default()));
-        }
-        if ui
-            .selectable_label(matches!(current_tool, Tool::Grab { .. }), "Grab")
-            .on_hover_text("Create a brush from a part of the picture")
-            .clicked()
-        {
-            new_tool = Some(Tool::Grab(Default::default()));
-        }
-        if ui
-            .selectable_label(matches!(current_tool, Tool::CharBrush { .. }), "Char Brush")
-            .on_hover_text("Draw with a character brush")
-            .clicked()
-        {
-            new_tool = Some(Tool::CharBrush(Default::default()));
-        }
-    });
-    new_tool
-}
-
-/// Renders the UI for mode selection.
-/// Returns which mode to use, which is the same as the current one passed in unless changed by the user.
-fn select_mode_ui(ui: &mut egui::Ui, current_mode: &Mode) -> Mode {
-    let mut new_mode = current_mode.clone();
-    ui.with_layout(egui::Layout::top_down_justified(Align::LEFT), |ui| {
-        ui.style_mut().body_text_style = egui::TextStyle::Heading;
-        ui.label("Mode");
-        for mode in [
-            Mode::PixelPaint,
-            Mode::FillCell,
-            Mode::CellColor,
-            Mode::ReplaceColor,
-            Mode::SwapColors,
-            Mode::MakeHiRes,
-            Mode::MakeMulticolor,
-        ] {
-            if ui
-                .selectable_label(*current_mode == mode, mode.title())
-                .on_hover_text(mode.tip())
-                .clicked()
-            {
-                new_mode = mode;
-            }
-        }
-    });
-    new_mode
-}
-
-/// Ask for filename and save the document. Show any error message to the user.
-/// Returns false if the file was not saved, either because user cancelled or there was an error.
-fn save_as(
-    history: &mut Record<actions::Undoable>,
-    doc: &mut Document,
-    system: &mut Box<dyn SystemFunctions>,
-) -> bool {
-    match system.save_file_dialog(SaveFileOptions::for_save(doc.filename.as_deref())) {
-        Ok(Some(filename)) => save(history, doc, &filename, system),
-        Ok(None) => false,
-        Err(e) => {
-            system.show_error(&format!("Could not get file name: {:?}", e));
-            false
-        }
+fn check_close(system: &mut dyn SystemFunctions, ed: &Editor) -> bool {
+    if ed.history.is_saved() {
+        true
+    } else {
+        system
+            .request_confirmation(&format!(
+                "This file is not saved:\n\n{}\n\nAre you sure you want to close it?",
+                ed.doc.visible_name()
+            ))
+            .unwrap_or(false)
     }
 }
 
-/// Ask for filename and export the document.
-fn export(doc: &Document, system: &mut Box<dyn SystemFunctions>) {
-    match system.save_file_dialog(SaveFileOptions::for_export(doc.filename.as_deref())) {
-        Ok(Some(filename)) => {
-            if let Err(e) = storage::save_any_file(doc, &filename) {
-                system.show_error(&format!("Failed to save image: {}", e));
-            }
-        }
-        Ok(None) => {}
-        Err(e) => {
-            system.show_error(&format!("Could not get file name: {:?}", e));
-        }
+fn check_quit(system: &mut dyn SystemFunctions, editors: &Editors) -> bool {
+    let unsaved: Vec<String> = editors
+        .iter()
+        .filter(|ed| !ed.history.is_saved())
+        .map(|ed| ed.doc.visible_name())
+        .collect();
+    if unsaved.is_empty() {
+        return true;
     }
-}
-
-/// Save the document as a given filename.
-/// Ask for filename and save the document. Show any error message to the user.
-/// Returns false if the file was not saved, either because user cancelled or there was an error.
-fn save(
-    history: &mut Record<actions::Undoable>,
-    doc: &mut Document,
-    filename: &Path,
-    system: &mut Box<dyn SystemFunctions>,
-) -> bool {
-    println!("Saving as {}", filename.display());
-    match storage::save(doc, filename) {
-        Ok(()) => {
-            doc.filename = Some(filename.to_owned());
-            history.set_saved(true);
-            true
-        }
-        Err(e) => {
-            system.show_error(&format!("Failed to save: {:?}", e));
-            false
-        }
-    }
-}
-
-fn check_quit(system: &mut dyn SystemFunctions, filename: Option<&Path>) -> bool {
     system
         .request_confirmation(&format!(
-            "File is not saved: \"{}\". Are you sure you want to quit?",
-            filename
-                .map(|path| path.to_string_lossy().to_string())
-                .unwrap_or_else(|| "Untitled".to_string())
+            "The following files are not saved:\n\n{}\n\nAre you sure you want to quit?",
+            unsaved.join("\n")
         ))
         .unwrap_or(false)
-}
-
-fn start_import_mode(
-    filename: &Path,
-    doc: &mut Document,
-    ui_state: &mut UiState,
-) -> Result<(), Error> {
-    let mut i = Import::load(filename)?;
-    i.settings.width = i.settings.width.min(doc.image.size_in_pixels().0 as u32);
-    i.settings.height = i.settings.height.min(doc.image.size_in_pixels().1 as u32);
-    ui_state.tool = Tool::Import(ImportTool::new(i));
-    Ok(())
-}
-
-fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransform) {
-    let (width, height) = image.size_in_pixels();
-    let stroke = Stroke {
-        width: 1.0,
-        color: GRID_COLOR,
-    };
-    for x in image.vertical_grid_lines() {
-        painter.line_segment(
-            [
-                pixel_transform.screen_pos(PixelPoint { x, y: 0 }),
-                pixel_transform.screen_pos(PixelPoint {
-                    x,
-                    y: height as i32,
-                }),
-            ],
-            stroke,
-        )
-    }
-    for y in image.horizontal_grid_lines() {
-        painter.line_segment(
-            [
-                pixel_transform.screen_pos(PixelPoint { x: 0, y }),
-                pixel_transform.screen_pos(PixelPoint { x: width as i32, y }),
-            ],
-            stroke,
-        )
-    }
-}
-
-/// Create a Response and Painter for the main image area.
-fn image_painter(ui: &mut egui::Ui) -> (Response, Painter) {
-    let size = ui.available_size();
-    let response = ui.allocate_response(size, egui::Sense::click_and_drag());
-    let clip_rect = ui.clip_rect().intersect(response.rect);
-    let painter = Painter::new(ui.ctx().clone(), ui.layer_id(), clip_rect);
-    (response, painter)
-}
-
-/// Apply an action and record it in the history. Show any error to the user.
-fn apply_action(
-    doc: &mut Document,
-    history: &mut Record<Undoable>,
-    ui_state: &mut UiState,
-    action: Action,
-) {
-    match action {
-        Action::Document(action) => {
-            let was_dirty = doc.image.dirty;
-            match history.apply(doc, Undoable::new(action)) {
-                Ok(true) => (),
-                Ok(false) => doc.image.dirty = was_dirty,
-                Err(e) => match e.severity() {
-                    Severity::Silent => {}
-                    Severity::Notification => ui_state.show_warning(e.to_string()),
-                },
-            }
-        }
-        Action::Ui(action) => match action {
-            UiAction::Undo => {
-                if history.can_undo() {
-                    history.undo(doc);
-                    doc.image.dirty = true;
-                }
-            }
-            UiAction::Redo => {
-                if history.can_redo() {
-                    history.redo(doc);
-                    doc.image.dirty = true;
-                }
-            }
-            UiAction::SelectTool(tool) => ui_state.tool = tool,
-            UiAction::SelectMode(mode) => ui_state.mode = mode,
-            UiAction::CreateCharBrush { rect } => {
-                if let Some(rect) = rect.within_size(doc.image.size_in_cells()) {
-                    ui_state.char_brush = doc.image.grab_cells(&rect);
-                    ui_state.tool = Tool::CharBrush(Default::default());
-                } else {
-                    println!("Rect {:?} did not fit inside image", rect);
-                }
-            }
-            UiAction::ZoomIn => {
-                if ui_state.zoom < 16.0 {
-                    ui_state.zoom *= 2.0;
-                }
-            }
-            UiAction::ZoomOut => {
-                if ui_state.zoom > 1.0 {
-                    ui_state.zoom /= 2.0;
-                }
-            }
-            UiAction::SetZoom(amount) => {
-                ui_state.zoom = amount;
-            }
-            UiAction::ToggleGrid => ui_state.grid = !ui_state.grid,
-            UiAction::ToggleRaw => {
-                ui_state.image_view_settings = match ui_state.image_view_settings {
-                    ViewSettings::Normal => ViewSettings::Raw,
-                    ViewSettings::Raw => ViewSettings::Normal,
-                }
-            }
-            UiAction::ViewSettings(settings) => {
-                ui_state.image_view_settings = settings;
-            }
-        },
-    }
-}
-
-/// Updates the texture with the current image content, if needed.
-/// Returns the texture id.
-fn update_texture(
-    image: &mut MutationMonitor<VicImage>,
-    image_texture: &mut Option<Texture>,
-    tex_allocator: &dyn TextureAllocator,
-    par: f32,
-    zoom: f32,
-    settings: &ViewSettings,
-) -> TextureId {
-    let scale_x = ((par * zoom).ceil() as u32).max(1).min(MAX_SCALE);
-    let scale_y = (zoom.ceil() as u32).max(1).min(MAX_SCALE);
-    let (source_width, source_height) = image.size_in_pixels();
-    let texture_width = source_width * scale_x as usize;
-    let texture_height = source_height * scale_y as usize;
-
-    // Recreate the texture if the size has changed or the image has been updated
-    if let Some(t) = image_texture {
-        if t.settings != *settings
-            || t.width != texture_width
-            || t.height != texture_height
-            || image.dirty
-        {
-            tex_allocator.free(t.id);
-            *image_texture = None;
-        }
-    }
-    if image.dirty {
-        image.update();
-    }
-    let texture = if let Some(texture) = image_texture {
-        texture.id
-    } else {
-        let unscaled_image = image.render_with_settings(settings);
-        let scaled_image = image::imageops::resize(
-            &unscaled_image,
-            unscaled_image.width() * scale_x,
-            unscaled_image.height() * scale_y,
-            FilterType::Nearest,
-        );
-        let pixels: Vec<Color32> = scaled_image
-            .pixels()
-            .map(|p| (<image::Rgba<u8> as Into<TrueColor>>::into(*p)).into())
-            .collect();
-        let image = epi::Image {
-            size: [texture_width, texture_height],
-            pixels,
-        };
-        let texture_id = tex_allocator.alloc(image);
-        *image_texture = Some(Texture {
-            id: texture_id,
-            settings: settings.clone(),
-            width: texture_width,
-            height: texture_height,
-        });
-        texture_id
-    };
-    image.dirty = false;
-    texture
 }
 
 fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
@@ -749,31 +172,214 @@ fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
     actions.push(action);
 }
 
-impl Application {
-    pub fn with_doc(doc: Document) -> Self {
-        let system = Box::new(system::DummySystemFunctions {});
-        Application {
-            history: Record::new(),
-            ui_state: UiState {
-                tool: Tool::Paint(Default::default()),
-                mode: Mode::PixelPaint,
-                zoom: 2.0,
-                image_view_settings: ViewSettings::Normal,
-                primary_color: PixelColor::CharColor(7),
-                secondary_color: PixelColor::Background,
-                char_brush: ImgVec::new(vec![Char::DEFAULT_BRUSH], 1, 1),
-                grid: false,
-                panning: false,
-                pan: Vec2::ZERO,
-                message: None,
-            },
-            doc,
-            image_texture: None,
-            system,
+/// UI for when there is an active editor.
+fn update_with_editor(
+    ctx: &egui::CtxRef,
+    frame: &epi::Frame,
+    editors: &mut Editors,
+    system: &mut dyn SystemFunctions,
+    user_actions: &mut Vec<Action>,
+) -> Vec<Action> {
+    egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+        // Menu bar
+        let doc_filename = editors.active_mut().unwrap().doc.filename.clone();
+        egui::menu::bar(ui, |ui| {
+            egui::menu::menu_button(ui, "File", |ui| {
+                if ui.button("New").clicked() {
+                    let doc = Document::new();
+                    user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
+                }
+                if system.has_open_file_dialog() && ui.button("Open...").clicked() {
+                    match system
+                        .open_file_dialog(OpenFileOptions::for_open(doc_filename.as_deref()))
+                    {
+                        Ok(Some(filename)) => {
+                            match storage::load_any_file(std::path::Path::new(&filename)) {
+                                Ok(doc) => {
+                                    user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
+                                }
+                                Err(e) => {
+                                    system.show_error(&format!("Failed to load: {:?}", e));
+                                }
+                            }
+                        }
+                        Ok(None) => {}
+                        Err(e) => {
+                            system.show_error(&format!("Could not get file name: {:?}", e));
+                        }
+                    }
+                }
+                editors.active_mut().unwrap().update_file_menu(ui, system);
+                ui.separator();
+                ui.add_enabled_ui(editors.has_active() && editors.len() > 1, |ui| {
+                    let ed = editors.active_mut().unwrap();
+                    if ui.button("Close").clicked() && check_close(system, ed) {
+                        user_actions
+                            .push(Action::Ui(UiAction::CloseEditor(editors.active_index())));
+                    }
+                });
+                ui.separator();
+                if ui.button("Quit").clicked() && check_quit(system, editors) {
+                    frame.quit();
+                }
+            });
+            egui::menu::menu_button(ui, "Edit", |ui| {
+                let ed = editors.active_mut().unwrap();
+                ed.update_edit_menu(ui, user_actions);
+            });
+        });
+
+        // Document selector
+        {
+            let mut selected_index = editors.active_index();
+            let mut selected_rect = egui::Rect::NOTHING;
+            egui::ScrollArea::horizontal().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    for (index, ed) in editors.iter().enumerate() {
+                        let selected = selected_index == index;
+                        let name = ed.doc.short_name();
+                        let response = if selected {
+                            ui.add_space(TAB_SPACING);
+                            let response = ui.add(
+                                Label::new(RichText::new(name).strong()).sense(Sense::click()),
+                            );
+                            selected_rect = response.rect;
+                            response
+                        } else {
+                            ui.add_space(TAB_SPACING);
+                            let response = ui
+                                .add(Label::new(RichText::new(name).weak()).sense(Sense::click()));
+                            let rect = response.rect;
+                            ui.painter().add(Shape::line(
+                                vec![
+                                    rect.left_bottom() - egui::Vec2::new(TAB_SPACING, 0.0),
+                                    rect.left_top(),
+                                    rect.right_top(),
+                                    rect.right_bottom() + egui::Vec2::new(TAB_SPACING, 0.0),
+                                ],
+                                TAB_STROKE,
+                            ));
+                            if response.clicked() {
+                                selected_index = index;
+                            }
+                            response
+                        };
+                        if let Some(filename) = &ed.doc.filename {
+                            response.on_hover_text(filename.to_string_lossy().to_string());
+                        }
+                    }
+                });
+            });
+            ui.painter().add(Shape::line(
+                vec![
+                    egui::Pos2::new(0.0, selected_rect.max.y),
+                    selected_rect.left_bottom() - egui::Vec2::new(TAB_SPACING, 0.0),
+                    selected_rect.left_top(),
+                    selected_rect.right_top(),
+                    selected_rect.right_bottom() + egui::Vec2::new(TAB_SPACING, 0.0),
+                    egui::Pos2::new(10000.0, selected_rect.max.y),
+                ],
+                TAB_STROKE,
+            ));
+            editors.set_active_index(selected_index);
+        }
+
+        // Top toolbar
+        let ed = editors.active_mut().unwrap();
+        ed.update_top_toolbar(ui, user_actions);
+    });
+
+    egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+        let ed = editors.active_mut().unwrap();
+        if ed.ui_state.message.is_some() {
+            let (time, message) = ed.ui_state.message.clone().unwrap();
+            let age = Instant::now().saturating_duration_since(time).as_secs_f32();
+            let highlight =
+                1.0 - ((age - POPUP_HIGHLIGHT_TIME) / POPUP_FADE_OUT_TIME).clamp(0.0, 1.0);
+            let bg_color = Rgba::RED * highlight;
+            let text_color = (Rgba::WHITE * highlight)
+                + (Rgba::from(ctx.style().visuals.text_color()) * (1.0 - highlight));
+            ui.add(Label::new(
+                RichText::new(message)
+                    .color(text_color)
+                    .background_color(bg_color),
+            ));
+            if age >= POPUP_MESSAGE_TIME {
+                ed.ui_state.message = None;
+            } else if highlight > 0.0 {
+                ctx.request_repaint(); // to animate color highlight
+            }
+        } else {
+            ui.label(ed.ui_state.tool.instructions(&ed.ui_state.mode));
+        }
+    });
+
+    // Left toolbar
+    egui::SidePanel::left("toolbar").show(ctx, |ui| {
+        let ed = editors.active_mut().unwrap();
+        ed.update_left_toolbar(ui, user_actions);
+    });
+
+    let mut cursor_icon = None;
+
+    // Main image.
+    egui::CentralPanel::default().show(ctx, |ui| {
+        let ed = editors.active_mut().unwrap();
+        ed.update_central_panel(ui, frame, ctx, &mut cursor_icon, user_actions);
+    });
+
+    let ed = editors.active_mut().unwrap();
+    let mut unhandled_actions = Vec::new();
+    for action in user_actions.drain(..) {
+        if let Some(action) = ed.apply_action(action) {
+            unhandled_actions.push(action);
         }
     }
 
-    pub fn start_import_mode(&mut self, filename: &Path) -> Result<(), Error> {
-        start_import_mode(filename, &mut self.doc, &mut self.ui_state)
+    if let Some(icon) = cursor_icon {
+        ctx.output().cursor_icon = icon;
+    }
+
+    unhandled_actions
+}
+
+impl Application {
+    pub fn new() -> Self {
+        let system = Box::new(system::DummySystemFunctions {});
+        Self {
+            editors: Default::default(),
+            system,
+            next_document_index: 1,
+        }
+    }
+
+    pub fn add_editor(&mut self, doc: Document) -> usize {
+        let editor = Editor::with_doc(doc);
+        let i = self.editors.add(editor);
+        self.editors.set_active_index(i);
+        i
+    }
+
+    pub fn editor_mut(&mut self, index: usize) -> Option<&mut Editor> {
+        self.editors.get_mut(index)
+    }
+
+    fn apply_action(&mut self, action: Action) {
+        match action {
+            Action::Document(_) => eprintln!("Unhandled Document action"),
+            Action::Ui(ui_action) => match ui_action {
+                UiAction::NewDocument(mut doc) => {
+                    self.next_document_index += 1;
+                    doc.index_number = self.next_document_index;
+                    self.add_editor(doc);
+                }
+                UiAction::CloseEditor(index) => {
+                    self.editors.remove(index);
+                }
+                _action => {
+                    eprintln!("Unhandled UiAction");
+                }
+            },
+        }
     }
 }

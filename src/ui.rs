@@ -1,10 +1,11 @@
 pub mod palette;
+pub mod text;
 
 use std::time::Instant;
 
 use crate::{
     colors::TrueColor,
-    editing::Mode,
+    mode::Mode,
     tool::Tool,
     vic::{Char, PixelColor},
 };
@@ -29,6 +30,23 @@ pub struct UiState {
     pub pan: Vec2,
 
     pub message: Option<(Instant, String)>,
+}
+impl Default for UiState {
+    fn default() -> Self {
+        Self {
+            tool: Tool::Paint(Default::default()),
+            mode: Mode::PixelPaint,
+            zoom: 2.0,
+            image_view_settings: ViewSettings::Normal,
+            primary_color: PixelColor::CharColor(7),
+            secondary_color: PixelColor::Background,
+            char_brush: ImgVec::new(vec![Char::DEFAULT_BRUSH], 1, 1),
+            grid: false,
+            panning: false,
+            pan: Vec2::ZERO,
+            message: None,
+        }
+    }
 }
 impl UiState {
     pub fn show_warning(&mut self, message: String) {

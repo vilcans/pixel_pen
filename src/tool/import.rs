@@ -27,6 +27,7 @@ use image::GenericImageView;
 const IMPORT_IMAGE_EXTENTS_COLOR: Color32 = Color32::GRAY;
 const UNKNOWN_SOURCE_TEXT: &str = "unknown source";
 
+#[derive(Clone)]
 pub struct ImportTool {
     import: Import,
 }
@@ -45,11 +46,11 @@ impl ImportTool {
         painter: &Painter,
         doc: &Document,
         pixel_transform: &PixelTransform,
-    ) -> Option<Action> {
+        user_actions: &mut Vec<Action>,
+    ) {
         image_ui(painter, &mut self.import, pixel_transform);
-        let mut action = None;
-        egui::Window::new("Import").show(ctx, |ui| action = tool_ui(ui, doc, &mut self.import));
-        action
+        egui::Window::new("Import")
+            .show(ctx, |ui| tool_ui(ui, doc, &mut self.import, user_actions));
     }
 }
 
@@ -72,9 +73,7 @@ fn image_ui(painter: &Painter, import: &mut Import, transform: &PixelTransform) 
 }
 
 /// Render the tool UI.
-fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import) -> Option<Action> {
-    let mut action = None;
-
+fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import, user_actions: &mut Vec<Action>) {
     egui::Grid::new("import_grid").show(ui, |ui| {
         let source = &import.image;
         let target = &doc.image;
@@ -210,7 +209,7 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import) -> Option<Act
     ui.horizontal(|ui| {
         if ui.button("Import").clicked() {
             let scaled = import.scale_image();
-            action = Some(Action::Document(DocAction::PasteTrueColor {
+            user_actions.push(Action::Document(DocAction::PasteTrueColor {
                 source: scaled,
                 target: PixelPoint {
                     x: import.settings.left,
@@ -219,12 +218,10 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import) -> Option<Act
                 format: import.settings.format,
             }));
         } else if ui.button("Close").clicked() {
-            action = Some(Action::Ui(UiAction::SelectTool(Tool::Paint(
+            user_actions.push(Action::Ui(UiAction::SelectTool(Tool::Paint(
                 Default::default(),
             ))));
         }
     });
     ui.end_row();
-
-    action
 }
