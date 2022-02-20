@@ -9,6 +9,7 @@ mod colors;
 mod coords;
 mod document;
 mod editor;
+mod egui_extensions;
 pub mod error;
 mod image_io;
 mod image_operations;

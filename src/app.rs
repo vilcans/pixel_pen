@@ -1,3 +1,4 @@
+use crate::egui_extensions::EnhancedResponse;
 use crate::{
     actions::{Action, UiAction},
     editor::Editor,
@@ -185,11 +186,11 @@ fn update_with_editor(
         let doc_filename = editors.active_mut().unwrap().doc.filename.clone();
         egui::menu::bar(ui, |ui| {
             egui::menu::menu_button(ui, "File", |ui| {
-                if ui.button("New").clicked() {
+                if ui.button("New").clicked_with_close(ui) {
                     let doc = Document::new();
                     user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
                 }
-                if system.has_open_file_dialog() && ui.button("Open...").clicked() {
+                if system.has_open_file_dialog() && ui.button("Open...").clicked_with_close(ui) {
                     match system
                         .open_file_dialog(OpenFileOptions::for_open(doc_filename.as_deref()))
                     {
@@ -213,13 +214,13 @@ fn update_with_editor(
                 ui.separator();
                 ui.add_enabled_ui(editors.has_active() && editors.len() > 1, |ui| {
                     let ed = editors.active_mut().unwrap();
-                    if ui.button("Close").clicked() && check_close(system, ed) {
+                    if ui.button("Close").clicked_with_close(ui) && check_close(system, ed) {
                         user_actions
                             .push(Action::Ui(UiAction::CloseEditor(editors.active_index())));
                     }
                 });
                 ui.separator();
-                if ui.button("Quit").clicked() && check_quit(system, editors) {
+                if ui.button("Quit").clicked_with_close(ui) && check_quit(system, editors) {
                     frame.quit();
                 }
             });

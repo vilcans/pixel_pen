@@ -13,6 +13,7 @@ use crate::{
     actions::{self, Action, UiAction, Undoable},
     cell_image::CellImageSize,
     coords::{PixelPoint, PixelTransform},
+    egui_extensions::EnhancedResponse,
     error::{Error, Severity},
     import::Import,
     mode::Mode,
@@ -63,7 +64,7 @@ impl Editor {
     }
 
     pub fn update_file_menu(&mut self, ui: &mut Ui, system: &mut dyn SystemFunctions) {
-        if system.has_open_file_dialog() && ui.button("Import...").clicked() {
+        if system.has_open_file_dialog() && ui.button("Import...").clicked_with_close(ui) {
             match system.open_file_dialog(OpenFileOptions::for_import(match &self.ui_state.tool {
                 Tool::Import(tool) => tool.filename(),
                 _ => None,
@@ -92,21 +93,21 @@ impl Editor {
                                 .map(|s| s.to_string_lossy())
                                 .unwrap_or_default()
                         ))
-                        .clicked()
+                        .clicked_with_close(ui)
                     {
                         save(&mut self.history, &mut self.doc, &filename, system);
                     }
                 }
                 None => {
-                    if ui.button("Save").clicked() {
+                    if ui.button("Save").clicked_with_close(ui) {
                         save_as(&mut self.history, &mut self.doc, system);
                     }
                 }
             }
-            if ui.button("Save As...").clicked() {
+            if ui.button("Save As...").clicked_with_close(ui) {
                 save_as(&mut self.history, &mut self.doc, system);
             }
-            if ui.button("Export...").clicked() {
+            if ui.button("Export...").clicked_with_close(ui) {
                 export(&self.doc, system);
             }
         }
@@ -114,11 +115,11 @@ impl Editor {
 
     pub fn update_edit_menu(&mut self, ui: &mut Ui, user_actions: &mut Vec<Action>) {
         ui.set_enabled(self.history.can_undo());
-        if ui.button("Undo").clicked() {
+        if ui.button("Undo").clicked_with_close(ui) {
             user_actions.push(Action::Ui(UiAction::Undo));
         }
         ui.set_enabled(self.history.can_redo());
-        if ui.button("Redo").clicked() {
+        if ui.button("Redo").clicked_with_close(ui) {
             user_actions.push(Action::Ui(UiAction::Redo));
         }
     }
