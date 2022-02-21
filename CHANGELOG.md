@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+
+## [0.12.0] - 2022-02-21
 ### Added
 - Keyboard shortcuts for many functions. See [README](README.md).
 - Can have multiple documents open simultaneously.
@@ -80,7 +82,8 @@ This makes it impossible to try to draw with colors 8-15 unless in a multicolor 
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/vilcans/pixel_pen/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/vilcans/pixel_pen/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/vilcans/pixel_pen/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/vilcans/pixel_pen/compare/v0.8.0...v0.9.0
