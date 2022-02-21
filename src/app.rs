@@ -74,6 +74,14 @@ impl Editors {
             self.active = self.active.saturating_sub(1);
         }
     }
+
+    fn find_by_filename(&self, filename: &std::path::PathBuf) -> Option<usize> {
+        self.list
+            .iter()
+            .enumerate()
+            .find(|(_, ed)| matches!(&ed.doc.filename, Some(f) if f == filename))
+            .map(|(idx, _)| idx)
+    }
 }
 
 /// State of the whole application.
@@ -201,14 +209,7 @@ fn update_with_editor(
                         .open_file_dialog(OpenFileOptions::for_open(doc_filename.as_deref()))
                     {
                         Ok(Some(filename)) => {
-                            match storage::load_any_file(std::path::Path::new(&filename)) {
-                                Ok(doc) => {
-                                    user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
-                                }
-                                Err(e) => {
-                                    system.show_error(&format!("Failed to load: {:?}", e));
-                                }
-                            }
+                            open_file(filename, editors, system, user_actions);
                         }
                         Ok(None) => {}
                         Err(e) => {
@@ -348,6 +349,28 @@ fn update_with_editor(
     }
 
     unhandled_actions
+}
+
+/// Open file or show error to user.
+/// Switches to an existing editor if the document is already open.
+fn open_file(
+    filename: std::path::PathBuf,
+    editors: &mut Editors,
+    system: &mut dyn SystemFunctions,
+    user_actions: &mut Vec<Action>,
+) {
+    if let Some(i) = editors.find_by_filename(&filename) {
+        editors.set_active_index(i);
+        return;
+    }
+    match storage::load_any_file(std::path::Path::new(&filename)) {
+        Ok(doc) => {
+            user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
+        }
+        Err(e) => {
+            system.show_error(&format!("Failed to load: {:?}", e));
+        }
+    }
 }
 
 impl Application {

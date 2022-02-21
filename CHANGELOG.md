@@ -6,6 +6,9 @@
 ### Added
 - Can open multiple documents from the command-line.
 
+### Fixed
+- Opening a file that is already open switches to that tab instead of opening a duplicate.
+
 ## [0.12.0] - 2022-02-21
 ### Added
 - Keyboard shortcuts for many functions. See [README](README.md).
