@@ -5,7 +5,11 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - Keyboard shortcuts for many functions. See [README](README.md).
+- Can have multiple documents open simultaneously.
 - File->New menu item creates a new document.
+
+### Fixed
+- File and confirmation dialogs no longer crash on Mac.
 
 ## [0.11.0] - 2022-01-09
 ### Added
