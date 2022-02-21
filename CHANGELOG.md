@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- Can open multiple documents from the command-line.
 
 ## [0.12.0] - 2022-02-21
 ### Added

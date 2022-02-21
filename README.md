@@ -135,11 +135,11 @@ On a Mac, substitute Ctrl for ⌘.
 
 Oh, and there's a command-line interface! Run `pixel_pen --help` to get the possible commands:
 
-    Pixel Pen 0.6.0
+    Pixel Pen 0.12.0
     Actual 8 bit graphics editor
 
     USAGE:
-        pixel_pen [OPTIONS] [filename]
+        pixel_pen [OPTIONS] [filenames]...
 
     FLAGS:
         -h, --help       Prints help information
@@ -151,7 +151,7 @@ Oh, and there's a command-line interface! Run `pixel_pen --help` to get the poss
                                       may be exported as a standard image file
 
     ARGS:
-        <filename>    File to load
+        <filenames>...    Files to load
 
 So it can be used to convert images from any supported format to any other format.
 For example, to convert a `.pixelpen` file to `.png` format:

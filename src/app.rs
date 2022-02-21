@@ -361,7 +361,9 @@ impl Application {
         }
     }
 
-    pub fn add_editor(&mut self, doc: Document) -> usize {
+    pub fn add_editor(&mut self, mut doc: Document) -> usize {
+        doc.index_number = self.next_document_index;
+        self.next_document_index += 1;
         let editor = Editor::with_doc(doc);
         let i = self.editors.add(editor);
         self.editors.set_active_index(i);
@@ -376,9 +378,7 @@ impl Application {
         match action {
             Action::Document(_) => eprintln!("Unhandled Document action"),
             Action::Ui(ui_action) => match ui_action {
-                UiAction::NewDocument(mut doc) => {
-                    self.next_document_index += 1;
-                    doc.index_number = self.next_document_index;
+                UiAction::NewDocument(doc) => {
                     self.add_editor(doc);
                 }
                 UiAction::CloseEditor(index) => {
