@@ -7,6 +7,7 @@ use eframe::{
     },
     epi::TextureAllocator,
 };
+use imgref::ImgVec;
 use undo::Record;
 
 use crate::{
@@ -22,7 +23,7 @@ use crate::{
     texture::{self, Texture},
     tool::{ImportTool, Tool},
     ui::{self, text, UiState, ViewSettings},
-    vic::VicImage,
+    vic::{Char, VicImage},
     Document,
 };
 
@@ -185,6 +186,7 @@ impl Editor {
         frame: &eframe::epi::Frame,
         ctx: &egui::CtxRef,
         cursor_icon: &mut Option<CursorIcon>,
+        brush: &ImgVec<Char>,
         user_actions: &mut Vec<Action>,
     ) {
         let (width, height) = self.doc.image.size_in_pixels();
@@ -292,7 +294,7 @@ impl Editor {
                     &painter,
                     &pixel_transform,
                     cursor_icon,
-                    &self.ui_state.char_brush,
+                    brush,
                     hover_pos,
                     &self.doc,
                     user_actions,
@@ -358,14 +360,6 @@ impl Editor {
                 }
                 UiAction::SelectTool(tool) => ui_state.tool = tool.clone(),
                 UiAction::SelectMode(mode) => ui_state.mode = mode.clone(),
-                UiAction::CreateCharBrush { rect } => {
-                    if let Some(rect) = rect.within_size(doc.image.size_in_cells()) {
-                        ui_state.char_brush = doc.image.grab_cells(&rect);
-                        ui_state.tool = Tool::CharBrush(Default::default());
-                    } else {
-                        println!("Rect {:?} did not fit inside image", rect);
-                    }
-                }
                 UiAction::ZoomIn => {
                     if ui_state.zoom < 16.0 {
                         ui_state.zoom *= 2.0;
@@ -390,7 +384,9 @@ impl Editor {
                     ui_state.image_view_settings = settings.clone();
                 }
                 // Not handled by Editor
-                UiAction::NewDocument(_) | UiAction::CloseEditor(_) => {
+                UiAction::NewDocument(_)
+                | UiAction::CloseEditor(_)
+                | UiAction::CreateCharBrush { .. } => {
                     return Some(action);
                 }
             },

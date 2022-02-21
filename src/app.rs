@@ -1,4 +1,6 @@
+use crate::cell_image::CellImageSize;
 use crate::egui_extensions::EnhancedResponse;
+use crate::vic::Char;
 use crate::{
     actions::{Action, UiAction},
     editor::Editor,
@@ -12,6 +14,7 @@ use eframe::{
     egui::{self, Color32, Label, Rgba, RichText, Sense, Shape, Stroke},
     epi,
 };
+use imgref::ImgVec;
 use std::time::Instant;
 
 const POPUP_MESSAGE_TIME: f32 = 3.0;
@@ -79,6 +82,7 @@ pub struct Application {
     pub system: Box<dyn SystemFunctions>,
     /// For giving each new document its own number
     next_document_index: u32,
+    brush: ImgVec<Char>,
 }
 
 impl Default for Application {
@@ -110,6 +114,7 @@ impl epi::App for Application {
                 ctx,
                 frame,
                 &mut self.editors,
+                &self.brush,
                 self.system.as_mut(),
                 &mut user_actions,
             );
@@ -178,6 +183,7 @@ fn update_with_editor(
     ctx: &egui::CtxRef,
     frame: &epi::Frame,
     editors: &mut Editors,
+    brush: &ImgVec<Char>,
     system: &mut dyn SystemFunctions,
     user_actions: &mut Vec<Action>,
 ) -> Vec<Action> {
@@ -326,7 +332,7 @@ fn update_with_editor(
     // Main image.
     egui::CentralPanel::default().show(ctx, |ui| {
         let ed = editors.active_mut().unwrap();
-        ed.update_central_panel(ui, frame, ctx, &mut cursor_icon, user_actions);
+        ed.update_central_panel(ui, frame, ctx, &mut cursor_icon, brush, user_actions);
     });
 
     let ed = editors.active_mut().unwrap();
@@ -351,6 +357,7 @@ impl Application {
             editors: Default::default(),
             system,
             next_document_index: 1,
+            brush: ImgVec::new(vec![Char::DEFAULT_BRUSH], 1, 1),
         }
     }
 
@@ -376,6 +383,16 @@ impl Application {
                 }
                 UiAction::CloseEditor(index) => {
                     self.editors.remove(index);
+                }
+                UiAction::CreateCharBrush { rect } => {
+                    if let Some(ed) = self.editors.active_mut() {
+                        if let Some(rect) = rect.within_size(ed.doc.image.size_in_cells()) {
+                            self.brush = ed.doc.image.grab_cells(&rect);
+                            ed.ui_state.tool = Tool::CharBrush(Default::default());
+                        } else {
+                            println!("Rect {:?} did not fit inside image", rect);
+                        }
+                    }
                 }
                 _action => {
                     eprintln!("Unhandled UiAction");

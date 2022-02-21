@@ -3,14 +3,8 @@ pub mod text;
 
 use std::time::Instant;
 
-use crate::{
-    colors::TrueColor,
-    mode::Mode,
-    tool::Tool,
-    vic::{Char, PixelColor},
-};
+use crate::{colors::TrueColor, mode::Mode, tool::Tool, vic::PixelColor};
 use eframe::egui::Vec2;
-use imgref::ImgVec;
 
 pub struct UiState {
     pub tool: Tool,
@@ -21,8 +15,6 @@ pub struct UiState {
     pub primary_color: PixelColor,
     /// Secondary selected color. Typically used when using the right mouse button.
     pub secondary_color: PixelColor,
-    /// Characters to use as a brush
-    pub char_brush: ImgVec<Char>,
     /// Enable showing the character grid
     pub grid: bool,
     /// Whether user is currently panning
@@ -40,7 +32,6 @@ impl Default for UiState {
             image_view_settings: ViewSettings::Normal,
             primary_color: PixelColor::CharColor(7),
             secondary_color: PixelColor::Background,
-            char_brush: ImgVec::new(vec![Char::DEFAULT_BRUSH], 1, 1),
             grid: false,
             panning: false,
             pan: Vec2::ZERO,
