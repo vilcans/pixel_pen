@@ -111,6 +111,20 @@ impl CellRect {
         }
     }
 
+    pub fn clamp_to_bounds(&self, bounds: SizeInCells) -> WithinBounds<CellRect> {
+        let left = self.left().clamp(0, bounds.width as i32);
+        let right = self.right().clamp(0, bounds.width as i32);
+        let top = self.top().clamp(0, bounds.height as i32);
+        let bottom = self.bottom().clamp(0, bounds.height as i32);
+        WithinBounds::assume_within_bounds(Self {
+            top_left: CellPos {
+                column: left,
+                row: top,
+            },
+            size: SizeInCells::new((right - left) as u32, (bottom - top) as u32),
+        })
+    }
+
     /// Get the leftmost column.
     pub fn left(&self) -> i32 {
         self.top_left.column
@@ -141,6 +155,12 @@ impl CellRect {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct WithinBounds<T>(T);
 
+impl<T> WithinBounds<T> {
+    pub fn assume_within_bounds(t: T) -> WithinBounds<T> {
+        Self(t)
+    }
+}
+
 impl<T> Deref for WithinBounds<T> {
     type Target = T;
 
@@ -158,9 +178,7 @@ impl WithinBounds<CellPos> {
 
 #[cfg(test)]
 mod test {
-    use crate::coords::SizeInCells;
-
-    use super::CellPos;
+    use super::{CellPos, CellRect, SizeInCells};
 
     #[test]
     fn within_bounds() {
@@ -189,6 +207,16 @@ mod test {
                 row: 107
             },
             c + s
+        );
+    }
+
+    #[test]
+    fn rect_clamp_to_size() {
+        let r = CellRect::from_cell_width_height(CellPos { column: 2, row: 10 }, 8, 4);
+        let c = r.clamp_to_bounds(SizeInCells::new(5, 12));
+        assert_eq!(
+            *c,
+            CellRect::from_cell_width_height(CellPos { column: 2, row: 10 }, 3, 2)
         );
     }
 }

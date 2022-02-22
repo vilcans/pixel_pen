@@ -68,4 +68,30 @@ pub trait CellCoordinates: CellImageSize {
             y: point.y + Self::CELL_HEIGHT as i32 / 2,
         })
     }
+
+    /// Return the top-left edge of the character that is closest to the given point.
+    /// May return coordinates outside the image
+    fn cell_rounded_unclipped(&self, point: PixelPoint) -> (CellPos, i32, i32) {
+        self.cell_unclipped(PixelPoint {
+            x: point.x - Self::CELL_WIDTH as i32 / 2,
+            y: point.y - Self::CELL_HEIGHT as i32 / 2,
+        })
+    }
+
+    fn cell_selection(&self, p0: PixelPoint, p1: PixelPoint) -> WithinBounds<CellRect> {
+        let (c0, _, _) = self.cell_rounded_unclipped(p0);
+        let (c1, _, _) = self.cell_rounded_unclipped(p1);
+        let (column, width) = if c1.column >= c0.column {
+            (c0.column, c1.column - c0.column)
+        } else {
+            (c1.column, c0.column - c1.column)
+        };
+        let (row, height) = if c1.row >= c0.row {
+            (c0.row, c1.row - c0.row)
+        } else {
+            (c1.row, c0.row - c1.row)
+        };
+        CellRect::from_cell_width_height(CellPos { column, row }, width as u32, height as u32)
+            .clamp_to_bounds(self.size_in_cells())
+    }
 }
