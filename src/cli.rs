@@ -50,10 +50,7 @@ pub fn main() -> Result<Option<Application>, i32> {
             let mut app = Application::new();
             let indices = docs
                 .into_iter()
-                .map(|doc| {
-                    let editor_index = app.add_editor(doc);
-                    editor_index
-                })
+                .map(|doc| app.add_editor(doc))
                 .collect::<Vec<usize>>();
             let editor_index = indices
                 .last()
