@@ -15,6 +15,7 @@ use eframe::{
     epi,
 };
 use imgref::ImgVec;
+use std::path::Path;
 use std::time::Instant;
 
 const POPUP_MESSAGE_TIME: f32 = 3.0;
@@ -75,7 +76,7 @@ impl Editors {
         }
     }
 
-    fn find_by_filename(&self, filename: &std::path::PathBuf) -> Option<usize> {
+    fn find_by_filename(&self, filename: &Path) -> Option<usize> {
         self.list
             .iter()
             .enumerate()
