@@ -4,6 +4,7 @@
 
 mod actions;
 mod app;
+mod brush;
 mod cell_image;
 mod colors;
 mod coords;

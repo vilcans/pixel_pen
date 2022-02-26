@@ -124,6 +124,8 @@ The Raw checkbox changes the display mode to "raw". This mode is useful to "debu
 | Shift+U                             | Redo
 | V                                   | Grab Brush mode
 | W                                   | Raw display on/off
+| X                                   | Mirror brush X (horizontally)
+| Y                                   | Mirror brush Y (vertically)
 | Scroll wheel                        | Scroll
 | Ctrl + scroll wheel                 | Zoom
 | Hold middle mouse button            | Pan

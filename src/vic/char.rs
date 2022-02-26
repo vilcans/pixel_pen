@@ -326,6 +326,25 @@ impl Char {
         self.multicolor = true;
         Ok(true)
     }
+
+    pub fn mirror_x(&mut self) {
+        if self.multicolor {
+            for b in &mut self.bits {
+                *b = (0..7)
+                    .step_by(2)
+                    .map(|bit| ((*b >> bit) & 0b11) << (6 - bit))
+                    .sum()
+            }
+        } else {
+            for b in &mut self.bits {
+                *b = b.reverse_bits();
+            }
+        }
+    }
+
+    pub fn mirror_y(&mut self) {
+        self.bits.reverse();
+    }
 }
 
 impl Default for Char {

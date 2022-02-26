@@ -5,6 +5,8 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - Can open multiple documents from the command-line.
+- Can mirror the brush horizontally (x) or vertically (y).
+
 ### Changed
 - How the hair-cross and grabbing rectangle reacts to the mouse movement changed in an attempt to make if feel better.
 

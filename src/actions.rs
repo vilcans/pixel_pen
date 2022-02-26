@@ -101,6 +101,8 @@ pub enum UiAction {
     ToggleGrid,
     ToggleRaw,
     ViewSettings(ViewSettings),
+    MirrorBrushX,
+    MirrorBrushY,
 }
 
 impl undo::Action for Undoable {

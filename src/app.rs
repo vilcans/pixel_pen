@@ -1,3 +1,4 @@
+use crate::brush;
 use crate::cell_image::CellImageSize;
 use crate::egui_extensions::EnhancedResponse;
 use crate::vic::Char;
@@ -182,6 +183,8 @@ fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
         "u" => Action::Ui(UiAction::Undo),
         "U" => Action::Ui(UiAction::Redo),
         "v" => Action::Ui(UiAction::SelectTool(Tool::Grab(Default::default()))),
+        "x" => Action::Ui(UiAction::MirrorBrushX),
+        "y" => Action::Ui(UiAction::MirrorBrushY),
         _ => return,
     };
     actions.push(action);
@@ -235,6 +238,14 @@ fn update_with_editor(
             egui::menu::menu_button(ui, "Edit", |ui| {
                 let ed = editors.active_mut().unwrap();
                 ed.update_edit_menu(ui, user_actions);
+            });
+            egui::menu::menu_button(ui, "Brush", |ui| {
+                if ui.button("Mirror X").clicked_with_close(ui) {
+                    user_actions.push(Action::Ui(UiAction::MirrorBrushX));
+                }
+                if ui.button("Mirror Y").clicked_with_close(ui) {
+                    user_actions.push(Action::Ui(UiAction::MirrorBrushY));
+                }
             });
         });
 
@@ -417,6 +428,12 @@ impl Application {
                             println!("Rect {:?} did not fit inside image", rect);
                         }
                     }
+                }
+                UiAction::MirrorBrushX => {
+                    brush::mirror_x(&mut self.brush);
+                }
+                UiAction::MirrorBrushY => {
+                    brush::mirror_y(&mut self.brush);
                 }
                 _action => {
                     eprintln!("Unhandled UiAction");

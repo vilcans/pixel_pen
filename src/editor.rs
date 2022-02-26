@@ -386,7 +386,9 @@ impl Editor {
                 // Not handled by Editor
                 UiAction::NewDocument(_)
                 | UiAction::CloseEditor(_)
-                | UiAction::CreateCharBrush { .. } => {
+                | UiAction::CreateCharBrush { .. }
+                | UiAction::MirrorBrushX
+                | UiAction::MirrorBrushY => {
                     return Some(action);
                 }
             },
