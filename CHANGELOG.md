@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+
+## [0.13.0] - 2022-02-26
 ### Added
 - Can open multiple documents from the command-line.
 - Can mirror the brush horizontally (x) or vertically (y).
@@ -91,7 +93,8 @@ This makes it impossible to try to draw with colors 8-15 unless in a multicolor 
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/vilcans/pixel_pen/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/vilcans/pixel_pen/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/vilcans/pixel_pen/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/vilcans/pixel_pen/compare/v0.9.0...v0.10.0
