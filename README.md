@@ -4,8 +4,6 @@
 
 This is still early in development.
 
-Download binaries from the [releases page](https://github.com/vilcans/pixel_pen/releases/).
-
 You can load images in typical image file formats, which Pixel Pen will convert to Vic-20 format.
 If you use the "Open" menu to open an image file, make sure it's not very high resolution. You can use the Import menu instead to load an image and scale it down at the same time.
 
@@ -15,6 +13,13 @@ but that was only to get some images to test with at the start of the project. I
 There is also Pixel Pen's own file format (file extension: `pixelpen`), the details of which are subject to change, but it's based on JSON. Pixel Pen can save and load files in this format.
 
 Apart from that, you can paint single pixels, change a character cell's color, and switch a character cell to multicolor or high resolution.
+
+## Installation
+
+Binary releases are available at the [Releases page](https://github.com/vilcans/pixel_pen/releases/)
+(currently only Windows because of issues with the automated Linux and Mac builds).
+
+To build and run from source, see [Development](DEVELOPMENT.md).
 
 ## The Palette
 
