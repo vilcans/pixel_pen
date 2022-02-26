@@ -5,6 +5,8 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - Can open multiple documents from the command-line.
+### Changed
+- How the hair-cross and grabbing rectangle reacts to the mouse movement changed in an attempt to make if feel better.
 
 ### Fixed
 - Opening a file that is already open switches to that tab instead of opening a duplicate.

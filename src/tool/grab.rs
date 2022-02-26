@@ -3,8 +3,7 @@ use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
 use crate::{
     actions::{Action, UiAction},
     cell_image::CellCoordinates,
-    coords::{CellPos, CellRect, PixelPoint, PixelTransform},
-    vic::VicImage,
+    coords::{PixelPoint, PixelTransform},
     Document,
 };
 
@@ -40,13 +39,13 @@ impl GrabTool {
             None => {
                 if let Some(hover_pos) = hover_pos {
                     *cursor_icon = Some(CursorIcon::Crosshair);
-                    if let Some((cell, _, _)) = doc.image.cell(hover_pos) {
-                        draw_crosshair(
-                            painter,
-                            pixel_transform,
-                            doc.image.cell_coordinates_unclipped(&cell),
-                        )
-                    }
+                    let cell_rect = doc.image.cell_selection(hover_pos, hover_pos);
+                    let cell = cell_rect.top_left;
+                    draw_crosshair(
+                        painter,
+                        pixel_transform,
+                        doc.image.cell_coordinates_unclipped(&cell),
+                    );
                     if response.drag_started() {
                         self.selection_start = Some(hover_pos);
                     } else if response.clicked() {
@@ -58,7 +57,7 @@ impl GrabTool {
                 if let Some(hover_pos) = hover_pos {
                     *cursor_icon = Some(CursorIcon::Crosshair);
 
-                    let cell_rect = selection_to_cells(&doc.image, (selection_start, hover_pos));
+                    let cell_rect = doc.image.cell_selection(selection_start, hover_pos);
 
                     let (top_left, bottom_right) = doc.image.cell_rectangle(&cell_rect);
                     painter.rect_stroke(
@@ -81,9 +80,11 @@ impl GrabTool {
             }
         }
         if let Some(selection) = selection {
-            user_actions.push(Action::Ui(UiAction::CreateCharBrush {
-                rect: selection_to_cells(&doc.image, selection),
-            }))
+            self.selection_start = None;
+            let rect = *doc.image.cell_selection(selection.0, selection.1);
+            if rect.width() != 0 && rect.height() != 0 {
+                user_actions.push(Action::Ui(UiAction::CreateCharBrush { rect }));
+            }
         }
     }
 }
@@ -103,20 +104,4 @@ fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: Pixe
         ],
         CROSSHAIR_STROKE,
     );
-}
-
-fn selection_to_cells(image: &VicImage, selection: (PixelPoint, PixelPoint)) -> CellRect {
-    let (c0, _, _) = image.cell_clamped(selection.0);
-    let (c1, _, _) = image.cell_clamped(selection.1);
-    let (column, width) = if c1.column >= c0.column {
-        (c0.column, c1.column - c0.column)
-    } else {
-        (c1.column, c0.column - c1.column)
-    };
-    let (row, height) = if c1.row >= c0.row {
-        (c0.row, c1.row - c0.row)
-    } else {
-        (c1.row, c0.row - c1.row)
-    };
-    CellRect::from_cell_width_height(CellPos { column, row }, width as u32 + 1, height as u32 + 1)
 }

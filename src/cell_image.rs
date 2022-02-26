@@ -73,8 +73,8 @@ pub trait CellCoordinates: CellImageSize {
     /// May return coordinates outside the image
     fn cell_rounded_unclipped(&self, point: PixelPoint) -> (CellPos, i32, i32) {
         self.cell_unclipped(PixelPoint {
-            x: point.x - Self::CELL_WIDTH as i32 / 2,
-            y: point.y - Self::CELL_HEIGHT as i32 / 2,
+            x: point.x + Self::CELL_WIDTH as i32 / 2,
+            y: point.y + Self::CELL_HEIGHT as i32 / 2,
         })
     }
 
