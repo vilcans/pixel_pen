@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
 use bit_vec::BitVec;
+use itertools::Itertools;
 
 use crate::{
-    coords::{self, CellPos, PixelPoint, SizeInCells, WithinBounds},
+    coords::{self, CellPos, PixelPoint, PixelRect, SizeInCells, WithinBounds},
     line,
 };
 
@@ -24,6 +25,15 @@ impl UpdateArea {
         UpdateArea {
             pixels: line::line(p0, p1).skip(1).collect(),
         }
+    }
+
+    pub fn rectangle(rect: PixelRect) -> Self {
+        let pixels = rect
+            .y_range()
+            .cartesian_product(rect.x_range())
+            .map(|(y, x)| PixelPoint::new(x, y))
+            .collect();
+        Self { pixels }
     }
 
     /// Get the character cells affected by this area.

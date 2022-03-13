@@ -37,6 +37,11 @@ There are a few tools that you can select.
 
 With this tool, you draw pixels. See Paint Modes below for information about how the Paint tool affects the pixels.
 
+### Rectangle
+
+With the Rectangle tool, you select an rectangular area to fill.
+See Paint Modes below for information about how the Rectangle tool affects the pixels.
+
 ### Grab
 
 When you have selected the Grab tool, you can click on a cell to copy it into a brush.

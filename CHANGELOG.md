@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- Rectangle (filled) tool.
 
 ## [0.13.0] - 2022-02-26
 ### Added

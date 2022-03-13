@@ -173,7 +173,7 @@ impl Editor {
     pub fn update_left_toolbar(&self, ui: &mut Ui, user_actions: &mut Vec<Action>) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             select_tool_ui(ui, &self.ui_state.tool, user_actions);
-            if let Tool::Paint(_) = self.ui_state.tool {
+            if let Tool::Paint(_) | Tool::Rectangle(_) = self.ui_state.tool {
                 ui.separator();
                 select_mode_ui(ui, &self.ui_state.mode, user_actions);
             }
@@ -269,6 +269,18 @@ impl Editor {
                     tool.update_ui(ctx, ui, &painter, &self.doc, &pixel_transform, user_actions)
                 }
                 Tool::Paint(tool) => tool.update_ui(
+                    hover_pos,
+                    ui,
+                    &response,
+                    &painter,
+                    &pixel_transform,
+                    cursor_icon,
+                    &self.ui_state.mode,
+                    (self.ui_state.primary_color, self.ui_state.secondary_color),
+                    &self.doc,
+                    user_actions,
+                ),
+                Tool::Rectangle(tool) => tool.update_ui(
                     hover_pos,
                     ui,
                     &response,
@@ -500,6 +512,13 @@ fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool, user_actions: &mut Vec
             .clicked()
         {
             new_tool = Some(Tool::Paint(Default::default()));
+        }
+        if ui
+            .selectable_label(matches!(current_tool, Tool::Rectangle(_)), "Rectangle")
+            .on_hover_text("Draw a rectangle")
+            .clicked()
+        {
+            new_tool = Some(Tool::Rectangle(Default::default()));
         }
         if ui
             .selectable_label(matches!(current_tool, Tool::Grab { .. }), "Grab")
