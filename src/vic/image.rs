@@ -195,7 +195,7 @@ impl VicImage {
                 .cartesian_product(target_pos.x..target_pos.x + source_size.width as i32),
         ) {
             let p = CellPos::new(c, r);
-            if let Some(p) = coords::cell_within_bounds(p, self.size_in_cells()) {
+            if let Some(p) = coords::within_bounds(p, self.size_in_cells()) {
                 self.video[p.as_tuple()] = char;
                 changed = true;
             }

@@ -1,6 +1,6 @@
 //! Screen, pixel and character cell coordinate systems.
 
-pub use bounds::{cell_rect_within_size, cell_within_bounds, clamp_rect_to_bounds, WithinBounds};
+pub use bounds::{clamp_rect_to_bounds, rect_within_size, within_bounds, WithinBounds};
 pub use transform::PixelTransform;
 
 mod bounds;

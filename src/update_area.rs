@@ -49,7 +49,7 @@ impl UpdateArea {
     ) -> HashMap<WithinBounds<CellPos>, BitVec> {
         let mut cells = HashMap::new();
         for PixelPoint { x, y, .. } in self.pixels.iter().copied() {
-            if let Some(cell) = coords::cell_within_bounds(
+            if let Some(cell) = coords::within_bounds(
                 CellPos::new(
                     x.div_euclid(cell_width as i32),
                     y.div_euclid(cell_height as i32),

@@ -47,7 +47,7 @@ pub trait CellCoordinates: CellImageSize {
     /// Returns None if the coordinates are outside the image.
     fn cell(&self, point: PixelPoint) -> Option<(WithinBounds<CellPos>, i32, i32)> {
         let (cell, cx, cy) = self.cell_unclipped(point);
-        let cell = coords::cell_within_bounds(cell, self.size_in_cells())?;
+        let cell = coords::within_bounds(cell, self.size_in_cells())?;
         Some((cell, cx, cy))
     }
 
@@ -58,7 +58,7 @@ pub trait CellCoordinates: CellImageSize {
         let corner = PixelPoint::new(width as i32 - 1, height as i32 - 1);
         let (cell, cx, cy) = self.cell_unclipped(point.clamp(PixelPoint::zero(), corner));
         (
-            coords::cell_within_bounds(cell, self.size_in_cells()).unwrap(),
+            coords::within_bounds(cell, self.size_in_cells()).unwrap(),
             cx,
             cy,
         )

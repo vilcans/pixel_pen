@@ -422,7 +422,7 @@ impl Application {
                 UiAction::CreateCharBrush { rect } => {
                     if let Some(ed) = self.editors.active_mut() {
                         if let Some(rect) =
-                            coords::cell_rect_within_size(rect, ed.doc.image.size_in_cells())
+                            coords::rect_within_size(rect, ed.doc.image.size_in_cells())
                         {
                             self.brush = ed.doc.image.grab_cells(&rect);
                             ed.ui_state.tool = Tool::CharBrush(Default::default());

@@ -1,14 +1,19 @@
 use std::ops::Deref;
 
-use super::{CellPos, CellRect, SizeInCells};
+use euclid::{num::Zero, Point2D, Rect, Size2D};
 
-/// Checks whether this `CellPos` is within the given bounds.
-/// Returns `Some(WithinBounds<CellCoords>)` if it is, otherwise `None`.
-pub fn cell_within_bounds(
-    candidate: CellPos,
-    bounds: SizeInCells,
-) -> Option<WithinBounds<CellPos>> {
-    let bounds = CellRect::new(CellPos::zero(), bounds.cast());
+use super::CellPos;
+
+/// Checks whether a position is within the given bounds.
+/// Returns `Some(WithinBounds<_>)` if it is, otherwise `None`.
+pub fn within_bounds<T, U>(
+    candidate: Point2D<T, U>,
+    bounds: Size2D<T, U>,
+) -> Option<WithinBounds<Point2D<T, U>>>
+where
+    T: Zero + Copy + std::ops::Add<Output = T> + PartialOrd,
+{
+    let bounds = Rect::new(Point2D::zero(), (bounds.width, bounds.height).into());
     if bounds.contains(candidate) {
         Some(WithinBounds(candidate))
     } else {
@@ -17,12 +22,15 @@ pub fn cell_within_bounds(
 }
 
 /// Checks that this rectangle fits inside a certain size.
-/// If it does, returns a `WithinBounds<CellRect>`, otherwise `None`.
-pub fn cell_rect_within_size(
-    candidate: CellRect,
-    bounds: SizeInCells,
-) -> Option<WithinBounds<CellRect>> {
-    let bounds = CellRect::new(CellPos::zero(), bounds.cast());
+/// If it does, returns a `WithinBounds<_>`, otherwise `None`.
+pub fn rect_within_size<T, U>(
+    candidate: Rect<T, U>,
+    bounds: Size2D<T, U>,
+) -> Option<WithinBounds<Rect<T, U>>>
+where
+    T: Zero + Copy + std::ops::Add<Output = T> + PartialOrd,
+{
+    let bounds = Rect::new(Point2D::zero(), (bounds.width, bounds.height).into());
     if bounds.contains_rect(&candidate) {
         Some(WithinBounds(candidate))
     } else {
@@ -30,14 +38,20 @@ pub fn cell_rect_within_size(
     }
 }
 
-pub fn clamp_rect_to_bounds(candidate: CellRect, bounds: SizeInCells) -> WithinBounds<CellRect> {
-    let left = candidate.min_x().clamp(0, bounds.width as i32);
-    let right = candidate.max_x().clamp(0, bounds.width as i32);
-    let top = candidate.min_y().clamp(0, bounds.height as i32);
-    let bottom = candidate.max_y().clamp(0, bounds.height as i32);
-    WithinBounds::assume_within_bounds(CellRect::new(
-        CellPos::new(left, top),
-        SizeInCells::new(right - left, bottom - top),
+pub fn clamp_rect_to_bounds<T, U>(
+    candidate: Rect<T, U>,
+    bounds: Size2D<T, U>,
+) -> WithinBounds<Rect<T, U>>
+where
+    T: Copy + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + Ord + Zero,
+{
+    let left = candidate.min_x().clamp(T::zero(), bounds.width);
+    let right = candidate.max_x().clamp(T::zero(), bounds.width);
+    let top = candidate.min_y().clamp(T::zero(), bounds.height);
+    let bottom = candidate.max_y().clamp(T::zero(), bounds.height);
+    WithinBounds::assume_within_bounds(Rect::new(
+        Point2D::new(left, top),
+        Size2D::new(right - left, bottom - top),
     ))
 }
 
@@ -68,36 +82,38 @@ impl WithinBounds<CellPos> {
 
 #[cfg(test)]
 mod test {
-    use super::{cell_within_bounds, clamp_rect_to_bounds, CellPos, CellRect, SizeInCells};
+    struct TestUnit;
+    type TestRect = euclid::Rect<i32, TestUnit>;
+    type TestPos = euclid::Point2D<i32, TestUnit>;
+    type TestSize = euclid::Size2D<i32, TestUnit>;
+
+    use super::{clamp_rect_to_bounds, within_bounds};
 
     #[test]
-    fn within_bounds() {
-        let c = CellPos::new(1, 2);
-        let v = cell_within_bounds(c, SizeInCells::new(10, 20));
+    fn within_bounds_test() {
+        let c = TestPos::new(1, 2);
+        let v = within_bounds(c, TestSize::new(10, 20));
         assert!(v.is_some());
     }
 
     #[test]
     fn within_bounds_successful() {
-        let c = CellPos::new(10, 21);
-        let v = cell_within_bounds(c, SizeInCells::new(10, 20));
+        let c = TestPos::new(10, 21);
+        let v = within_bounds(c, TestSize::new(10, 20));
         assert!(v.is_none());
     }
 
     #[test]
     fn add_pos_and_size() {
-        let c = CellPos::new(5, 7);
-        let s = SizeInCells::new(10, 100);
-        assert_eq!(CellPos::new(15, 107), c + s);
+        let c = TestPos::new(5, 7);
+        let s = TestSize::new(10, 100);
+        assert_eq!(TestPos::new(15, 107), c + s);
     }
 
     #[test]
     fn rect_clamp_to_size() {
-        let r = CellRect::new(CellPos::new(2, 10), SizeInCells::new(8, 4));
-        let c = clamp_rect_to_bounds(r, SizeInCells::new(5, 12));
-        assert_eq!(
-            *c,
-            CellRect::new(CellPos::new(2, 10), SizeInCells::new(3, 2))
-        );
+        let r = TestRect::new(TestPos::new(2, 10), TestSize::new(8, 4));
+        let c = clamp_rect_to_bounds(r, TestSize::new(5, 12));
+        assert_eq!(*c, TestRect::new(TestPos::new(2, 10), TestSize::new(3, 2)));
     }
 }
