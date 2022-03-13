@@ -4,15 +4,10 @@ use crate::{
     actions::{Action, UiAction},
     cell_image::CellCoordinates,
     coords::{PixelPoint, PixelTransform},
-    Document,
+    ui, Document,
 };
 
 const SELECTION_STROKE: Stroke = Stroke {
-    width: 1.0,
-    color: Color32::from_rgb(200, 200, 200),
-};
-
-const CROSSHAIR_STROKE: Stroke = Stroke {
     width: 1.0,
     color: Color32::from_rgb(200, 200, 200),
 };
@@ -41,7 +36,7 @@ impl GrabTool {
                     *cursor_icon = Some(CursorIcon::Crosshair);
                     let cell_rect = doc.image.cell_selection(hover_pos, hover_pos);
                     let cell = cell_rect.origin;
-                    draw_crosshair(
+                    ui::crosshair::draw_crosshair(
                         painter,
                         pixel_transform,
                         doc.image.cell_coordinates_unclipped(&cell),
@@ -87,21 +82,4 @@ impl GrabTool {
             }
         }
     }
-}
-
-fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: PixelPoint) {
-    painter.line_segment(
-        [
-            pixel_transform.screen_pos(PixelPoint::new(pos.x, 0)),
-            pixel_transform.screen_pos(PixelPoint::new(pos.x, pixel_transform.pixel_height)),
-        ],
-        CROSSHAIR_STROKE,
-    );
-    painter.line_segment(
-        [
-            pixel_transform.screen_pos(PixelPoint::new(0, pos.y)),
-            pixel_transform.screen_pos(PixelPoint::new(pixel_transform.pixel_width, pos.y)),
-        ],
-        CROSSHAIR_STROKE,
-    );
 }

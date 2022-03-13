@@ -1,3 +1,4 @@
+pub mod crosshair;
 pub mod palette;
 pub mod text;
 
