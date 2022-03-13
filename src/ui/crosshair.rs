@@ -8,6 +8,13 @@ const STROKE: Stroke = Stroke {
 };
 
 pub fn draw_crosshair(painter: &Painter, pixel_transform: &PixelTransform, pos: PixelPoint) {
+    if pos.x < 0
+        || pos.x >= pixel_transform.pixel_width
+        || pos.y < 0
+        || pos.y >= pixel_transform.pixel_height
+    {
+        return;
+    }
     painter.line_segment(
         [
             pixel_transform.screen_pos(PixelPoint::new(pos.x, 0)),
