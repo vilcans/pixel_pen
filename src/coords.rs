@@ -46,7 +46,7 @@ pub fn cell_rect_within_size(
     bounds: SizeInCells,
 ) -> Option<WithinBounds<CellRect>> {
     let bounds = CellRect::new(CellPos::zero(), bounds.cast());
-    if candidate.contains_rect(&bounds) {
+    if bounds.contains_rect(&candidate) {
         Some(WithinBounds(candidate))
     } else {
         None
