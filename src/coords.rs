@@ -1,154 +1,67 @@
 //! Screen, pixel and character cell coordinate systems.
 
-use std::{fmt::Display, ops::Deref};
+use std::ops::Deref;
 pub use transform::PixelTransform;
 
-use self::size::Size;
-
-mod size;
 mod transform;
 
-/// Integer point, e.g. pixel coordinates.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct PixelPoint {
-    pub x: i32,
-    pub y: i32,
-}
+pub struct PixelUnit;
+pub struct CellUnit;
 
-impl PixelPoint {
-    pub fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
-    }
-}
+/// Coordinates for a pixel
+pub type PixelPoint = euclid::Point2D<i32, PixelUnit>;
 
-impl Display for PixelPoint {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
-    }
-}
+/// Rectangle in pixel coordinates.
+pub type PixelRect = euclid::Rect<i32, PixelUnit>;
 
-impl PixelPoint {
-    /// Clamp this point have coordinates between 0 and the given x and y values (inclusive).
-    pub fn clamped(&self, max_x: i32, max_y: i32) -> PixelPoint {
-        PixelPoint {
-            x: self.x.clamp(0, max_x),
-            y: self.y.clamp(0, max_y),
-        }
-    }
-}
+/// Position of a cell; column (x) and row (y).
+pub type CellPos = euclid::Point2D<i32, CellUnit>;
 
 /// Width and height in character cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::Deref)]
-pub struct SizeInCells(Size<u32>);
+pub type SizeInCells = euclid::Size2D<i32, CellUnit>;
 
-impl SizeInCells {
-    /// A 1 by 1 size.
-    pub const ONE: Self = Self::new(1, 1);
+/// Rectangle of cells
+pub type CellRect = euclid::Rect<i32, CellUnit>;
 
-    pub const fn new(width: u32, height: u32) -> Self {
-        Self(Size { width, height })
+// TODO: Make within bounds and within_size a generic trait?
+
+/// Checks whether this `CellPos` is within the given bounds.
+/// Returns `Some(WithinBounds<CellCoords>)` if it is, otherwise `None`.
+pub fn cell_within_bounds(
+    candidate: CellPos,
+    bounds: SizeInCells,
+) -> Option<WithinBounds<CellPos>> {
+    let bounds = CellRect::new(CellPos::zero(), bounds.cast());
+    if bounds.contains(candidate) {
+        Some(WithinBounds(candidate))
+    } else {
+        None
     }
 }
 
-/// Position of a cell; column and row.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CellPos {
-    pub column: i32,
-    pub row: i32,
-}
-
-impl CellPos {
-    /// Checks whether this `CellPos` is within the given bounds.
-    /// Returns `Some(WithinBounds<CellCoords>)` if it is, otherwise `None`.
-    pub fn within_bounds(&self, bounds: &SizeInCells) -> Option<WithinBounds<CellPos>> {
-        if self.column < 0
-            || self.column as u32 >= bounds.width()
-            || self.row < 0
-            || self.row as u32 >= bounds.height()
-        {
-            None
-        } else {
-            Some(WithinBounds(*self))
-        }
+/// Checks that this rectangle fits inside a certain size.
+/// If it does, returns a `WithinBounds<CellRect>`, otherwise `None`.
+pub fn cell_rect_within_size(
+    candidate: CellRect,
+    bounds: SizeInCells,
+) -> Option<WithinBounds<CellRect>> {
+    let bounds = CellRect::new(CellPos::zero(), bounds.cast());
+    if candidate.contains_rect(&bounds) {
+        Some(WithinBounds(candidate))
+    } else {
+        None
     }
 }
 
-impl std::ops::Add<SizeInCells> for CellPos {
-    type Output = CellPos;
-
-    fn add(self, rhs: SizeInCells) -> Self::Output {
-        CellPos {
-            column: self.column + rhs.width() as i32,
-            row: self.row + rhs.height() as i32,
-        }
-    }
-}
-
-/// A rectangle of character cells.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CellRect {
-    pub top_left: CellPos,
-    pub size: SizeInCells,
-}
-
-impl CellRect {
-    pub fn from_cell_width_height(top_left: CellPos, width: u32, height: u32) -> CellRect {
-        CellRect {
-            top_left,
-            size: SizeInCells::new(width, height),
-        }
-    }
-    /// Checks that this rectangle fits inside a certain size.
-    /// If it does, returns a `WithinBounds<CellRect>`, otherwise `None`.
-    pub fn within_size(&self, bounds: SizeInCells) -> Option<WithinBounds<CellRect>> {
-        if self.top_left.within_bounds(&bounds).is_none()
-            || self.right() > bounds.width() as i32
-            || self.bottom() > bounds.height() as i32
-        {
-            None
-        } else {
-            Some(WithinBounds(*self))
-        }
-    }
-
-    pub fn clamp_to_bounds(&self, bounds: SizeInCells) -> WithinBounds<CellRect> {
-        let left = self.left().clamp(0, bounds.width as i32);
-        let right = self.right().clamp(0, bounds.width as i32);
-        let top = self.top().clamp(0, bounds.height as i32);
-        let bottom = self.bottom().clamp(0, bounds.height as i32);
-        WithinBounds::assume_within_bounds(Self {
-            top_left: CellPos {
-                column: left,
-                row: top,
-            },
-            size: SizeInCells::new((right - left) as u32, (bottom - top) as u32),
-        })
-    }
-
-    /// Get the leftmost column.
-    pub fn left(&self) -> i32 {
-        self.top_left.column
-    }
-    /// Get the column to the right of the rightmost one.
-    pub fn right(&self) -> i32 {
-        self.top_left.column + self.size.width() as i32
-    }
-    /// Get the topmost row.
-    pub fn top(&self) -> i32 {
-        self.top_left.row
-    }
-    /// Get the row below the bottom one.
-    pub fn bottom(&self) -> i32 {
-        self.top_left.row + self.size.height() as i32
-    }
-    /// Get the total width.
-    pub fn width(&self) -> u32 {
-        self.size.width()
-    }
-    /// Get the total height.
-    pub fn height(&self) -> u32 {
-        self.size.height()
-    }
+pub fn clamp_rect_to_bounds(candidate: CellRect, bounds: SizeInCells) -> WithinBounds<CellRect> {
+    let left = candidate.min_x().clamp(0, bounds.width as i32);
+    let right = candidate.max_x().clamp(0, bounds.width as i32);
+    let top = candidate.min_y().clamp(0, bounds.height as i32);
+    let bottom = candidate.max_y().clamp(0, bounds.height as i32);
+    WithinBounds::assume_within_bounds(CellRect::new(
+        CellPos::new(left, top),
+        SizeInCells::new(right - left, bottom - top),
+    ))
 }
 
 /// Wraps a value that is known to be within bounds.
@@ -172,51 +85,42 @@ impl<T> Deref for WithinBounds<T> {
 impl WithinBounds<CellPos> {
     /// Get the horizontal position (column) and vertical position (row) as a tuple.
     pub fn as_tuple(&self) -> (usize, usize) {
-        (self.column as usize, self.row as usize)
+        (self.x as usize, self.y as usize)
     }
 }
 
 #[cfg(test)]
 mod test {
-    use super::{CellPos, CellRect, SizeInCells};
+    use super::{cell_within_bounds, clamp_rect_to_bounds, CellPos, CellRect, SizeInCells};
 
     #[test]
     fn within_bounds() {
-        let c = CellPos { column: 1, row: 2 };
-        let v = c.within_bounds(&SizeInCells::new(10, 20));
+        let c = CellPos::new(1, 2);
+        let v = cell_within_bounds(c, SizeInCells::new(10, 20));
         assert!(v.is_some());
     }
 
     #[test]
     fn within_bounds_successful() {
-        let c = CellPos {
-            column: 10,
-            row: 21,
-        };
-        let v = c.within_bounds(&SizeInCells::new(10, 20));
+        let c = CellPos::new(10, 21);
+        let v = cell_within_bounds(c, SizeInCells::new(10, 20));
         assert!(v.is_none());
     }
 
     #[test]
     fn add_pos_and_size() {
-        let c = CellPos { column: 5, row: 7 };
+        let c = CellPos::new(5, 7);
         let s = SizeInCells::new(10, 100);
-        assert_eq!(
-            CellPos {
-                column: 15,
-                row: 107
-            },
-            c + s
-        );
+        assert_eq!(CellPos::new(15, 107), c + s);
     }
 
     #[test]
     fn rect_clamp_to_size() {
-        let r = CellRect::from_cell_width_height(CellPos { column: 2, row: 10 }, 8, 4);
-        let c = r.clamp_to_bounds(SizeInCells::new(5, 12));
+        let r = CellRect::new(CellPos::new(2, 10), SizeInCells::new(8, 4));
+        let c = clamp_rect_to_bounds(r, SizeInCells::new(5, 12));
         assert_eq!(
             *c,
-            CellRect::from_cell_width_height(CellPos { column: 2, row: 10 }, 3, 2)
+            CellRect::new(CellPos::new(2, 10), SizeInCells::new(3, 2))
         );
     }
 }

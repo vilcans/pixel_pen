@@ -2,7 +2,7 @@ use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, V
 use crate::{
     cell_image::{CellCoordinates, CellImageSize},
     colors::TrueColor,
-    coords::{CellPos, CellRect, PixelPoint, SizeInCells, WithinBounds},
+    coords::{self, CellPos, CellRect, PixelPoint, SizeInCells, WithinBounds},
     error::{DisallowedAction, Error},
     image_operations,
     ui::ViewSettings,
@@ -69,7 +69,7 @@ impl VicImage {
             .take(size.area() as usize)
             .collect();
         assert_eq!(size.area() as usize, raw_video.len());
-        let video = ImgVec::new(raw_video, size.width() as usize, size.height() as usize);
+        let video = ImgVec::new(raw_video, size.width as usize, size.height as usize);
         let mut bitmaps = BiMap::new();
         bitmaps.extend(characters);
         Ok(Self {
@@ -91,11 +91,7 @@ impl VicImage {
         let columns = (source_image.width() as usize + Char::WIDTH - 1) / Char::WIDTH;
         let rows = (source_image.height() as usize + Char::HEIGHT - 1) / Char::HEIGHT;
         let mut image = VicImage::new(columns, rows);
-        image.paste_image(
-            source_image,
-            PixelPoint { x: 0, y: 0 },
-            ColorFormat::Multicolor,
-        );
+        image.paste_image(source_image, PixelPoint::zero(), ColorFormat::Multicolor);
         Ok(image)
     }
 
@@ -121,10 +117,10 @@ impl VicImage {
         const CELL_H: i32 = Char::HEIGHT as i32;
         let start_column = (target.x / CELL_W as i32).max(0);
         let end_column = ((target.x + source.width() as i32 + CELL_W - 1) / CELL_W)
-            .min(self.size_in_cells().width() as i32);
+            .min(self.size_in_cells().width as i32);
         let start_row = (target.y / CELL_H as i32).max(0);
         let end_row = ((target.y + source.height() as i32 + CELL_H - 1) / CELL_H)
-            .min(self.size_in_cells().height() as i32);
+            .min(self.size_in_cells().height as i32);
 
         let global_colors = &self.colors;
 
@@ -193,14 +189,13 @@ impl VicImage {
         source: ImgRef<'_, Char>,
     ) -> Result<bool, Box<dyn DisallowedAction>> {
         let mut changed = false;
-        let source_size = SizeInCells::new(source.width() as u32, source.height() as u32);
+        let source_size = SizeInCells::new(source.width() as i32, source.height() as i32);
         for (char, (r, c)) in source.pixels().zip(
-            (target_pos.row..target_pos.row + source_size.height() as i32).cartesian_product(
-                target_pos.column..target_pos.column + source_size.width() as i32,
-            ),
+            (target_pos.y..target_pos.y + source_size.height as i32)
+                .cartesian_product(target_pos.x..target_pos.x + source_size.width as i32),
         ) {
-            let p = CellPos { row: r, column: c };
-            if let Some(p) = p.within_bounds(&self.size_in_cells()) {
+            let p = CellPos::new(r, c);
+            if let Some(p) = coords::cell_within_bounds(p, self.size_in_cells()) {
                 self.video[p.as_tuple()] = char;
                 changed = true;
             }
@@ -331,12 +326,12 @@ impl VicImage {
 
     /// Get at which pixel coordinates to dispay grid lines
     pub fn vertical_grid_lines(&self) -> impl Iterator<Item = i32> {
-        (0..=self.size_in_cells().width()).map(|c| (c * Char::WIDTH as u32) as i32)
+        (0..=self.size_in_cells().width).map(|c| (c * Char::WIDTH as i32) as i32)
     }
 
     /// Get at which pixel coordinates to dispay grid lines
     pub fn horizontal_grid_lines(&self) -> impl Iterator<Item = i32> {
-        (0..=self.size_in_cells().height()).map(|r| (r * Char::HEIGHT as u32) as i32)
+        (0..=self.size_in_cells().height).map(|r| (r * Char::HEIGHT as i32) as i32)
     }
 
     /// General information about the image
@@ -352,8 +347,8 @@ impl VicImage {
                 "({}, {}): column {}, row {} {} color {}",
                 position.x,
                 position.y,
-                cell.column,
-                cell.row,
+                cell.x,
+                cell.y,
                 if char.is_multicolor() {
                     "multicolor"
                 } else {
@@ -425,8 +420,8 @@ impl VicImage {
         let chars = self
             .video
             .sub_image(
-                rect.left() as usize,
-                rect.top() as usize,
+                rect.min_x() as usize,
+                rect.min_y() as usize,
                 rect.width() as usize,
                 rect.height() as usize,
             )
@@ -450,21 +445,21 @@ impl VicImage {
         target.cells_and_pixels(
             Char::WIDTH as u32,
             Char::HEIGHT as u32,
-            &self.size_in_cells(),
+            self.size_in_cells(),
         )
     }
 }
 
 impl CellImageSize for VicImage {
     fn size_in_cells(&self) -> SizeInCells {
-        SizeInCells::new(self.video.width() as u32, self.video.height() as u32)
+        SizeInCells::new(self.video.width() as i32, self.video.height() as i32)
     }
 
     fn size_in_pixels(&self) -> (usize, usize) {
         let size = self.size_in_cells();
         (
-            size.width() as usize * Char::WIDTH,
-            size.height() as usize * Char::HEIGHT,
+            size.width as usize * Char::WIDTH,
+            size.height as usize * Char::HEIGHT,
         )
     }
 }

@@ -470,11 +470,8 @@ fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransfo
     for x in image.vertical_grid_lines() {
         painter.line_segment(
             [
-                pixel_transform.screen_pos(PixelPoint { x, y: 0 }),
-                pixel_transform.screen_pos(PixelPoint {
-                    x,
-                    y: height as i32,
-                }),
+                pixel_transform.screen_pos(PixelPoint::new(x, 0)),
+                pixel_transform.screen_pos(PixelPoint::new(x, height as i32)),
             ],
             stroke,
         )
@@ -482,8 +479,8 @@ fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransfo
     for y in image.horizontal_grid_lines() {
         painter.line_segment(
             [
-                pixel_transform.screen_pos(PixelPoint { x: 0, y }),
-                pixel_transform.screen_pos(PixelPoint { x: width as i32, y }),
+                pixel_transform.screen_pos(PixelPoint::new(0, y)),
+                pixel_transform.screen_pos(PixelPoint::new(width as i32, y)),
             ],
             stroke,
         )

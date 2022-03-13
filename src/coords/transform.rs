@@ -31,7 +31,7 @@ impl PixelTransform {
         let fy = p.y / self.screen_rect.size().y;
         let x = (fx * self.pixel_width as f32) as i32;
         let y = (fy * self.pixel_height as f32) as i32;
-        PixelPoint { x, y }
+        PixelPoint::new(x, y)
     }
 
     /// Convert screen coordinates to pixel coordinates.

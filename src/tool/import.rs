@@ -211,10 +211,7 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import, user_actions:
             let scaled = import.scale_image();
             user_actions.push(Action::Document(DocAction::PasteTrueColor {
                 source: scaled,
-                target: PixelPoint {
-                    x: import.settings.left,
-                    y: import.settings.top,
-                },
+                target: PixelPoint::new(import.settings.left, import.settings.top),
                 format: import.settings.format,
             }));
         } else if ui.button("Close").clicked() {

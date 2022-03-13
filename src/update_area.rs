@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bit_vec::BitVec;
 
 use crate::{
-    coords::{CellPos, PixelPoint, SizeInCells, WithinBounds},
+    coords::{self, CellPos, PixelPoint, SizeInCells, WithinBounds},
     line,
 };
 
@@ -35,16 +35,17 @@ impl UpdateArea {
         &self,
         cell_width: u32,
         cell_height: u32,
-        size_in_cells: &SizeInCells,
+        size_in_cells: SizeInCells,
     ) -> HashMap<WithinBounds<CellPos>, BitVec> {
         let mut cells = HashMap::new();
-        for PixelPoint { x, y } in self.pixels.iter().copied() {
-            if let Some(cell) = (CellPos {
-                column: x.div_euclid(cell_width as i32),
-                row: y.div_euclid(cell_height as i32),
-            })
-            .within_bounds(size_in_cells)
-            {
+        for PixelPoint { x, y, .. } in self.pixels.iter().copied() {
+            if let Some(cell) = coords::cell_within_bounds(
+                CellPos::new(
+                    x.div_euclid(cell_width as i32),
+                    y.div_euclid(cell_height as i32),
+                ),
+                size_in_cells,
+            ) {
                 let (x, y) = (x as u32, y as u32);
                 let cx = x.rem_euclid(cell_width);
                 let cy = y.rem_euclid(cell_height);

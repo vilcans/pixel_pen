@@ -48,10 +48,9 @@ impl PaintTool {
 
         // Highlight character
         if let Some((cell, _, _)) = doc.image.cell(hover_pos) {
-            let (top_left, bottom_right) = doc.image.cell_rectangle(&CellRect {
-                top_left: *cell,
-                size: SizeInCells::ONE,
-            });
+            let (top_left, bottom_right) = doc
+                .image
+                .cell_rectangle(&CellRect::new(*cell, SizeInCells::new(1, 1)));
             if let Some(stroke) = match mode {
                 Mode::FillCell | Mode::CellColor => Some(Stroke {
                     width: 1.0,

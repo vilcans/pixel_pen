@@ -40,7 +40,7 @@ impl GrabTool {
                 if let Some(hover_pos) = hover_pos {
                     *cursor_icon = Some(CursorIcon::Crosshair);
                     let cell_rect = doc.image.cell_selection(hover_pos, hover_pos);
-                    let cell = cell_rect.top_left;
+                    let cell = cell_rect.origin;
                     draw_crosshair(
                         painter,
                         pixel_transform,
