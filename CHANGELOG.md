@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+
+## [0.14.0] - 2022-03-14
 ### Added
 - Rectangle (filled) tool.
 
@@ -95,7 +97,8 @@ This makes it impossible to try to draw with colors 8-15 unless in a multicolor 
 
 
 <!-- next-url -->
-[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/vilcans/pixel_pen/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/vilcans/pixel_pen/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/vilcans/pixel_pen/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/vilcans/pixel_pen/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/vilcans/pixel_pen/compare/v0.10.0...v0.11.0
