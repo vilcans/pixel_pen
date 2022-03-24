@@ -1,6 +1,6 @@
 use crate::cell_image::CellImageSize;
 use crate::egui_extensions::EnhancedResponse;
-use crate::vic::Char;
+use crate::vic::{Char, VicImage};
 use crate::{
     actions::{Action, UiAction},
     editor::Editor,
@@ -245,6 +245,12 @@ fn update_with_editor(
                 }
                 if ui.button("Mirror Y").clicked_with_close(ui) {
                     user_actions.push(Action::Ui(UiAction::MirrorBrushY));
+                }
+                ui.separator();
+                if ui.button("Create Image").clicked_with_close(ui) {
+                    let image = VicImage::with_content(brush.clone());
+                    let doc = Document::from_image(image);
+                    user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
                 }
             });
         });

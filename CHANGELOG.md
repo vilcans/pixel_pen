@@ -3,6 +3,8 @@
 <!-- next-header -->
 
 ## [Unreleased] - ReleaseDate
+### Added
+- Create image from brush.
 
 ## [0.14.0] - 2022-03-14
 ### Added
