@@ -5,6 +5,8 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - Create image from brush.
+### Changed
+- Render the secondary color marker as an outline, so it's easier to distinguish from the primary color.
 
 ### Changed
 - Improve clarity in file format:

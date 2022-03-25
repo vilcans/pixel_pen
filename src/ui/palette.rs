@@ -155,8 +155,8 @@ fn draw_patch(
                 rect.center_top() + offset - Vec2::new(r, 0.0),
                 rect.center_top() + offset + Vec2::new(r, 0.0),
             ],
-            Color32::WHITE,
-            (1.0, Color32::BLACK),
+            Color32::BLACK,
+            (1.0, Color32::WHITE),
         ));
     }
 }
