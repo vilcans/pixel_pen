@@ -72,9 +72,15 @@ fn render_patch(
         *secondary_color,
     );
     if response.clicked() {
+        if *secondary_color == patch {
+            *secondary_color = *primary_color;
+        }
         *primary_color = patch;
     }
     if response.secondary_clicked() {
+        if *primary_color == patch {
+            *primary_color = *secondary_color;
+        }
         *secondary_color = patch;
     }
     render_patch_popups(
@@ -187,10 +193,10 @@ fn render_patch_popups(
         }
     };
     let selected_text = match (selected_as_primary, selected_as_secondary) {
-        (false, false) => "Left/right click to select as primary/secondary",
-        (true, false) => "Selected primary color",
-        (false, true) => "Selected secondary color",
-        (true, true) => "Selected primary and secondary color",
+        (false, false) => "Left/right click to select as primary/secondary.",
+        (true, false) => "Selected primary color. Right-click to swap with secondary color.",
+        (false, true) => "Selected secondary color. Click to swap with primary color.",
+        (true, true) => "Selected primary and secondary color.",
     };
     response.on_hover_text(format!("{}\n{}", color_description, selected_text));
 }

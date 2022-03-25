@@ -5,6 +5,8 @@
 ## [Unreleased] - ReleaseDate
 ### Added
 - Create image from brush.
+- If you select a primary color that is the same as the secondary color, swap them instead of selecting the same color for both.
+
 ### Changed
 - Render the secondary color marker as an outline, so it's easier to distinguish from the primary color.
 
