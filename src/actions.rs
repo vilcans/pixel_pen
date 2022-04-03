@@ -10,7 +10,7 @@ use crate::{
     tool::Tool,
     ui::ViewSettings,
     update_area::UpdateArea,
-    vic::{Char, ColorFormat, PixelColor},
+    vic::{Char, ColorFormat, PixelColor, Register},
     Document,
 };
 
@@ -35,8 +35,8 @@ pub enum Action {
 
 pub enum DocAction {
     /// Change one of the global colors.
-    GlobalColor {
-        index: u32,
+    ChangeRegister {
+        index: Register,
         value: u8,
     },
     /// Paste a true color image into the image

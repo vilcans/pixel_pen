@@ -1,4 +1,6 @@
-use super::{char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, VicPalette};
+use super::{
+    char::Char, ColorFormat, DisallowedEdit, GlobalColors, PixelColor, Register, VicPalette,
+};
 use crate::{
     cell_image::{CellCoordinates, CellImageSize},
     colors::TrueColor,
@@ -95,19 +97,25 @@ impl VicImage {
         Ok(image)
     }
 
-    /// Get one of the global colors.
-    pub fn global_color(&self, index: u32) -> u8 {
-        self.colors[index]
+    /// Get the global colors.
+    pub fn global_colors(&self) -> &GlobalColors {
+        &self.colors
+    }
+
+    /// Set the global colors.
+    pub fn set_global_colors(&mut self, colors: GlobalColors) {
+        self.colors = colors;
     }
 
     /// Set one of the global colors.
     /// Return true if the value actually changed.
-    pub fn set_global_color(&mut self, index: u32, color: u8) -> bool {
-        if self.colors[index] != color {
-            self.colors[index] = color;
-            true
-        } else {
+    pub fn set_global_color(&mut self, index: Register, value: u8) -> bool {
+        let v = &mut self.colors[index];
+        if *v == value {
             false
+        } else {
+            *v = value;
+            true
         }
     }
 
@@ -169,9 +177,9 @@ impl VicImage {
 
     pub fn color_index_from_paint_color(&self, c: &PixelColor) -> u8 {
         match c {
-            PixelColor::Background => self.colors[GlobalColors::BACKGROUND],
-            PixelColor::Border => self.colors[GlobalColors::BORDER],
-            PixelColor::Aux => self.colors[GlobalColors::AUX],
+            PixelColor::Background => self.colors.background,
+            PixelColor::Border => self.colors.border,
+            PixelColor::Aux => self.colors.aux,
             PixelColor::CharColor(index) => *index,
         }
     }
@@ -387,7 +395,7 @@ impl VicImage {
     }
 
     pub fn border(&self) -> TrueColor {
-        let i = self.colors[GlobalColors::BORDER];
+        let i = self.colors.border;
         VicPalette::color(i)
     }
 
@@ -473,7 +481,7 @@ impl CellCoordinates for VicImage {
 /// Tries different colors and finds the one that gives the least quantization error.
 /// Returns the resulting color numbers.
 pub fn optimized_image_highres(original: &RgbaImage, global_colors: &GlobalColors) -> ImgVec<u8> {
-    let fixed_colors = [global_colors[GlobalColors::BACKGROUND]];
+    let fixed_colors = [global_colors.background];
     image_operations::optimized_image(
         original,
         &fixed_colors,
@@ -490,9 +498,9 @@ pub fn optimized_image_multicolor(
     global_colors: &GlobalColors,
 ) -> ImgVec<u8> {
     let fixed_colors = [
-        global_colors[GlobalColors::BACKGROUND],
-        global_colors[GlobalColors::BORDER],
-        global_colors[GlobalColors::AUX],
+        global_colors.background,
+        global_colors.border,
+        global_colors.aux,
     ];
     image_operations::optimized_image(
         original,

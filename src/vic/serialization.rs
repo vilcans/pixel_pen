@@ -12,7 +12,7 @@ use super::{Char, GlobalColors, VicImage};
 struct VicImageFile {
     columns: usize,
     rows: usize,
-    colors: GlobalColors,
+    colors: GlobalColorsFile,
 
     /// The character at each position.
     /// Size: columns x rows.
@@ -24,6 +24,32 @@ struct VicImageFile {
 
     /// Bitmap for each character as hex string
     characters: Vec<Option<String>>,
+}
+
+/// Supports deserializing GlobalColors from an array of three integers, used in old files.
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(untagged)]
+enum GlobalColorsFile {
+    List(u8, u8, u8),
+    Struct(GlobalColors),
+}
+
+impl Into<GlobalColors> for GlobalColorsFile {
+    fn into(self) -> GlobalColors {
+        match self {
+            GlobalColorsFile::List(background, border, aux) => GlobalColors {
+                background,
+                border,
+                aux,
+            },
+            GlobalColorsFile::Struct(g) => g,
+        }
+    }
+}
+impl From<GlobalColors> for GlobalColorsFile {
+    fn from(g: GlobalColors) -> Self {
+        Self::Struct(g)
+    }
 }
 
 impl VicImageFile {
@@ -47,7 +73,7 @@ impl VicImageFile {
         let instance = Self {
             columns: image.size_in_cells().width as usize,
             rows: image.size_in_cells().height as usize,
-            colors: image.colors.clone(),
+            colors: image.colors.clone().into(),
             video_chars,
             video_colors,
             characters,
@@ -70,7 +96,7 @@ impl VicImageFile {
             .collect::<Result<HashMap<usize, [u8; Char::HEIGHT]>, Error>>()?;
         VicImage::from_data(
             SizeInCells::new(self.columns as i32, self.rows as i32),
-            self.colors,
+            self.colors.into(),
             self.video_chars,
             self.video_colors,
             characters,

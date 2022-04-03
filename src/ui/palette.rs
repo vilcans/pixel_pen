@@ -1,6 +1,6 @@
 use crate::actions::{Action, DocAction};
 use crate::mutation_monitor::MutationMonitor;
-use crate::vic::{self, GlobalColors, PixelColor, VicImage, VicPalette};
+use crate::vic::{self, PixelColor, Register, VicImage, VicPalette};
 use crate::widgets;
 use eframe::egui::{self, Color32, Painter, Rect, Sense, Shape, Vec2};
 use itertools::Itertools;
@@ -172,15 +172,15 @@ fn render_patch_popups(
     let color_description = match patch {
         PixelColor::Background => format!(
             "Background ({})",
-            VicPalette::name(image.global_color(GlobalColors::BACKGROUND))
+            VicPalette::name(image.global_colors().background)
         ),
         PixelColor::Border => format!(
             "Border ({})",
-            VicPalette::name(image.global_color(GlobalColors::BORDER))
+            VicPalette::name(image.global_colors().border)
         ),
         PixelColor::Aux => format!(
             "Auxiliary ({})",
-            VicPalette::name(image.global_color(GlobalColors::AUX))
+            VicPalette::name(image.global_colors().aux)
         ),
         PixelColor::CharColor(index) => {
             format!("Character color {}: {}", index, VicPalette::name(index))
@@ -219,20 +219,20 @@ fn render_color_popup(
                     if response.clicked() {
                         match patch {
                             PixelColor::Background => {
-                                action = Some(Action::Document(DocAction::GlobalColor {
-                                    index: GlobalColors::BACKGROUND,
+                                action = Some(Action::Document(DocAction::ChangeRegister {
+                                    index: Register::Background,
                                     value: index,
                                 }))
                             }
                             PixelColor::Border => {
-                                action = Some(Action::Document(DocAction::GlobalColor {
-                                    index: GlobalColors::BORDER,
+                                action = Some(Action::Document(DocAction::ChangeRegister {
+                                    index: Register::Border,
                                     value: index,
                                 }))
                             }
                             PixelColor::Aux => {
-                                action = Some(Action::Document(DocAction::GlobalColor {
-                                    index: GlobalColors::AUX,
+                                action = Some(Action::Document(DocAction::ChangeRegister {
+                                    index: Register::Aux,
                                     value: index,
                                 }))
                             }

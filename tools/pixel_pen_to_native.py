@@ -81,12 +81,21 @@ def convert(document, left, top, width, height) -> Image:
     )
 
     assert len(video) == width * height
-    return Image(
-        colors=Colors(
+    if type(image['colors']) == 'list':
+        # Old format used an array for the three colors
+        global_colors = Colors(
             background=image['colors'][0],
             border=image['colors'][1],
             aux=image['colors'][2],
-        ),
+        )
+    else:
+        global_colors = Colors(
+            background=image['colors']['background'],
+            border=image['colors']['border'],
+            aux=image['colors']['aux'],
+        )
+    return Image(
+        colors=global_colors,
         width=width,
         height=height,
         num_chars=len(characters),

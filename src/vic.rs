@@ -11,7 +11,9 @@ mod palette;
 mod registers;
 mod serialization;
 
-pub use self::{char::Char, image::VicImage, palette::VicPalette, registers::GlobalColors};
+pub use self::{
+    char::Char, image::VicImage, palette::VicPalette, registers::GlobalColors, registers::Register,
+};
 
 /// Which colors are allowed as the "character" color.
 pub const ALLOWED_CHAR_COLORS: RangeInclusive<u8> = 0..=7;

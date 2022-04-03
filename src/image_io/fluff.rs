@@ -148,8 +148,10 @@ pub fn load_fluff64(reader: &mut impl Read) -> Result<VicImage, Error> {
         })
         .collect::<Result<Vec<vic::Char>, Error>>()?;
     let mut image = VicImage::with_content(ImgVec::new(video_buffer, width, height));
-    image.set_global_color(GlobalColors::BACKGROUND, header.background);
-    image.set_global_color(GlobalColors::BORDER, header.border);
-    image.set_global_color(GlobalColors::AUX, header.aux);
+    image.set_global_colors(GlobalColors {
+        background: header.background,
+        border: header.border,
+        aux: header.aux,
+    });
     Ok(image)
 }

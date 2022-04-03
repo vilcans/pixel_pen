@@ -47,7 +47,7 @@ impl Char {
         assert_eq!(colors.height(), Self::HEIGHT);
 
         let mut cell_color = 1u8; // the final color of the cell
-        let bg_color = global_colors[GlobalColors::BACKGROUND] as u8;
+        let bg_color = global_colors.background;
         let mut bitmap = [0u8; Self::HEIGHT];
 
         for (pixel_row, bits) in colors.rows().zip(bitmap.iter_mut()) {
@@ -74,9 +74,6 @@ impl Char {
         assert_eq!(colors.height(), Self::HEIGHT);
 
         let mut cell_color = 1u8; // the final color of the cell
-        let bg_color = global_colors[GlobalColors::BACKGROUND] as u8;
-        let aux_color = global_colors[GlobalColors::AUX] as u8;
-        let border_color = global_colors[GlobalColors::BORDER] as u8;
         let mut bitmap = [0u8; Self::HEIGHT];
 
         for (pixel_row, bits) in colors.rows().zip(bitmap.iter_mut()) {
@@ -85,11 +82,11 @@ impl Char {
                 .copied()
                 .enumerate()
                 .map(|(x, pixel_color)| {
-                    if pixel_color == bg_color {
+                    if pixel_color == global_colors.background {
                         0
-                    } else if pixel_color == border_color {
+                    } else if pixel_color == global_colors.border {
                         0x40u8 >> (x * 2)
-                    } else if pixel_color == aux_color {
+                    } else if pixel_color == global_colors.aux {
                         0xc0u8 >> (x * 2)
                     } else {
                         cell_color = pixel_color; // Use the last found color as the color for the cell
@@ -133,9 +130,9 @@ impl Char {
         if self.multicolor {
             let (background, border, aux, char_color) = match settings {
                 ViewSettings::Normal => (
-                    VicPalette::color(colors[GlobalColors::BACKGROUND]),
-                    VicPalette::color(colors[GlobalColors::BORDER]),
-                    VicPalette::color(colors[GlobalColors::AUX]),
+                    VicPalette::color(colors.background),
+                    VicPalette::color(colors.border),
+                    VicPalette::color(colors.aux),
                     VicPalette::color(self.color),
                 ),
                 ViewSettings::Raw => ViewSettings::raw_colors(),
@@ -144,7 +141,7 @@ impl Char {
         } else {
             let (background, char_color) = match settings {
                 ViewSettings::Normal => (
-                    VicPalette::color(colors[GlobalColors::BACKGROUND]),
+                    VicPalette::color(colors.background),
                     VicPalette::color(self.color),
                 ),
                 ViewSettings::Raw => (

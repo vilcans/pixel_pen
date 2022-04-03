@@ -6,6 +6,10 @@
 ### Added
 - Create image from brush.
 
+### Changed
+- Improve clarity in file format:
+  Global colors are stored as a JSON dictionary with the keys "background", "border", and "aux" instead of a list. Loading old format is supported.
+
 ## [0.14.0] - 2022-03-14
 ### Added
 - Rectangle (filled) tool.
