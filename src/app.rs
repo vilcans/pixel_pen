@@ -248,7 +248,11 @@ fn update_with_editor(
                 }
                 ui.separator();
                 if ui.button("Create Image").clicked_with_close(ui) {
-                    let image = VicImage::with_content(brush.clone());
+                    let mut image = VicImage::with_content(brush.clone());
+                    if let Some(editor) = editors.active() {
+                        // Use same colors as the currently active document
+                        image.set_global_colors(editor.doc.image.global_colors().clone());
+                    }
                     let doc = Document::from_image(image);
                     user_actions.push(Action::Ui(UiAction::NewDocument(doc)));
                 }
