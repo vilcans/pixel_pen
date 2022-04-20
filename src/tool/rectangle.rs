@@ -8,7 +8,7 @@ use crate::{
     update_area::UpdateArea,
 };
 
-use super::{ToolUiContext, Tool};
+use super::{Tool, ToolUiContext};
 
 const STROKE: Stroke = Stroke {
     width: 1.0,
