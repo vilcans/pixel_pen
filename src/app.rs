@@ -7,7 +7,7 @@ use crate::{
     mode::Mode,
     storage,
     system::{self, OpenFileOptions, SystemFunctions},
-    tool::Tool,
+    tool::ToolType,
     Document,
 };
 use crate::{brush, coords};
@@ -170,9 +170,9 @@ fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
     let action = match keypress {
         "+" => Action::Ui(UiAction::ZoomIn),
         "-" => Action::Ui(UiAction::ZoomOut),
-        "b" => Action::Ui(UiAction::SelectTool(Tool::CharBrush(Default::default()))),
+        "b" => Action::Ui(UiAction::SelectTool(ToolType::CharBrush)),
         "c" => Action::Ui(UiAction::SelectMode(Mode::CellColor)),
-        "d" => Action::Ui(UiAction::SelectTool(Tool::Paint(Default::default()))),
+        "d" => Action::Ui(UiAction::SelectTool(ToolType::Paint)),
         "f" => Action::Ui(UiAction::SelectMode(Mode::FillCell)),
         "g" => Action::Ui(UiAction::ToggleGrid),
         "h" => Action::Ui(UiAction::SelectMode(Mode::MakeHiRes)),
@@ -182,7 +182,7 @@ fn create_actions_from_keyboard(keypress: &str, actions: &mut Vec<Action>) {
         "w" => Action::Ui(UiAction::ToggleRaw),
         "u" => Action::Ui(UiAction::Undo),
         "U" => Action::Ui(UiAction::Redo),
-        "v" => Action::Ui(UiAction::SelectTool(Tool::Grab(Default::default()))),
+        "v" => Action::Ui(UiAction::SelectTool(ToolType::Grab)),
         "x" => Action::Ui(UiAction::MirrorBrushX),
         "y" => Action::Ui(UiAction::MirrorBrushY),
         _ => return,
@@ -435,7 +435,7 @@ impl Application {
                             coords::rect_within_size(rect, ed.doc.image.size_in_cells())
                         {
                             self.brush = ed.doc.image.grab_cells(&rect);
-                            ed.ui_state.tool = Tool::CharBrush(Default::default());
+                            ed.ui_state.tool = ToolType::CharBrush;
                         } else {
                             println!("Rect {:?} did not fit inside image", rect);
                         }

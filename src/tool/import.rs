@@ -11,7 +11,7 @@ use crate::coords::PixelTransform;
 use crate::import::Import;
 use crate::import::ImportSettings;
 use crate::import::PixelAspectRatio;
-use crate::tool::Tool;
+use crate::tool::ToolType;
 use crate::vic::ColorFormat;
 use crate::Document;
 use eframe::egui;
@@ -24,33 +24,43 @@ use eframe::egui::Stroke;
 use image::imageops::FilterType;
 use image::GenericImageView;
 
+use super::Tool;
+use super::ToolUiContext;
+
 const IMPORT_IMAGE_EXTENTS_COLOR: Color32 = Color32::GRAY;
 const UNKNOWN_SOURCE_TEXT: &str = "unknown source";
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ImportTool {
-    import: Import,
+    import: Option<Import>,
 }
 
 impl ImportTool {
     pub fn new(import: Import) -> Self {
-        Self { import }
+        Self {
+            import: Some(import),
+        }
     }
     pub fn filename(&self) -> Option<&Path> {
-        self.import.settings.filename.as_deref()
+        self.import.as_ref()?.settings.filename.as_deref()
     }
-    pub fn update_ui(
-        &mut self,
-        ctx: &egui::CtxRef,
-        _ui: &mut egui::Ui,
-        painter: &Painter,
-        doc: &Document,
-        pixel_transform: &PixelTransform,
-        user_actions: &mut Vec<Action>,
-    ) {
-        image_ui(painter, &mut self.import, pixel_transform);
-        egui::Window::new("Import")
-            .show(ctx, |ui| tool_ui(ui, doc, &mut self.import, user_actions));
+}
+
+impl Tool for ImportTool {
+    fn update_ui(&mut self, ui_ctx: &mut ToolUiContext<'_>, user_actions: &mut Vec<Action>) {
+        match self.import.as_mut() {
+            Some(import) => {
+                image_ui(ui_ctx.painter, import, &ui_ctx.pixel_transform);
+                egui::Window::new("Import").show(&ui_ctx.ctx, |ui| {
+                    tool_ui(ui, ui_ctx.doc, import, user_actions)
+                });
+            }
+            None => {
+                egui::Window::new("Import").show(&ui_ctx.ctx, |ui| {
+                    ui.label("Use the Import menu to import an image");
+                });
+            }
+        }
     }
 }
 
@@ -215,9 +225,7 @@ fn tool_ui(ui: &mut egui::Ui, doc: &Document, import: &mut Import, user_actions:
                 format: import.settings.format,
             }));
         } else if ui.button("Close").clicked() {
-            user_actions.push(Action::Ui(UiAction::SelectTool(Tool::Paint(
-                Default::default(),
-            ))));
+            user_actions.push(Action::Ui(UiAction::SelectTool(ToolType::Paint)));
         }
     });
     ui.end_row();

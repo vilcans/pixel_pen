@@ -1,13 +1,14 @@
-use eframe::egui::{self, Color32, CursorIcon, Painter, Response, Stroke};
+use eframe::egui::{Color32, CursorIcon, Stroke};
 use imgref::ImgVec;
 
 use crate::{
     actions::{Action, DocAction},
     cell_image::CellCoordinates,
-    coords::{CellRect, PixelPoint, PixelTransform},
+    coords::{CellRect, PixelPoint},
     vic::Char,
-    Document,
 };
+
+use super::{Tool, ToolUiContext};
 
 const OUTLINE_STROKE: Stroke = Stroke {
     width: 1.0,
@@ -17,26 +18,16 @@ const OUTLINE_STROKE: Stroke = Stroke {
 #[derive(Debug, Default, Clone)]
 pub struct CharBrushTool {}
 
-impl CharBrushTool {
-    #[allow(clippy::too_many_arguments)] // Shut it up for now
-    pub fn update_ui(
-        &mut self,
-        response: &Response,
-        painter: &Painter,
-        pixel_transform: &PixelTransform,
-        cursor_icon: &mut Option<CursorIcon>,
-        brush: &ImgVec<Char>,
-        cursor_pos: Option<PixelPoint>,
-        doc: &Document,
-        user_actions: &mut Vec<Action>,
-    ) {
-        let cursor_pos = match cursor_pos {
+impl Tool for CharBrushTool {
+    fn update_ui(&mut self, ui_ctx: &mut ToolUiContext<'_>, user_actions: &mut Vec<Action>) {
+        let cursor_pos = match ui_ctx.hover_pos {
             None => return,
             Some(p) => p,
         };
-        *cursor_icon = Some(CursorIcon::PointingHand);
+        *ui_ctx.cursor_icon = Some(CursorIcon::PointingHand);
 
-        let (cell, _, _) = doc.image.cell_unclipped(PixelPoint::new(
+        let brush = ui_ctx.brush;
+        let (cell, _, _) = ui_ctx.doc.image.cell_unclipped(PixelPoint::new(
             cursor_pos.x - brush.width() as i32 / 2 * Char::WIDTH as i32
                 + if brush.width() % 2 == 1 {
                     0
@@ -51,24 +42,17 @@ impl CharBrushTool {
                 },
         ));
 
-        let (top_left, bottom_right) = doc.image.cell_rectangle(&CellRect::new(
+        let (top_left, bottom_right) = ui_ctx.doc.image.cell_rectangle(&CellRect::new(
             cell,
             (brush.width() as i32, brush.height() as i32).into(),
         ));
+        ui_ctx.draw_rect(top_left, bottom_right, OUTLINE_STROKE);
 
-        painter.rect_stroke(
-            egui::Rect::from_min_max(
-                pixel_transform.screen_pos(top_left),
-                pixel_transform.screen_pos(bottom_right),
-            ),
-            0.0,
-            OUTLINE_STROKE,
-        );
-
-        if response.clicked() {
+        if ui_ctx.widget_response.clicked() {
+            let (buf, w, h) = brush.to_contiguous_buf().to_owned();
             user_actions.push(Action::Document(DocAction::CharBrushPaint {
                 pos: cell,
-                chars: brush.clone(),
+                chars: ImgVec::new(buf.to_vec(), w, h),
             }));
         }
     }

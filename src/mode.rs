@@ -54,12 +54,10 @@ impl Mode {
     }
 
     /// Create an Action from a paint Mode.
-    pub fn paint_action(
-        &self,
-        area: UpdateArea,
-        color: PixelColor,
-        other_color: PixelColor,
-    ) -> DocAction {
+    /// The `colors` are the selected primary and secondary color.
+    /// If `secondary` is true, the secondary color becomes the primary and vice versa.
+    pub fn paint_action(&self, area: UpdateArea, colors: (PixelColor, PixelColor)) -> DocAction {
+        let (color, other_color) = colors;
         match self {
             Mode::PixelPaint => DocAction::Plot { area, color },
             Mode::FillCell => DocAction::Fill { area, color },

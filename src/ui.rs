@@ -4,11 +4,11 @@ pub mod text;
 
 use std::time::Instant;
 
-use crate::{colors::TrueColor, mode::Mode, tool::Tool, vic::PixelColor};
+use crate::{colors::TrueColor, mode::Mode, tool::ToolType, vic::PixelColor};
 use eframe::egui::Vec2;
 
 pub struct UiState {
-    pub tool: Tool,
+    pub tool: ToolType,
     pub mode: Mode,
     pub zoom: f32,
     pub image_view_settings: ViewSettings,
@@ -27,7 +27,7 @@ pub struct UiState {
 impl Default for UiState {
     fn default() -> Self {
         Self {
-            tool: Tool::Paint(Default::default()),
+            tool: ToolType::Paint,
             mode: Mode::PixelPaint,
             zoom: 2.0,
             image_view_settings: ViewSettings::Normal,

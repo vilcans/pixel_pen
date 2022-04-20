@@ -1,16 +1,14 @@
-use eframe::egui::{self, Color32, CursorIcon, Painter, PointerButton, Stroke};
+use eframe::egui::{Color32, CursorIcon, PointerButton, Stroke};
 use euclid::Point2D;
 
 use crate::{
     actions::Action,
     cell_image::CellImageSize,
-    coords::{PixelPoint, PixelRect, PixelTransform},
-    mode::Mode,
-    ui,
+    coords::{PixelPoint, PixelRect},
     update_area::UpdateArea,
-    vic::PixelColor,
-    Document,
 };
+
+use super::{ToolUiContext, Tool};
 
 const STROKE: Stroke = Stroke {
     width: 1.0,
@@ -25,29 +23,22 @@ pub struct RectangleTool {
     swap_colors: bool,
 }
 
-impl RectangleTool {
-    #[allow(clippy::too_many_arguments)] // Shut it up for now
-    pub fn update_ui(
-        &mut self,
-        pixel_pos: Option<PixelPoint>,
-        ui: &mut egui::Ui,
-        response: &egui::Response,
-        painter: &Painter,
-        pixel_transform: &PixelTransform,
-        cursor_icon: &mut Option<CursorIcon>,
-        mode: &Mode,
-        colors: (PixelColor, PixelColor),
-        doc: &Document,
-        user_actions: &mut Vec<Action>,
-    ) {
-        let hover_pos = match pixel_pos {
+impl Tool for RectangleTool {
+    fn update_ui(&mut self, ui_ctx: &mut ToolUiContext<'_>, user_actions: &mut Vec<Action>) {
+        let hover_pos = match ui_ctx.hover_pos {
             Some(p) => p,
             None => return,
         };
-        *cursor_icon = Some(CursorIcon::Crosshair);
+        *ui_ctx.cursor_icon = Some(CursorIcon::Crosshair);
 
+        let response = ui_ctx.widget_response;
         let pressed = if response.secondary_clicked()
-            || (response.dragged() && ui.input().pointer.button_down(PointerButton::Secondary))
+            || (response.dragged()
+                && ui_ctx
+                    .ui
+                    .input()
+                    .pointer
+                    .button_down(PointerButton::Secondary))
         {
             Some(true)
         } else if response.clicked() || response.dragged() {
@@ -56,7 +47,7 @@ impl RectangleTool {
             None
         };
 
-        let (image_w, image_h) = doc.image.size_in_pixels();
+        let (image_w, image_h) = ui_ctx.doc.image.size_in_pixels();
         let image_lower_right = Point2D::new(image_w as i32, image_h as i32);
         let cursor_position_clamped = hover_pos.clamp(PixelPoint::zero(), image_lower_right);
         if self.corner.is_none() && pressed.is_some() {
@@ -64,31 +55,25 @@ impl RectangleTool {
         }
         match self.corner {
             None => {
-                *cursor_icon = Some(CursorIcon::Crosshair);
-                ui::crosshair::draw_crosshair(painter, pixel_transform, hover_pos);
+                *ui_ctx.cursor_icon = Some(CursorIcon::Crosshair);
+                ui_ctx.draw_crosshair(hover_pos);
             }
             Some(corner) if pressed.is_some() => {
                 // Dragging
                 self.swap_colors = matches!(pressed, Some(true));
-                painter.rect_stroke(
-                    egui::Rect::from_points(&[
-                        pixel_transform.screen_pos(corner),
-                        pixel_transform.screen_pos(cursor_position_clamped),
-                    ]),
-                    0.0,
-                    STROKE,
-                );
+                ui_ctx.draw_rect(corner, cursor_position_clamped, STROKE);
             }
             Some(corner) => {
                 // Released
                 let selection = PixelRect::from_points(&[corner, cursor_position_clamped]);
                 if selection.area() != 0 {
                     let area = UpdateArea::rectangle(selection);
-                    user_actions.push(Action::Document(if self.swap_colors {
-                        mode.paint_action(area, colors.1, colors.0)
-                    } else {
-                        mode.paint_action(area, colors.0, colors.1)
-                    }));
+                    user_actions.push(Action::Document(
+                        ui_ctx
+                            .ui_state
+                            .mode
+                            .paint_action(area, ui_ctx.colors(self.swap_colors)),
+                    ));
                 }
                 self.corner = None;
             }

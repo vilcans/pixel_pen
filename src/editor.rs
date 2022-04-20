@@ -21,7 +21,7 @@ use crate::{
     storage,
     system::{OpenFileOptions, SaveFileOptions, SystemFunctions},
     texture::{self, Texture},
-    tool::{ImportTool, Tool},
+    tool::{ImportTool, ToolType, ToolUiContext, Toolbox},
     ui::{self, text, UiState, ViewSettings},
     vic::{Char, VicImage},
     Document,
@@ -38,6 +38,7 @@ pub struct Editor {
     pub ui_state: UiState,
     pub image_texture: Option<Texture>,
     pub history: Record<actions::Undoable>,
+    pub toolbox: Toolbox,
 }
 
 impl Editor {
@@ -47,6 +48,7 @@ impl Editor {
             ui_state: Default::default(),
             image_texture: None,
             history: Default::default(),
+            toolbox: Toolbox::new(),
         }
     }
 
@@ -60,16 +62,16 @@ impl Editor {
             .settings
             .height
             .min(self.doc.image.size_in_pixels().1 as u32);
-        self.ui_state.tool = Tool::Import(ImportTool::new(i));
+        self.toolbox.import = ImportTool::new(i);
+        self.ui_state.tool = ToolType::Import;
         Ok(())
     }
 
     pub fn update_file_menu(&mut self, ui: &mut Ui, system: &mut dyn SystemFunctions) {
         if system.has_open_file_dialog() && ui.button("Import...").clicked_with_close(ui) {
-            match system.open_file_dialog(OpenFileOptions::for_import(match &self.ui_state.tool {
-                Tool::Import(tool) => tool.filename(),
-                _ => None,
-            })) {
+            match system
+                .open_file_dialog(OpenFileOptions::for_import(self.toolbox.import.filename()))
+            {
                 Ok(Some(filename)) => match self.start_import_mode(&filename) {
                     Ok(()) => {}
                     Err(e) => system.show_error(&format!(
@@ -173,7 +175,7 @@ impl Editor {
     pub fn update_left_toolbar(&self, ui: &mut Ui, user_actions: &mut Vec<Action>) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             select_tool_ui(ui, &self.ui_state.tool, user_actions);
-            if let Tool::Paint(_) | Tool::Rectangle(_) = self.ui_state.tool {
+            if let ToolType::Paint | ToolType::Rectangle = self.ui_state.tool {
                 ui.separator();
                 select_mode_ui(ui, &self.ui_state.mode, user_actions);
             }
@@ -264,54 +266,20 @@ impl Editor {
 
         // Tool UI
         if !self.ui_state.panning {
-            match &mut self.ui_state.tool {
-                Tool::Import(tool) => {
-                    tool.update_ui(ctx, ui, &painter, &self.doc, &pixel_transform, user_actions)
-                }
-                Tool::Paint(tool) => tool.update_ui(
-                    hover_pos,
-                    ui,
-                    &response,
-                    &painter,
-                    &pixel_transform,
-                    cursor_icon,
-                    &self.ui_state.mode,
-                    (self.ui_state.primary_color, self.ui_state.secondary_color),
-                    &self.doc,
-                    user_actions,
-                ),
-                Tool::Rectangle(tool) => tool.update_ui(
-                    hover_pos,
-                    ui,
-                    &response,
-                    &painter,
-                    &pixel_transform,
-                    cursor_icon,
-                    &self.ui_state.mode,
-                    (self.ui_state.primary_color, self.ui_state.secondary_color),
-                    &self.doc,
-                    user_actions,
-                ),
-                Tool::Grab(tool) => tool.update_ui(
-                    &painter,
-                    &pixel_transform,
-                    cursor_icon,
-                    &self.doc,
-                    hover_pos,
-                    &response,
-                    user_actions,
-                ),
-                Tool::CharBrush(tool) => tool.update_ui(
-                    &response,
-                    &painter,
-                    &pixel_transform,
-                    cursor_icon,
-                    brush,
-                    hover_pos,
-                    &self.doc,
-                    user_actions,
-                ),
+            let tool = self.toolbox.get_mut(self.ui_state.tool);
+            let mut tool_ui_context = ToolUiContext {
+                ctx: ctx.clone(),
+                ui,
+                painter: &painter,
+                widget_response: &response,
+                hover_pos,
+                pixel_transform,
+                cursor_icon,
+                ui_state: &self.ui_state,
+                doc: &self.doc,
+                brush: brush.as_ref(),
             };
+            tool.update_ui(&mut tool_ui_context, user_actions);
         }
 
         let info_text = {
@@ -370,7 +338,7 @@ impl Editor {
                         doc.image.dirty = true;
                     }
                 }
-                UiAction::SelectTool(tool) => ui_state.tool = tool.clone(),
+                UiAction::SelectTool(tool) => ui_state.tool = *tool,
                 UiAction::SelectMode(mode) => ui_state.mode = mode.clone(),
                 UiAction::ZoomIn => {
                     if ui_state.zoom < 16.0 {
@@ -501,38 +469,41 @@ fn draw_grid(image: &VicImage, painter: &Painter, pixel_transform: &PixelTransfo
 
 /// Renders the UI for tool selection.
 /// Returns which tool to switch to, or None if the user did not change tool.
-fn select_tool_ui(ui: &mut egui::Ui, current_tool: &Tool, user_actions: &mut Vec<Action>) {
+fn select_tool_ui(ui: &mut egui::Ui, current_tool: &ToolType, user_actions: &mut Vec<Action>) {
     let mut new_tool = None;
     ui.with_layout(egui::Layout::top_down_justified(Align::LEFT), |ui| {
         ui.style_mut().body_text_style = egui::TextStyle::Heading;
         ui.label("Tool");
         if ui
-            .selectable_label(matches!(current_tool, Tool::Paint(_)), "Paint")
+            .selectable_label(matches!(current_tool, ToolType::Paint), "Paint")
             .on_hover_text("Paint pixels")
             .clicked()
         {
-            new_tool = Some(Tool::Paint(Default::default()));
+            new_tool = Some(ToolType::Paint);
         }
         if ui
-            .selectable_label(matches!(current_tool, Tool::Rectangle(_)), "Rectangle")
+            .selectable_label(matches!(current_tool, ToolType::Rectangle), "Rectangle")
             .on_hover_text("Draw a rectangle")
             .clicked()
         {
-            new_tool = Some(Tool::Rectangle(Default::default()));
+            new_tool = Some(ToolType::Rectangle);
         }
         if ui
-            .selectable_label(matches!(current_tool, Tool::Grab { .. }), "Grab")
+            .selectable_label(matches!(current_tool, ToolType::Grab { .. }), "Grab")
             .on_hover_text("Create a brush from a part of the picture")
             .clicked()
         {
-            new_tool = Some(Tool::Grab(Default::default()));
+            new_tool = Some(ToolType::Grab);
         }
         if ui
-            .selectable_label(matches!(current_tool, Tool::CharBrush { .. }), "Char Brush")
+            .selectable_label(
+                matches!(current_tool, ToolType::CharBrush { .. }),
+                "Char Brush",
+            )
             .on_hover_text("Draw with a character brush")
             .clicked()
         {
-            new_tool = Some(Tool::CharBrush(Default::default()));
+            new_tool = Some(ToolType::CharBrush);
         }
     });
     if let Some(t) = new_tool {
