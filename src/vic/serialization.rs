@@ -34,9 +34,9 @@ enum GlobalColorsFile {
     Struct(GlobalColors),
 }
 
-impl Into<GlobalColors> for GlobalColorsFile {
-    fn into(self) -> GlobalColors {
-        match self {
+impl From<GlobalColorsFile> for GlobalColors {
+    fn from(file: GlobalColorsFile) -> Self {
+        match file {
             GlobalColorsFile::List(background, border, aux) => GlobalColors {
                 background,
                 border,
