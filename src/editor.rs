@@ -204,7 +204,7 @@ impl Editor {
             pixel_height: height as i32,
         };
 
-        let hover_pos_screen = ui.input().pointer.hover_pos();
+        let hover_pos_screen = response.hover_pos();
         let hover_pos = hover_pos_screen.map(|p| pixel_transform.pixel_pos(p));
 
         let input = ui.input();
