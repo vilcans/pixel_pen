@@ -141,16 +141,13 @@ mod native {
         }
 
         fn show_error(&self, message: &str) {
-            match MessageDialog::new()
+            if let Err(e) = MessageDialog::new()
                 .set_type(MessageType::Error)
                 .set_title("Error")
                 .set_text(message)
                 .show_alert()
             {
-                Err(e) => {
-                    eprintln!("Failed to show error message \"{0}\": {1}", message, e);
-                }
-                Ok(()) => {}
+                eprintln!("Failed to show error message \"{0}\": {1}", message, e);
             }
         }
 
