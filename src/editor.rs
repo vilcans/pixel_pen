@@ -18,6 +18,7 @@ use crate::{
     error::{Error, Severity},
     import::Import,
     mode::Mode,
+    mutation_monitor::MutationMonitor,
     storage,
     system::{OpenFileOptions, SaveFileOptions, SystemFunctions},
     texture::{self, Texture},
@@ -233,31 +234,15 @@ impl Editor {
             self.ui_state.panning = false;
         }
 
-        // Draw border
-        painter.rect_filled(
-            pixel_transform
-                .screen_rect
-                .expand2(BORDER_SIZE * self.ui_state.zoom),
-            BORDER_CORNER_RADIUS * self.ui_state.zoom,
-            self.doc.image.border(),
-        );
-
-        // Draw the main image
-        let texture = texture::update_texture(
+        draw_image(
             &mut self.doc.image,
             &mut self.image_texture,
-            frame as &dyn TextureAllocator,
-            par,
+            &painter,
+            &pixel_transform,
+            frame,
             self.ui_state.zoom,
             &self.ui_state.image_view_settings,
         );
-        let mut mesh = Mesh::with_texture(texture);
-        mesh.add_rect_with_uv(
-            pixel_transform.screen_rect,
-            Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
-        painter.add(Shape::Mesh(mesh));
 
         // Grid lines
         if self.ui_state.grid {
@@ -375,6 +360,40 @@ impl Editor {
         }
         None
     }
+}
+
+fn draw_image(
+    image: &mut MutationMonitor<VicImage>,
+    image_texture: &mut Option<Texture>,
+    painter: &Painter,
+    pixel_transform: &PixelTransform,
+    frame: &eframe::epi::Frame,
+    zoom: f32,
+    view_settings: &ViewSettings,
+) {
+    // Draw border
+    painter.rect_filled(
+        pixel_transform.screen_rect.expand2(BORDER_SIZE * zoom),
+        BORDER_CORNER_RADIUS * zoom,
+        image.border(),
+    );
+
+    // Draw the main image
+    let texture = texture::update_texture(
+        image,
+        image_texture,
+        frame as &dyn TextureAllocator,
+        image.pixel_aspect_ratio(),
+        zoom,
+        view_settings,
+    );
+    let mut mesh = Mesh::with_texture(texture);
+    mesh.add_rect_with_uv(
+        pixel_transform.screen_rect,
+        Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(1.0, 1.0)),
+        Color32::WHITE,
+    );
+    painter.add(Shape::Mesh(mesh));
 }
 
 /// Ask for filename and save the document. Show any error message to the user.
