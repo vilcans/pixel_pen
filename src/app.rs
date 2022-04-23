@@ -422,6 +422,12 @@ impl Application {
     fn apply_action(&mut self, action: Action) {
         match action {
             Action::Document(_) => eprintln!("Unhandled Document action"),
+            Action::Preview(_) => {
+                eprintln!("Unhandled Preview");
+            }
+            Action::ClearPreview => {
+                eprintln!("Unhandled ClearPreview");
+            }
             Action::Ui(ui_action) => match ui_action {
                 UiAction::NewDocument(doc) => {
                     self.add_editor(doc);

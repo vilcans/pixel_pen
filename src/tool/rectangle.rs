@@ -62,20 +62,28 @@ impl Tool for RectangleTool {
                 // Dragging
                 self.swap_colors = matches!(pressed, Some(true));
                 ui_ctx.draw_rect(corner, cursor_position_clamped, STROKE);
+                let selection = PixelRect::from_points(&[corner, cursor_position_clamped]);
+                let area = UpdateArea::rectangle(selection);
+                user_actions.push(Action::Preview(
+                    ui_ctx
+                        .ui_state
+                        .mode
+                        .paint_action(area, ui_ctx.colors(self.swap_colors)),
+                ));
             }
             Some(corner) => {
-                // Released
                 let selection = PixelRect::from_points(&[corner, cursor_position_clamped]);
                 if selection.area() != 0 {
                     let area = UpdateArea::rectangle(selection);
-                    user_actions.push(Action::Document(
-                        ui_ctx
-                            .ui_state
-                            .mode
-                            .paint_action(area, ui_ctx.colors(self.swap_colors)),
-                    ));
+                    let action = ui_ctx
+                        .ui_state
+                        .mode
+                        .paint_action(area, ui_ctx.colors(self.swap_colors));
+                    user_actions.push(Action::apply_or_preview(!pressed.is_some(), action));
                 }
-                self.corner = None;
+                if pressed.is_none() {
+                    self.corner = None;
+                }
             }
         }
     }

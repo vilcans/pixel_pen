@@ -21,7 +21,10 @@ pub struct CharBrushTool {}
 impl Tool for CharBrushTool {
     fn update_ui(&mut self, ui_ctx: &mut ToolUiContext<'_>, user_actions: &mut Vec<Action>) {
         let cursor_pos = match ui_ctx.hover_pos {
-            None => return,
+            None => {
+                user_actions.push(Action::ClearPreview);
+                return;
+            }
             Some(p) => p,
         };
         *ui_ctx.cursor_icon = Some(CursorIcon::PointingHand);
@@ -48,12 +51,13 @@ impl Tool for CharBrushTool {
         ));
         ui_ctx.draw_rect(top_left, bottom_right, OUTLINE_STROKE);
 
-        if ui_ctx.widget_response.clicked() {
-            let (buf, w, h) = brush.to_contiguous_buf().to_owned();
-            user_actions.push(Action::Document(DocAction::CharBrushPaint {
+        let (buf, w, h) = brush.to_contiguous_buf().to_owned();
+        user_actions.push(Action::apply_or_preview(
+            ui_ctx.widget_response.clicked(),
+            DocAction::CharBrushPaint {
                 pos: cell,
                 chars: ImgVec::new(buf.to_vec(), w, h),
-            }));
-        }
+            },
+        ));
     }
 }

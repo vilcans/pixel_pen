@@ -28,8 +28,15 @@ impl Undoable {
     }
 }
 
+/// Some action the user performs.
 pub enum Action {
+    /// An action that changes the document
     Document(DocAction),
+    /// An action that previews a change to the document, but does not actually change it.
+    Preview(DocAction),
+    /// Clears the preview, if any, and shows the actual document.
+    ClearPreview,
+    /// An action that changes the UI state. Not undoable.
     Ui(UiAction),
 }
 
@@ -129,6 +136,18 @@ impl undo::Action for Undoable {
                 Ok(true)
             }
             None => Ok(false),
+        }
+    }
+}
+
+impl Action {
+    /// Create an [`Action::Preview`] or [`Action::Document`] from a [`DocAction`].
+    /// If `apply` is true, creates an action that affects the document, otherwise a preview.
+    pub fn apply_or_preview(apply: bool, action: DocAction) -> Action {
+        if apply {
+            Action::Document(action)
+        } else {
+            Action::Preview(action)
         }
     }
 }

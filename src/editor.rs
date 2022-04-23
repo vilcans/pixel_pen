@@ -40,6 +40,7 @@ pub struct Editor {
     pub image_texture: Option<Texture>,
     pub history: Record<actions::Undoable>,
     pub toolbox: Toolbox,
+    pub preview: Option<Document>,
 }
 
 impl Editor {
@@ -50,6 +51,7 @@ impl Editor {
             image_texture: None,
             history: Default::default(),
             toolbox: Toolbox::new(),
+            preview: None,
         }
     }
 
@@ -234,8 +236,9 @@ impl Editor {
             self.ui_state.panning = false;
         }
 
+        let visible_doc = self.preview.as_mut().unwrap_or(&mut self.doc);
         draw_image(
-            &mut self.doc.image,
+            &mut visible_doc.image,
             &mut self.image_texture,
             &painter,
             &pixel_transform,
@@ -300,6 +303,7 @@ impl Editor {
 
         match action {
             Action::Document(action) => {
+                self.preview = None;
                 let was_dirty = doc.image.dirty;
                 match history.apply(doc, Undoable::new(action)) {
                     Ok(true) => (),
@@ -309,6 +313,22 @@ impl Editor {
                         Severity::Notification => ui_state.show_warning(e.to_string()),
                     },
                 }
+            }
+            Action::Preview(action) => {
+                let mut doc = doc.clone();
+                match doc.apply(&action) {
+                    Ok(false) => (),
+                    Ok(true) => {
+                        self.preview = Some(doc);
+                    }
+                    Err(e) => match e.severity() {
+                        Severity::Silent => {}
+                        Severity::Notification => ui_state.show_warning(e.to_string()),
+                    },
+                }
+            }
+            Action::ClearPreview => {
+                self.preview = None;
             }
             Action::Ui(ref ui_action) => match ui_action {
                 UiAction::Undo => {
